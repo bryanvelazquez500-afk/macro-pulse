@@ -1,0 +1,123 @@
+from app.services.gaap_mapping import Metric, PeriodType, normalize_company_facts
+
+
+def _fact(val, start, end, form="10-K", filed="2020-02-01", fy=2019, fp="FY", accn="0000000000-20-000001"):
+    return {"val": val, "start": start, "end": end, "form": form, "filed": filed, "fy": fy, "fp": fp, "accn": accn}
+
+
+def _facts(**tags):
+    return {"facts": {"us-gaap": {tag: {"units": {"USD": facts}} for tag, facts in tags.items()}}}
+
+
+def test_merges_revenue_across_tag_change():
+    # Pre-ASC 606 filings used SalesRevenueNet; later ones use RevenueFromContract...
+    data = _facts(
+        SalesRevenueNet=[_fact(100, "2017-01-01", "2017-12-31", fy=2017, filed="2018-02-01", accn="A-17")],
+        RevenueFromContractWithCustomerExcludingAssessedTax=[
+            _fact(120, "2018-01-01", "2018-12-31", fy=2018, filed="2019-02-01", accn="A-18")
+        ],
+    )
+    periods = normalize_company_facts(data, PeriodType.ANNUAL)
+    assert [(p.fiscal_year, p.values[Metric.REVENUE].value) for p in periods] == [(2018, 120), (2017, 100)]
+    assert periods[0].values[Metric.REVENUE].source_tag == "RevenueFromContractWithCustomerExcludingAssessedTax"
+    assert periods[1].values[Metric.REVENUE].source_tag == "SalesRevenueNet"
+
+
+def test_higher_priority_tag_wins_for_same_period():
+    data = _facts(
+        Revenues=[_fact(500, "2022-01-01", "2022-12-31")],
+        SalesRevenueNet=[_fact(450, "2022-01-01", "2022-12-31")],
+    )
+    (period,) = normalize_company_facts(data)
+    assert period.values[Metric.REVENUE].value == 500
+    assert period.values[Metric.REVENUE].source_tag == "Revenues"
+
+
+def test_maps_all_four_metrics():
+    span = ("2023-01-01", "2023-12-31")
+    data = _facts(
+        Revenues=[_fact(1000, *span)],
+        CostOfGoodsAndServicesSold=[_fact(600, *span)],
+        OperatingIncomeLoss=[_fact(250, *span)],
+        ProfitLoss=[_fact(180, *span)],
+    )
+    (period,) = normalize_company_facts(data)
+    assert {m: v.value for m, v in period.values.items()} == {
+        Metric.REVENUE: 1000,
+        Metric.COST_OF_GOODS_SOLD: 600,
+        Metric.OPERATING_INCOME: 250,
+        Metric.NET_INCOME: 180,
+    }
+
+
+def test_restatement_uses_latest_value_but_original_fiscal_year():
+    data = _facts(
+        NetIncomeLoss=[
+            _fact(90, "2021-01-01", "2021-12-31", fy=2021, filed="2022-02-01", accn="A-21"),
+            _fact(85, "2021-01-01", "2021-12-31", fy=2023, filed="2024-02-01", accn="A-23"),  # restated comparative
+        ]
+    )
+    (period,) = normalize_company_facts(data)
+    assert period.values[Metric.NET_INCOME].value == 85
+    assert period.fiscal_year == 2021
+
+
+def test_quarterly_excludes_year_to_date_and_annual():
+    data = _facts(
+        Revenues=[
+            _fact(30, "2023-04-01", "2023-06-30", form="10-Q", fp="Q2"),  # discrete quarter
+            _fact(55, "2023-01-01", "2023-06-30", form="10-Q", fp="Q2"),  # six months YTD
+            _fact(120, "2023-01-01", "2023-12-31", form="10-K"),
+        ]
+    )
+    quarterly = normalize_company_facts(data, PeriodType.QUARTERLY)
+    assert [p.values[Metric.REVENUE].value for p in quarterly] == [30]
+    annual = normalize_company_facts(data, PeriodType.ANNUAL)
+    assert [p.values[Metric.REVENUE].value for p in annual] == [120]
+
+
+def test_uses_the_reporting_currency_and_ignores_other_units():
+    # A US GAAP filer reporting in EUR (like ASML): EUR facts are used, stray USD ones are not.
+    span = ("2023-01-01", "2023-12-31")
+    data = {
+        "facts": {
+            "us-gaap": {
+                "Revenues": {"units": {"EUR": [_fact(100, *span)]}},
+                "NetIncomeLoss": {"units": {"EUR": [_fact(20, *span)], "USD": [_fact(22, *span)]}},
+            }
+        }
+    }
+    (period,) = normalize_company_facts(data)
+    assert period.values[Metric.REVENUE].value == 100
+    assert period.values[Metric.NET_INCOME].value == 20
+
+
+def test_ignores_missing_tags():
+    assert normalize_company_facts({"facts": {"us-gaap": {}}}) == []
+
+
+def test_comparative_only_periods_get_their_own_fiscal_year():
+    # Both prior years first appear under this tag as comparatives in the FY2018 10-K.
+    accn = "0000320193-18-000145"
+    data = _facts(
+        Revenues=[
+            _fact(265, "2017-10-01", "2018-09-29", fy=2018, filed="2018-11-05", accn=accn),
+            _fact(229, "2016-09-25", "2017-09-30", fy=2018, filed="2018-11-05", accn=accn),
+            _fact(215, "2015-09-27", "2016-09-24", fy=2018, filed="2018-11-05", accn=accn),
+        ]
+    )
+    assert [p.fiscal_year for p in normalize_company_facts(data)] == [2018, 2017, 2016]
+
+
+def test_free_cash_flow_needs_reported_capex():
+    span = ("2025-01-01", "2025-12-31")
+    no_capex = _facts(NetCashProvidedByUsedInOperatingActivities=[_fact(37, *span)])
+    (period,) = normalize_company_facts(no_capex)
+    assert Metric.FREE_CASH_FLOW not in period.values  # unknown capex is not zero capex
+
+    verizon_style = _facts(
+        NetCashProvidedByUsedInOperatingActivities=[_fact(37, *span)],
+        PaymentsToAcquireOtherProductiveAssets=[_fact(17, *span)],
+    )
+    (period,) = normalize_company_facts(verizon_style)
+    assert period.values[Metric.FREE_CASH_FLOW].value == 20

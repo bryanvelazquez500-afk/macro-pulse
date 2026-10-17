@@ -1,0 +1,35 @@
+# Render Blueprint — deploys both halves of MacroPulse from this repo (Dashboard → New → Blueprint).
+# Values marked `sync: false` are asked for once in the Render dashboard and never stored in git.
+services:
+  # Python API (FastAPI + gunicorn), built from backend/Dockerfile.
+  - type: web
+    name: macropulse-api
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      # SEC EDGAR requires a contact on every request: "YourName your@email.com".
+      - key: IS_SEC_USER_AGENT
+        sync: false
+      # The website's public URL, e.g. https://macropulse.onrender.com
+      - key: IS_CORS_ORIGINS
+        sync: false
+      - key: WEB_CONCURRENCY
+        value: "1"
+
+  # Next.js website.
+  - type: web
+    name: macropulse
+    runtime: node
+    rootDir: frontend
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    envVars:
+      # The API's public URL, e.g. https://macropulse-api.onrender.com (read at build time).
+      - key: NEXT_PUBLIC_API_URL
+        sync: false
+      - key: NODE_VERSION
+        value: "24"

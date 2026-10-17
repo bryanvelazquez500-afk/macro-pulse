@@ -1,0 +1,273 @@
+{
+  "risk_free_rate": {
+    "value": 0.051,
+    "as_of": "2026-10-15",
+    "source": "FRED DGS10 (10-Year Treasury Constant Maturity)",
+    "tenor": "10Y"
+  },
+  "equity_risk_premium": {
+    "value": 0.0446,
+    "as_of": "2026-01-05",
+    "source": "Damodaran, Country Default Spreads and Risk Premiums (United States total ERP)"
+  },
+  "sector_betas": {
+    "big_tech": {
+      "beta": 1.32,
+      "unlevered_beta": 1.28,
+      "industries": [
+        "Software (System & Application)",
+        "Software (Internet)",
+        "Computers/Peripherals"
+      ]
+    },
+    "software": {
+      "beta": 1.28,
+      "unlevered_beta": 1.25,
+      "industries": [
+        "Software (System & Application)"
+      ]
+    },
+    "hardware": {
+      "beta": 1.35,
+      "unlevered_beta": 1.32,
+      "industries": [
+        "Computers/Peripherals"
+      ]
+    },
+    "semiconductors": {
+      "beta": 1.52,
+      "unlevered_beta": 1.5,
+      "industries": [
+        "Semiconductor"
+      ]
+    },
+    "internet_platforms": {
+      "beta": 1.69,
+      "unlevered_beta": 1.59,
+      "industries": [
+        "Software (Internet)"
+      ]
+    },
+    "ecommerce": {
+      "beta": 1.3,
+      "unlevered_beta": 1.23,
+      "industries": [
+        "Retail (General)",
+        "Software (Internet)"
+      ]
+    },
+    "payments": {
+      "beta": 0.97,
+      "unlevered_beta": 0.33,
+      "industries": [
+        "Financial Svcs. (Non-bank & Insurance)"
+      ]
+    },
+    "banks": {
+      "beta": 0.41,
+      "unlevered_beta": 0.37,
+      "industries": [
+        "Bank (Money Center)",
+        "Banks (Regional)"
+      ]
+    },
+    "capital_markets": {
+      "beta": 0.71,
+      "unlevered_beta": 0.6,
+      "industries": [
+        "Brokerage & Investment Banking",
+        "Investments & Asset Management"
+      ]
+    },
+    "managed_care": {
+      "beta": 0.87,
+      "unlevered_beta": 0.74,
+      "industries": [
+        "Healthcare Support Services"
+      ]
+    },
+    "pharma": {
+      "beta": 1.09,
+      "unlevered_beta": 1.03,
+      "industries": [
+        "Drugs (Pharmaceutical)",
+        "Drugs (Biotechnology)"
+      ]
+    },
+    "medtech": {
+      "beta": 0.91,
+      "unlevered_beta": 0.86,
+      "industries": [
+        "Healthcare Products"
+      ]
+    },
+    "life_science_tools": {
+      "beta": 0.91,
+      "unlevered_beta": 0.86,
+      "industries": [
+        "Healthcare Products"
+      ]
+    },
+    "energy": {
+      "beta": 0.71,
+      "unlevered_beta": 0.57,
+      "industries": [
+        "Oil/Gas (Integrated)",
+        "Oil/Gas (Production and Exploration)"
+      ]
+    },
+    "oilfield_services": {
+      "beta": 0.95,
+      "unlevered_beta": 0.79,
+      "industries": [
+        "Oilfield Svcs/Equip."
+      ]
+    },
+    "autos": {
+      "beta": 1.46,
+      "unlevered_beta": 1.31,
+      "industries": [
+        "Auto & Truck"
+      ]
+    },
+    "aerospace_defense": {
+      "beta": 0.95,
+      "unlevered_beta": 0.87,
+      "industries": [
+        "Aerospace/Defense"
+      ]
+    },
+    "industrials": {
+      "beta": 1.09,
+      "unlevered_beta": 1.03,
+      "industries": [
+        "Machinery",
+        "Diversified",
+        "Electrical Equipment"
+      ]
+    },
+    "big_box_retail": {
+      "beta": 0.81,
+      "unlevered_beta": 0.78,
+      "industries": [
+        "Retail (General)"
+      ]
+    },
+    "home_improvement": {
+      "beta": 1.54,
+      "unlevered_beta": 1.32,
+      "industries": [
+        "Retail (Building Supply)"
+      ]
+    },
+    "grocery_pharmacy": {
+      "beta": 1.12,
+      "unlevered_beta": 0.85,
+      "industries": [
+        "Retail (Grocery and Food)"
+      ]
+    },
+    "beverages": {
+      "beta": 0.64,
+      "unlevered_beta": 0.58,
+      "industries": [
+        "Beverage (Soft)"
+      ]
+    },
+    "packaged_food": {
+      "beta": 0.61,
+      "unlevered_beta": 0.47,
+      "industries": [
+        "Food Processing"
+      ]
+    },
+    "household_products": {
+      "beta": 0.82,
+      "unlevered_beta": 0.74,
+      "industries": [
+        "Household Products"
+      ]
+    },
+    "restaurants": {
+      "beta": 0.92,
+      "unlevered_beta": 0.78,
+      "industries": [
+        "Restaurant/Dining"
+      ]
+    },
+    "apparel": {
+      "beta": 0.96,
+      "unlevered_beta": 0.84,
+      "industries": [
+        "Apparel",
+        "Shoe"
+      ]
+    },
+    "telecom": {
+      "beta": 0.61,
+      "unlevered_beta": 0.38,
+      "industries": [
+        "Telecom. Services",
+        "Telecom (Wireless)"
+      ]
+    },
+    "media": {
+      "beta": 0.82,
+      "unlevered_beta": 0.72,
+      "industries": [
+        "Entertainment",
+        "Cable TV"
+      ]
+    },
+    "airlines": {
+      "beta": 1.19,
+      "unlevered_beta": 0.76,
+      "industries": [
+        "Air Transport"
+      ]
+    },
+    "transport": {
+      "beta": 0.95,
+      "unlevered_beta": 0.8,
+      "industries": [
+        "Transportation",
+        "Transportation (Railroads)",
+        "Trucking"
+      ]
+    },
+    "utilities": {
+      "beta": 0.42,
+      "unlevered_beta": 0.27,
+      "industries": [
+        "Utility (General)",
+        "Power"
+      ]
+    },
+    "reits": {
+      "beta": 0.64,
+      "unlevered_beta": 0.4,
+      "industries": [
+        "R.E.I.T."
+      ]
+    },
+    "chemicals": {
+      "beta": 0.98,
+      "unlevered_beta": 0.75,
+      "industries": [
+        "Chemical (Diversified)",
+        "Chemical (Specialty)",
+        "Chemical (Basic)"
+      ]
+    },
+    "market": {
+      "beta": 0.91,
+      "unlevered_beta": 0.76,
+      "industries": [
+        "Total Market"
+      ]
+    }
+  },
+  "sector_betas_source": "Damodaran, Betas by Sector (US), January 2026 \u2014 mapped to peer groups",
+  "updated_at": "2026-10-16T22:32:32Z",
+  "schema_version": 1
+}

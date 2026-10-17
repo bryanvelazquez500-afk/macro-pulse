@@ -1,0 +1,174 @@
+@import "tailwindcss";
+
+/*
+ * MacroPulse — a dark, gaming-inspired terminal. The app is dark-only: semantic tokens below map onto
+ * the MacroPulse palette, and Tailwind's `dark:` variant is bound to the `dark` class on <html> (always
+ * present) rather than the OS setting, so every component renders its dark styles.
+ * Color stays reserved for meaning (variance severity, chart series, margins of safety, errors).
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* MacroPulse palette — use as bg-macropulse-obsidian, text-macropulse-cyan, ring-macropulse-neon-green… */
+@theme {
+  --color-macropulse-obsidian: #0a0b0d; /* deep background canvas */
+  --color-macropulse-panel: rgba(18, 20, 24, 0.65); /* glassmorphism card sheets */
+  --color-macropulse-cyan: #00f0ff; /* interactive nodes, map hover borders, primary accents */
+  --color-macropulse-neon-green: #00ff66; /* positive margins of safety, undervalued stocks */
+  --color-macropulse-neon-amber: #ffb700; /* new IPO alert pulses */
+}
+
+:root {
+  color-scheme: dark;
+  --canvas: #0a0b0d; /* macropulse-obsidian */
+  /* Opaque equivalent of the glass panel over obsidian, for surfaces that must hide what's beneath
+     (sticky table columns, drawers, toasts, overlays). Cards use the translucent .panel instead. */
+  --panel: #0f1013;
+  --subtle: rgba(255, 255, 255, 0.04); /* hover, zebra, wells */
+  --line: rgba(255, 255, 255, 0.07); /* hairline rules inside tables and lists */
+  --line-strong: rgba(255, 255, 255, 0.14); /* inputs, focus-adjacent */
+  --ink: #f4f4f5;
+  --ink-2: #d4d4d8;
+  --ink-3: #94a3b8;
+  --ink-4: #64748b;
+  --inverse: #f4f4f5;
+  --on-inverse: #0a0b0d;
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-panel: var(--panel);
+  --color-subtle: var(--subtle);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-ink-4: var(--ink-4);
+  --color-inverse: var(--inverse);
+  --color-on-inverse: var(--on-inverse);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  font-feature-settings: "ss01", "cv11";
+}
+
+::selection {
+  background: var(--inverse);
+  color: var(--on-inverse);
+}
+
+/* Shared primitives — kept here so every panel and label reads identically. */
+@layer components {
+  /* Glass card sheet: thin translucent edge, frosted MacroPulse panel. */
+  .panel {
+    @apply rounded-md border border-white/5 bg-macropulse-panel backdrop-blur-md;
+  }
+  .eyebrow {
+    @apply text-[10px] font-medium tracking-[0.14em] text-ink-3 uppercase;
+  }
+  .field {
+    @apply rounded-md border border-line-strong bg-panel px-3 py-2 text-sm text-ink outline-none placeholder:text-ink-4 focus:border-ink focus:ring-0;
+  }
+  .btn-primary {
+    @apply rounded-md bg-inverse px-4 py-2 text-sm font-medium text-on-inverse transition-opacity hover:opacity-85 disabled:opacity-40;
+  }
+  .btn-ghost {
+    @apply rounded-md border border-line-strong px-3 py-2 text-sm text-ink-2 transition-colors hover:bg-subtle;
+  }
+  .link {
+    @apply text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink;
+  }
+}
+
+/* Equity Discovery: scout-marker pulse (an expanding, fading ring). */
+@keyframes ed-pulse {
+  from {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  to {
+    transform: scale(3.2);
+    opacity: 0;
+  }
+}
+.ed-pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ed-pulse 1.8s ease-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ed-pulse {
+    animation: none;
+  }
+}
+
+/*
+ * MacroPulse hover: stock rows, ticker badges and map countries scale up slightly, brighten, and glow in
+ * macropulse-cyan. One curve everywhere: 0.3s cubic-bezier(0.4, 0, 0.2, 1).
+ *  - .mp-interactive       HTML elements (CSS drives the scale)
+ *  - .mp-interactive-glow  elements whose transform Framer Motion already drives (peer pills): glow and
+ *                          brighten only, with the matching scale set in Framer — a CSS transform
+ *                          transition would fight its per-frame inline transform
+ * The background is brightened with an inset shadow layered over whatever background the element has,
+ * so it transitions smoothly (gradients can't).
+ */
+:root {
+  --mp-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --mp-glow: inset 0 0 0 100vmax rgb(255 255 255 / 0.05), 0 0 0 1px rgb(0 240 255 / 0.3), 0 0 18px -4px rgb(0 240 255 / 0.6);
+}
+@layer components {
+  .mp-interactive {
+    transition: all 0.3s var(--mp-ease);
+    transform-origin: center;
+  }
+  .mp-interactive:hover,
+  .mp-interactive:focus-visible {
+    transform: scale(1.02);
+    box-shadow: var(--mp-glow);
+    z-index: 1; /* above neighbours it now overlaps (needs a positioned element) */
+  }
+  .mp-interactive-glow {
+    transition:
+      box-shadow 0.3s var(--mp-ease),
+      background-color 0.3s var(--mp-ease),
+      border-color 0.3s var(--mp-ease),
+      color 0.3s var(--mp-ease);
+  }
+  .mp-interactive-glow:hover:not([aria-disabled="true"]),
+  .mp-interactive-glow:focus-visible {
+    box-shadow: var(--mp-glow);
+  }
+}
+
+/* Map countries: SVG can't take box-shadow, so the hovered country is redrawn on top (so neighbours
+   don't cover its enlarged edge) and pops in with a cyan drop-shadow on the same curve. */
+.mp-country-hover {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mp-country-pop 0.3s var(--mp-ease) forwards;
+}
+@keyframes mp-country-pop {
+  from {
+    transform: scale(1);
+    opacity: 0.4;
+  }
+  to {
+    transform: scale(1.02);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mp-interactive:hover,
+  .mp-interactive:focus-visible {
+    transform: none;
+  }
+  .mp-country-hover {
+    animation: none;
+  }
+}
