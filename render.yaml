@@ -13,9 +13,9 @@ services:
       # SEC EDGAR requires a contact on every request: "YourName your@email.com".
       - key: IS_SEC_USER_AGENT
         sync: false
-      # The website's public URL, e.g. https://macropulse.onrender.com
+      # The website's public URL (Render added the -z27l suffix because "macropulse" was taken).
       - key: IS_CORS_ORIGINS
-        sync: false
+        value: https://macropulse-z27l.onrender.com
       - key: WEB_CONCURRENCY
         value: "1"
 
@@ -28,8 +28,8 @@ services:
     buildCommand: npm ci && npm run build
     startCommand: npm start
     envVars:
-      # The API's public URL, e.g. https://macropulse-api.onrender.com (read at build time).
+      # The API's public URL (read at build time, so changing it needs a rebuild).
       - key: NEXT_PUBLIC_API_URL
-        sync: false
+        value: https://macropulse-api-7cq2.onrender.com
       - key: NODE_VERSION
         value: "24"
