@@ -85,8 +85,8 @@ export const viewPanelId = (key: string) => `view-panel-${key}`;
 export const viewTabId = (key: string) => `view-tab-${key}`;
 
 /**
- * A tab panel that stays mounted while hidden, so inner state (matrix period offset, fetched
- * checklist) survives switching views; it fades in each time it becomes active.
+ * A tab panel that stays mounted while hidden, so inner state (matrix period offset, the scout map)
+ * survives switching views; it fades in each time it becomes active.
  */
 export function ViewPanel({ view, active, children }: { view: string; active: boolean; children: ReactNode }) {
   const reduceMotion = useReducedMotion();

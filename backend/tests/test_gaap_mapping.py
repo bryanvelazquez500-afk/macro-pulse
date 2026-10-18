@@ -121,3 +121,22 @@ def test_free_cash_flow_needs_reported_capex():
     )
     (period,) = normalize_company_facts(verizon_style)
     assert period.values[Metric.FREE_CASH_FLOW].value == 20
+
+
+def test_quarterly_cash_flows_are_derived_from_year_to_date_figures():
+    from app.services.gaap_mapping import Metric, PeriodType, normalize_company_facts
+
+    def f(tag_val, start, end, form="10-Q", filed="2025-08-01"):
+        return {"val": tag_val, "start": start, "end": end, "form": form, "filed": filed, "fy": 2025, "fp": "Q2", "accn": f"a-{end}"}
+
+    data = {"facts": {"us-gaap": {
+        "Revenues": {"units": {"USD": [f(100, "2025-01-01", "2025-03-31", filed="2025-05-01"), f(120, "2025-04-01", "2025-06-30")]}},
+        "NetCashProvidedByUsedInOperatingActivities": {"units": {"USD": [
+            f(30, "2025-01-01", "2025-03-31", filed="2025-05-01"),  # Q1 (three months)
+            f(75, "2025-01-01", "2025-06-30"),  # six-month year-to-date
+        ]}},
+    }}}  # fmt: skip
+    q2, q1 = normalize_company_facts(data, PeriodType.QUARTERLY)
+    assert q1.values[Metric.OPERATING_CASH_FLOW].value == 30
+    assert q2.values[Metric.OPERATING_CASH_FLOW].value == 45  # 75 − 30
+    assert "year-to-date" in q2.values[Metric.OPERATING_CASH_FLOW].source_tag

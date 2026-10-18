@@ -14,21 +14,13 @@ import {
   gordonDdm,
   grahamValue,
   marginOfSafety,
-  multiStageDcf,
   statementInputs,
 } from "@/lib/intrinsic";
-import { GF_EQUITY_RISK_PREMIUM, GF_TERMINAL_GROWTH, guruFocusDcf } from "@/lib/gurufocusDcf";
 import { deriveBaseline } from "@/lib/valuation";
 import { useAssumptions } from "@/lib/valuationAssumptions";
 import { useFetch } from "@/lib/useFetch";
 
 const pct = (v: number, digits = 2) => `${(v * 100).toFixed(digits)}%`;
-
-function bn(v: number, currency: string) {
-  const abs = Math.abs(v);
-  const [scale, suffix] = abs >= 1e12 ? [1e12, "T"] : abs >= 1e9 ? [1e9, "B"] : [1e6, "M"];
-  return `${v < 0 ? "−" : ""}${currencySymbol(currency)}${(abs / scale).toFixed(1)}${suffix}`;
-}
 
 function money(v: number, currency: string) {
   return `${currencySymbol(currency)}${v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -133,32 +125,6 @@ function TargetRow({
   );
 }
 
-function GuruFocusBreakdown({ r, currency }: { r: import("@/lib/gurufocusDcf").GuruFocusDcfResult; currency: string }) {
-  const sym = currencySymbol(currency);
-  const m = (v: number) => `${v < 0 ? "−" : ""}${sym}${Math.abs(v).toFixed(2)}`;
-  const terminalShare = r.terminalStageValue / r.fairValue;
-  const g = r.growth;
-  return (
-    <>
-      <div>
-        Growth stage {m(r.growthStageValue)} + terminal stage {m(r.terminalStageValue)} + tangible book {m(r.tangibleBookPerShare)}/share
-      </div>
-      <div className="text-ink-4">
-        {g.years}-yr EPS CAGR: {g.fromEps.toFixed(2)} (FY{g.fromYear}) → {g.toEps.toFixed(2)} (FY{g.toYear})
-        {g.years < 10 && " — 10 years of positive EPS not available"}
-      </div>
-      {g.rate > 0.2 && (
-        <div className="text-amber-700 dark:text-amber-400">
-          Assumes {(g.rate * 100).toFixed(0)}%/yr for another decade — past hypergrowth rarely repeats, so this reads high.
-        </div>
-      )}
-      {terminalShare > 0.75 && (
-        <div className="text-amber-700 dark:text-amber-400">Terminal stage is {(terminalShare * 100).toFixed(0)}% of value (&gt; 75%): check near-term growth.</div>
-      )}
-    </>
-  );
-}
-
 // ---------------------------------------------------------------- station
 
 type SyncState = { status: "idle" } | { status: "syncing" } | { status: "error"; message: string } | { status: "done"; previous: number };
@@ -203,29 +169,18 @@ export function IntrinsicValuationStation({
   }
 
   const growth = assumptions?.revenueGrowthPct ?? null;
-  const margin = assumptions?.operatingMarginPct ?? null;
   const gd = dividendGrowth ?? (ke != null ? defaultDividendGrowth(statements, ke, rf) : 0);
   const gdCeiling = ke != null ? dividendGrowthCeiling(rf, ke) : null;
   const pending: ModelResult = { ok: false, reason: inputs.status === "error" ? inputs.error : "Loading market inputs…" };
 
-  const dcf = ke != null && growth != null && margin != null ? multiStageDcf(statements, growth, margin, ke) : pending;
   const ddm = ke != null ? gordonDdm(statements, gd, ke) : pending;
   const graham = growth != null ? grahamValue(statements, growth, rf) : pending;
-  const gf = useMemo(() => guruFocusDcf(annualPeriods, rf), [annualPeriods, rf]);
-  const gfResult: ModelResult = gf.ok
-    ? {
-        ok: true,
-        value: gf.result.fairValue,
-        detail: `EPS ${gf.result.eps.toFixed(2)} (FY${gf.result.epsYear}) growing ${(gf.result.growth.rate * 100).toFixed(1)}%/yr for 10 yrs, then ${GF_TERMINAL_GROWTH * 100}% for 10 yrs, at ${pct(gf.result.discountRate)} (r_f + ${GF_EQUITY_RISK_PREMIUM * 100}%)`,
-      }
-    : { ok: false, reason: gf.reason };
-
   const quote = loaded?.price ?? null;
   const price = quote ? { value: quote.price, comparable: quote.comparable, note: loaded?.price_note ?? null } : null;
 
   return (
     <section className="panel overflow-hidden" aria-labelledby="ivs-title">
-      <header className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
+      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3">
         <h2 id="ivs-title" className="eyebrow">
           Intrinsic Valuation Station
         </h2>
@@ -234,7 +189,7 @@ export function IntrinsicValuationStation({
           onClick={onSync}
           disabled={sync.status === "syncing"}
           whileTap={{ scale: 0.96 }}
-          className="inline-flex items-center gap-1.5 rounded-md bg-inverse px-2.5 py-1.5 text-[11.5px] font-medium text-on-inverse transition-opacity hover:opacity-85 disabled:opacity-60"
+          className="inline-flex items-center gap-1.5 rounded-md bg-inverse px-2.5 py-1.5 text-[11px] font-medium whitespace-nowrap text-on-inverse transition-opacity hover:opacity-85 disabled:opacity-60"
           title="Fetch the latest 10-year Treasury yield (U.S. Treasury / FRED) and overwrite the risk-free rate"
         >
           <motion.span
@@ -281,7 +236,7 @@ export function IntrinsicValuationStation({
             </span>
             <span className="font-mono text-[17px] font-semibold text-ink tabular-nums">{ke != null ? pct(ke) : "—"}</span>
           </div>
-          <p className="mt-0.5 text-[10.5px] text-ink-3">Discount rate for the DCF and DDM below.</p>
+          <p className="mt-0.5 text-[10.5px] text-ink-3">Discount rate for the DDM below. DCF values live in the DCF Calculator on the left.</p>
           <AnimatePresence>
             {sync.status === "done" && riskFree && (
               <motion.p
@@ -310,33 +265,7 @@ export function IntrinsicValuationStation({
             <span className="text-[10.5px] text-ink-4">margin of safety</span>
           </div>
           <ul className="divide-y divide-line">
-            <TargetRow
-              name="Multi-stage DCF"
-              formula="5y growth → 5y fade → TV, at kₑ"
-              result={dcf}
-              price={price}
-              currency={currency}
-              extra={
-                dcf.ok &&
-                "dcf" in dcf &&
-                dcf.dcf && (
-                  <>
-                    Equity {bn(dcf.dcf.equityValue, currency)}
-                    {dcf.dcf.enterpriseValue != null && <> · EV {bn(dcf.dcf.enterpriseValue, currency)}</>} · terminal{" "}
-                    {(dcf.dcf.terminalShare * 100).toFixed(0)}% of value
-                  </>
-                )
-              }
-            />
             <TargetRow name="Gordon Growth DDM" formula="D₀(1+g)/(kₑ − g)" result={ddm} price={price} currency={currency} />
-            <TargetRow
-              name="GuruFocus-style DCF"
-              formula="EPS·Σxᵗ + EPS·x¹⁰·Σyᵗ + TBV"
-              result={gfResult}
-              price={price}
-              currency={currency}
-              extra={gf.ok && <GuruFocusBreakdown r={gf.result} currency={currency} />}
-            />
             <TargetRow
               name="Benjamin Graham"
               formula="EPS × (8.5 + 2g) × 4.4 / r_f"
@@ -359,25 +288,8 @@ export function IntrinsicValuationStation({
         {/* Inputs that drive the models */}
         <div className="space-y-2 border-t border-line pt-3 text-[11px] text-ink-3">
           <div className="flex justify-between gap-2">
-            <span>Growth · margin (center Valuation sliders)</span>
-            <span className="font-mono text-ink-2">
-              {growth != null ? `${growth.toFixed(1)}%` : "—"} · {margin != null ? `${margin.toFixed(1)}%` : "—"}
-            </span>
-          </div>
-          <div className="flex justify-between gap-2">
-            <span title="Latest revenue × the last three years' pooled FCF margin, so one year's capex swing doesn't set the base">
-              DCF base FCF (normalized)
-            </span>
-            <span className="font-mono text-ink-2">{statements.normalizedFcf != null ? bn(statements.normalizedFcf, currency) : "—"}</span>
-          </div>
-          <div className="flex justify-between gap-2 text-ink-4">
-            <span>
-              FY{statements.fiscalYear ?? "—"} actual FCF
-              {statements.fcfMarginPooled != null && statements.revenue
-                ? ` · ${((statements.fcf ?? 0) / statements.revenue * 100).toFixed(1)}% vs 3-yr ${(statements.fcfMarginPooled * 100).toFixed(1)}% margin`
-                : ""}
-            </span>
-            <span className="font-mono">{statements.fcf != null ? bn(statements.fcf, currency) : "—"}</span>
+            <span>Growth (center Valuation slider, for Graham)</span>
+            <span className="font-mono text-ink-2">{growth != null ? `${growth.toFixed(1)}%` : "—"}</span>
           </div>
           <div className="flex justify-between gap-2">
             <span>FY{statements.fiscalYear ?? "—"} diluted EPS · shares (SEC)</span>
@@ -409,8 +321,8 @@ export function IntrinsicValuationStation({
             </label>
           )}
           <p className="leading-snug text-ink-4">
-            Values are per diluted share in {currency}. FCF is operating cash flow − capex (after interest), so it&apos;s discounted at the
-            cost of equity. Graham uses the risk-free rate where his original formula used the AAA corporate yield.
+            Values are per diluted share in {currency}. Graham uses the risk-free rate where his original formula used the AAA corporate
+            yield.
           </p>
         </div>
       </div>

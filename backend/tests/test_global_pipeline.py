@@ -33,7 +33,8 @@ def test_us_tickers_share_classes_and_ciks_are_not_international(symbol):
 
 def test_sec_ticker_candidates():
     assert sec_ticker_candidate(parse_listing("SAN.PA")) == ("SNY", True)  # curated: SAN on EDGAR is Santander
-    assert sec_ticker_candidate(parse_listing("VOD.L")) == ("VOD", False)
+    assert sec_ticker_candidate(parse_listing("RIO.AX")) == ("RIO", False)
+    assert sec_ticker_candidate(parse_listing("VOD.JO")) is None  # Vodacom, not Vodafone
     assert sec_ticker_candidate(parse_listing("6501.T")) is None  # numeric codes never match EDGAR tickers
 
 

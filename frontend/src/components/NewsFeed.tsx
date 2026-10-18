@@ -16,24 +16,37 @@ function timeAgo(iso: string | null): string {
 /** Render only http(s) links, even though the backend already filters them. */
 const safeHref = (url: string) => (/^https?:\/\//i.test(url) ? url : undefined);
 
-export function NewsFeed({ ticker }: { ticker: string }) {
+/**
+ * Headlines for one company. `expanded` false shows the latest two (the panel's collapsed state);
+ * the header toggles between that and the full list.
+ */
+export function NewsFeed({ ticker, expanded = true, onToggle }: { ticker: string; expanded?: boolean; onToggle?: () => void }) {
   const state = useFetch((signal) => fetchNews(ticker, signal));
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="mb-3 flex items-baseline justify-between">
-        <h2 className="eyebrow">Related News</h2>
-        {state.status === "success" && (
-          <span className="text-[11px] text-ink-4">
-            {state.data.ticker} · via {state.data.provider}
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={expanded}
+        className="group mb-3 flex w-full items-center justify-between gap-2 text-left"
+      >
+        <h2 className="eyebrow">
+          Related News
+          {state.status === "success" && <span className="ml-1.5 text-ink-4 normal-case">· {state.data.ticker}</span>}
+        </h2>
+        <span className="flex items-center gap-1.5 text-[11px] text-ink-3 group-hover:text-ink">
+          {state.status === "success" && state.data.items.length > 2 && (expanded ? "Show less" : `All ${state.data.items.length}`)}
+          <span aria-hidden className={`inline-block transition-transform ${expanded ? "-rotate-90" : "rotate-90"}`}>
+            ›
           </span>
-        )}
-      </div>
+        </span>
+      </button>
 
       <div className="-mx-1 min-h-0 flex-1 overflow-y-auto px-1">
         {state.status === "loading" && (
           <ul className="space-y-3" aria-busy="true" aria-label="Loading headlines">
-            {Array.from({ length: 6 }, (_, i) => (
+            {Array.from({ length: expanded ? 6 : 2 }, (_, i) => (
               <li key={i} className="space-y-1.5">
                 <div className="h-3.5 w-full animate-pulse rounded bg-subtle" />
                 <div className="h-3.5 w-2/3 animate-pulse rounded bg-subtle" />
@@ -47,7 +60,7 @@ export function NewsFeed({ ticker }: { ticker: string }) {
             <p className="text-[13px] text-ink-3">No headlines for {state.data.ticker} in the last 7 days.</p>
           ) : (
             <ol className="divide-y divide-line">
-              {state.data.items.map((item) => (
+              {(expanded ? state.data.items : state.data.items.slice(0, 2)).map((item) => (
                 <li key={item.url} className="py-2.5 first:pt-0">
                   <a
                     href={safeHref(item.url)}

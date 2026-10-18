@@ -204,66 +204,15 @@ export interface PeersResponse {
 export const fetchPeers = (id: string, signal?: AbortSignal) =>
   getJson<PeersResponse>(`/api/companies/${encodeURIComponent(id)}/peers?limit=6`, signal);
 
-export type ChecklistVerdict = "worth_buying" | "pass";
-
-export interface ChecklistCriterion {
-  key: string;
-  label: string;
-  /** Threshold in words, e.g. "> 15%". */
-  rule: string;
-  value: number | null;
-  display: string | null;
-  /** null: couldn't be evaluated — counts as not met. */
-  passed: boolean | null;
-  note: string | null;
-  /** Raw value, unit-formatted: "76.2%", "8/9", "1.06×". */
-  value_label: string | null;
-}
-
-export interface LegendContext {
-  tenure: string;
-  approach: string;
-  case_study: {
-    company: string;
-    ticker: string | null;
-    period: string;
-    summary: string;
-    /** Keys of this legend's criteria the episode illustrates. */
-    illustrates: string[];
-  };
-  quote: { text: string; source: string } | null;
-  rules_of_thumb: string[];
-  further_reading: string[];
-  /** Notable past positions. */
-  allocations: { company: string; ticker: string | null; period: string; thesis: string }[];
-  /** Criterion key → why this legend watches it. */
-  metric_rationale: Record<string, string>;
-}
-
-export interface InvestorChecklist {
-  key: "buffett" | "lynch" | "munger" | "ackman";
-  name: string;
-  philosophy: string;
-  criteria: ChecklistCriterion[];
-  verdict: ChecklistVerdict;
-  summary: string;
-  /** Historical narrative behind the rules. */
-  context: LegendContext;
-}
-
-export interface ChecklistResponse {
-  symbol: string;
-  entity_name: string;
-  fiscal_year: number | null;
-  period_end: string | null;
+/** A share price plus whether it can be compared with the filings' per-share figures. */
+export interface PriceQuote {
+  price: number;
   currency: string;
-  price: { price: number; currency: string; source: string; as_of: string | null; comparable: boolean; note: string | null } | null;
-  price_note: string | null;
-  investors: InvestorChecklist[];
+  source: string;
+  as_of: string | null;
+  comparable: boolean;
+  note: string | null;
 }
-
-export const fetchChecklist = (id: string, signal?: AbortSignal) =>
-  getJson<ChecklistResponse>(`/api/companies/${encodeURIComponent(id)}/checklist`, signal);
 
 export interface Rate {
   /** Decimal: 0.051 = 5.10%. */
@@ -284,7 +233,7 @@ export interface ValuationInputs {
   symbol: string;
   /** Reporting currency of the filings. */
   currency: string;
-  price: ChecklistResponse["price"];
+  price: PriceQuote | null;
   price_note: string | null;
   beta: { value: number; group_key: string; group_label: string; basis: string; source: string };
   risk_free_rate: Rate;
@@ -315,6 +264,9 @@ export interface Leader {
     source: string;
   } | null;
   coverage: Coverage;
+  /** Live market cap in the listing's price currency (price × SEC shares outstanding); null when unknown. */
+  market_cap: number | null;
+  market_cap_usd: number | null;
 }
 
 export interface CountryLeaders {
@@ -331,29 +283,60 @@ export const fetchDiscoveryCountries = (signal?: AbortSignal) =>
 export const fetchCountryLeaders = (iso2: string, signal?: AbortSignal) =>
   getJson<CountryLeaders>(`/api/discovery/countries/${encodeURIComponent(iso2)}`, signal);
 
-export interface GuruFocusDcf {
-  symbol: string;
-  status: "ok" | "na";
-  reason: string | null;
-  /** "api_key_required" when an API key / paid plan is what's missing. */
-  code: string | null;
-  /** Reporting currency of fair_value. */
-  currency: string | null;
-  fair_value: number | null;
-  growth_stage: number | null;
-  terminal_stage: number | null;
-  tangible_book_per_share: number | null;
-  eps: number | null;
-  eps_year: number | null;
-  growth_rate: number | null;
-  growth_years: number | null;
-  discount_rate: number | null;
-  price: number | null;
-  price_currency: string | null;
-  /** (fair value − price) ÷ fair value; null when the price isn't comparable with the filings. */
-  margin_of_safety: number | null;
-  price_note: string | null;
+export type DcfBasisKey = "eps" | "fcf" | "dividend";
+
+export interface DcfBasisInput {
+  key: DcfBasisKey;
+  label: string;
+  /** Per share, in DcfInputs.currency. */
+  value: number | null;
+  period: string | null;
+  is_ttm: boolean;
+  /** Historical growth, percent per year (10-year, else 5 or 3 — see h10_years). */
+  h10: number | null;
+  h10_years: number | null;
+  h10_note: string | null;
 }
 
-export const fetchGuruFocusDcf = (id: string, signal?: AbortSignal) =>
-  getJson<GuruFocusDcf>(`/api/companies/${encodeURIComponent(id)}/gurufocus-dcf`, signal);
+/** Live inputs for the DCF calculator, from the existing SEC / FMP pipelines plus quotes and macro rates. */
+export interface DcfInputs {
+  symbol: string;
+  name: string;
+  source: string;
+  /** Currency of every per-share figure (the price's, after any FX conversion). */
+  currency: string;
+  reporting_currency: string;
+  fx_rate: number | null;
+  price: number | null;
+  price_source: string | null;
+  price_as_of: string | null;
+  price_comparable: boolean;
+  price_note: string | null;
+  bases: DcfBasisInput[];
+  tbv: number | null;
+  tbv_as_of: string | null;
+  shares: number | null;
+  /** 10-year Treasury yield, percent. */
+  t10: number;
+  t10_as_of: string;
+  t10_source: string;
+  /** 0–5 stars; null when no source provides it. */
+  predictability: number | null;
+  /** Inputs the data sources can't provide, and what's used instead. */
+  missing: string[];
+}
+
+export const fetchDcfInputs = (id: string, signal?: AbortSignal) =>
+  getJson<DcfInputs>(`/api/companies/${encodeURIComponent(id)}/dcf-inputs`, signal);
+
+export interface LiveQuote {
+  symbol: string;
+  price: number;
+  currency: string;
+  source: string;
+  as_of: string | null;
+}
+
+export const fetchLiveQuote = (symbol: string, signal?: AbortSignal) =>
+  getJson<LiveQuote>(`/api/quotes/${encodeURIComponent(symbol)}`, signal);
+

@@ -1,29 +1,28 @@
-"""Builds the Legend Investment Checklist for a company: annual history + a comparable share price."""
+"""Share price for valuation, plus whether it can be compared with the filings' per-share figures."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
 from app.services.financials_service import FinancialsService, LoadedFinancials
-from app.services.gaap_mapping import Metric, NormalizedPeriod, PeriodType
+from app.services.gaap_mapping import Metric, NormalizedPeriod
+from app.services.listings import US_ORDINARY_SHARE_LISTINGS
 from app.services.quotes import Quote, QuoteService
-from app.services.vetting import InvestorChecklist, PriceContext, evaluate
+
+
+@dataclass(frozen=True)
+class PriceContext:
+    """A quote plus whether it can be compared with the filings' per-share figures."""
+
+    quote: Quote | None
+    comparable: bool
+    note: str | None = None
+
 
 _FOREIGN_ANNUAL_FORMS = {"20-F", "20-F/A", "40-F", "40-F/A"}
 
 
-@dataclass(frozen=True)
-class Checklist:
-    symbol: str
-    entity_name: str
-    fiscal_year: int | None
-    period_end: str | None
-    currency: str
-    price: PriceContext
-    investors: list[InvestorChecklist]
-
-
-def _is_foreign_filer(p: NormalizedPeriod) -> bool:
+def is_foreign_filer(p: NormalizedPeriod) -> bool:
     item = p.values.get(Metric.REVENUE) or p.values.get(Metric.NET_INCOME)
     return item is not None and item.form in _FOREIGN_ANNUAL_FORMS
 
@@ -52,27 +51,5 @@ async def resolve_price(financials: FinancialsService, quotes: QuoteService, loa
         symbol = tickers[0] if tickers else symbol
     quote = await quotes.get_quote(symbol) if not symbol.isdigit() else None
     return symbol, price_context(
-        quote, loaded.currency, priced_us_listing=route.listing is None, foreign_filer=bool(latest and _is_foreign_filer(latest))
+        quote, loaded.currency, priced_us_listing=route.listing is None and symbol not in US_ORDINARY_SHARE_LISTINGS, foreign_filer=bool(latest and is_foreign_filer(latest))
     )
-
-
-class ChecklistService:
-    def __init__(self, financials: FinancialsService, quotes: QuoteService):
-        self.financials = financials
-        self.quotes = quotes
-
-    async def get_checklist(self, identifier: str) -> Checklist:
-        loaded = await self.financials.load_periods(identifier, PeriodType.ANNUAL)
-        route, periods = loaded.route, loaded.periods
-        latest = periods[0] if periods else None
-
-        symbol, price = await resolve_price(self.financials, self.quotes, loaded)
-        return Checklist(
-            symbol=symbol,
-            entity_name=loaded.entity_name,
-            fiscal_year=latest.fiscal_year if latest else None,
-            period_end=latest.end if latest else None,
-            currency=loaded.currency,
-            price=price,
-            investors=evaluate(periods, price, loaded.currency),
-        )

@@ -15,6 +15,8 @@ import { normalizeTicker } from "@/lib/portfolioStore";
 
 export const MAX_COMPARE = 3;
 const ANNUAL_HISTORY = 12;
+// Ten years of 10-Qs (three a year; Q4 is filed on the 10-K) plus headroom, for horizontal analysis.
+const QUARTERLY_HISTORY = 44;
 
 export interface CompanyEntry {
   /** Stable id for React keys and animation: the identifier the user entered, normalized. */
@@ -161,10 +163,10 @@ export function ComparisonProvider({ initial, children }: { initial: string[]; c
       started.current.add(key);
       const { id } = entry;
       const period = state.period;
-      // Annual history covers 12 fiscal years so 10-year growth rates (GuruFocus-style DCF) are computable.
+      // Annual history covers 12 fiscal years, so 10-year growth rates and horizontal analysis are computable.
       Promise.all([
         fetchProfile(id),
-        fetchFinancials(id, period, period === "annual" ? ANNUAL_HISTORY : undefined),
+        fetchFinancials(id, period, period === "annual" ? ANNUAL_HISTORY : QUARTERLY_HISTORY),
         period === "annual" ? null : fetchFinancials(id, "annual", ANNUAL_HISTORY),
       ])
         .then(([profile, financials, annual]) =>

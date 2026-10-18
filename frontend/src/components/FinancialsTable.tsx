@@ -649,9 +649,10 @@ export function FinancialsTable({
                 type="button"
                 onClick={onAddClick}
                 transition={spring}
-                className="flex w-[180px] shrink-0 grow-0 flex-col items-center justify-center gap-1 border-l border-dashed border-line-strong text-ink-3 transition-colors hover:bg-subtle hover:text-ink"
+                className="flex w-[180px] shrink-0 grow-0 flex-col items-center justify-start gap-1 border-l border-dashed border-line-strong pt-10 text-ink-3 transition-colors hover:bg-subtle hover:text-ink"
               >
-                <span className="text-xl leading-none">+</span>
+                {/* Top-aligned (not centered in a column ~2,000px tall) so the prompt is visible without scrolling. */}
+                <span className="grid size-9 place-items-center rounded-full text-xl leading-none text-macropulse-cyan ring-1 ring-macropulse-cyan/40">+</span>
                 <span className="text-[12px]">Compare a company</span>
                 <span className="font-mono text-[10.5px] text-ink-4">
                   {MAX_COMPARE - entries.length} slot{MAX_COMPARE - entries.length === 1 ? "" : "s"} left

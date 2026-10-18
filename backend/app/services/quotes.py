@@ -13,6 +13,7 @@ cents (ZAc) and Tel Aviv in agorot (ILA) are divided by 100.
 
 from __future__ import annotations
 
+import asyncio
 import time
 from dataclasses import dataclass
 
@@ -80,6 +81,23 @@ class QuoteService:
     async def aclose(self) -> None:
         await self._client.aclose()
 
+    async def _chart_meta(self, symbol: str) -> dict | None:
+        """Yahoo chart metadata; retries briefly when Yahoo throttles a burst (long scout lists)."""
+        for delay in (0.0, 0.8, 2.0):
+            if delay:
+                await asyncio.sleep(delay)
+            try:
+                response = await self._client.get(YAHOO_CHART_URL.format(symbol=yahoo_symbol(symbol)), params={"range": "1d", "interval": "1d"})
+            except httpx.HTTPError:
+                continue
+            if response.status_code == 429 or response.status_code >= 500:
+                continue
+            try:
+                return response.json()["chart"]["result"][0]["meta"]
+            except (ValueError, KeyError, IndexError, TypeError):
+                return None  # unknown symbol: retrying won't help
+        return None
+
     async def get_quote(self, symbol: str) -> Quote | None:
         symbol = symbol.strip().upper()
         cached = self._cache.get(symbol)
@@ -97,10 +115,8 @@ class QuoteService:
         cached = self._cache.get(key)
         if cached is not None:
             return cached
-        try:
-            response = await self._client.get(YAHOO_CHART_URL.format(symbol=yahoo_symbol(symbol)), params={"range": "1d", "interval": "1d"})
-            meta = response.json()["chart"]["result"][0]["meta"]
-        except (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError):
+        meta = await self._chart_meta(symbol)
+        if meta is None:
             return None
         price, currency = meta.get("regularMarketPrice"), meta.get("currency")
         if not isinstance(price, (int, float)) or price <= 0 or not currency:
@@ -136,12 +152,8 @@ class QuoteService:
         return Quote(symbol, value, iso, "Financial Modeling Prep", None)
 
     async def _from_yahoo(self, symbol: str) -> Quote | None:
-        try:
-            response = await self._client.get(
-                YAHOO_CHART_URL.format(symbol=yahoo_symbol(symbol)), params={"range": "1d", "interval": "1d"}
-            )
-            meta = response.json()["chart"]["result"][0]["meta"]
-        except (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError):
+        meta = await self._chart_meta(symbol)
+        if meta is None:
             return None
         price, currency = meta.get("regularMarketPrice"), meta.get("currency")
         if not isinstance(price, (int, float)) or price <= 0 or not currency:

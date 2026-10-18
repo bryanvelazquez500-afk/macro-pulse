@@ -21,15 +21,11 @@ import type { GeometryCollection, Topology } from "topojson-specification";
 
 import { UnavailableButton } from "@/components/UnavailableButton";
 import {
-  API_KEY_REQUIRED,
   CountryLeaders,
   Coverage,
-  GuruFocusDcf,
   Leader,
   fetchCountryLeaders,
   fetchDiscoveryCountries,
-  fetchGuruFocusDcf,
-  needsApiKey,
 } from "@/lib/api";
 import { currencySymbol } from "@/lib/format";
 import { useFetch } from "@/lib/useFetch";
@@ -192,118 +188,23 @@ const COVERAGE: Record<Coverage, { label: string; className: string; title: stri
   unavailable: { label: "No data", className: "text-slate-400 ring-slate-500/40", title: "Not found in either data pipeline" },
 };
 
+/** 5.16T / 412B / 980M — for market caps. */
+function compactMoney(v: number, currency: string) {
+  const [scale, suffix] = v >= 1e12 ? [1e12, "T"] : v >= 1e9 ? [1e9, "B"] : [1e6, "M"];
+  return `${currencySymbol(currency)}${(v / scale).toFixed(v / scale >= 100 ? 0 : 1)}${suffix}`;
+}
+
 function money(v: number, currency: string) {
   const big = Math.abs(v) >= 1000;
   return `${currencySymbol(currency)}${v.toLocaleString("en-US", { maximumFractionDigits: big ? 0 : 2, minimumFractionDigits: big ? 0 : 2 })}`;
 }
 
-// GuruFocus results by symbol, shared across rows and panel re-opens (the backend caches for 6h too).
-const dcfCache = new Map<string, GuruFocusDcf | Error>();
-// A row must sit inside the viewport this long before it fetches, so scrolling past rows doesn't request them.
-const DCF_FETCH_DELAY_MS = 250;
-// Each uncached valuation makes the backend download a 4–5 MB SEC filing: keep at most a few in flight.
-const DCF_MAX_IN_FLIGHT = 4;
-let dcfInFlight = 0;
-const dcfWaiting: (() => void)[] = [];
-
-async function limited<T>(task: () => Promise<T>, signal: AbortSignal): Promise<T> {
-  if (dcfInFlight >= DCF_MAX_IN_FLIGHT) {
-    await new Promise<void>((resolve, reject) => {
-      const go = () => resolve();
-      dcfWaiting.push(go);
-      // A row that scrolls away before its turn leaves the queue without ever fetching.
-      signal.addEventListener("abort", () => {
-        const i = dcfWaiting.indexOf(go);
-        if (i >= 0) dcfWaiting.splice(i, 1);
-        reject(new DOMException("Aborted", "AbortError"));
-      });
-    });
-  }
-  dcfInFlight++;
-  try {
-    return await task();
-  } finally {
-    dcfInFlight--;
-    dcfWaiting.shift()?.();
-  }
-}
-
-function useGuruFocus(symbol: string, inView: boolean) {
-  const [result, setResult] = useState<GuruFocusDcf | Error | null>(() => dcfCache.get(symbol) ?? null);
-  useEffect(() => {
-    if (!inView || dcfCache.has(symbol)) return;
-    const controller = new AbortController();
-    const timer = setTimeout(() => {
-      limited(() => fetchGuruFocusDcf(symbol, controller.signal), controller.signal).then(
-        (r) => {
-          dcfCache.set(symbol, r);
-          setResult(r);
-        },
-        (e) => {
-          if (controller.signal.aborted) return;
-          const err = e instanceof Error ? e : new Error("Request failed");
-          dcfCache.set(symbol, err);
-          setResult(err);
-        },
-      );
-    }, DCF_FETCH_DELAY_MS);
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
-    };
-  }, [symbol, inView]);
-  return result;
-}
-
-/** High-contrast verdict: fair value plus a solid emerald / crimson margin-of-safety badge. */
-function DcfCell({ symbol, name, inView }: { symbol: string; name: string; inView: boolean }) {
-  const r = useGuruFocus(symbol, inView);
-  if (r == null) {
-    return (
-      <div className="flex flex-col items-end gap-1" aria-busy="true">
-        <div className="h-3.5 w-16 animate-pulse rounded bg-white/10" />
-        <div className="h-4 w-12 animate-pulse rounded bg-white/10" />
-      </div>
-    );
-  }
-  if (needsApiKey(r) || (!(r instanceof Error) && r.code === API_KEY_REQUIRED)) {
-    return <UnavailableButton subject={name} compact />;
-  }
-  if (r instanceof Error || r.status === "na" || r.fair_value == null) {
-    const reason = r instanceof Error ? r.message : (r.reason ?? "Not available");
-    return (
-      <div className="text-right" title={reason}>
-        <div className="font-mono text-[12px] text-slate-500">DCF n/a</div>
-        <div className="max-w-[9.5rem] truncate text-[10px] text-slate-500">{reason}</div>
-      </div>
-    );
-  }
-  const mos = r.margin_of_safety;
-  const tooltip = [
-    `GuruFocus-style DCF: ${money(r.fair_value, r.currency ?? "USD")}`,
-    `EPS ${r.eps?.toFixed(2)} (FY${r.eps_year}) · ${r.growth_years}-yr EPS growth ${((r.growth_rate ?? 0) * 100).toFixed(1)}% · discount ${((r.discount_rate ?? 0) * 100).toFixed(2)}%`,
-    mos == null ? (r.price_note ?? "No comparable price") : `Margin of safety ${(mos * 100).toFixed(0)}%`,
-  ].join("\n");
-  return (
-    <div className="flex flex-col items-end gap-1" title={tooltip}>
-      <div className="font-mono text-[13px] font-semibold text-white tabular-nums">{money(r.fair_value, r.currency ?? "USD")}</div>
-      {mos == null ? (
-        <span className="rounded px-1.5 py-0.5 font-mono text-[10px] text-slate-400 ring-1 ring-white/15 ring-inset">MoS n/a</span>
-      ) : (
-        <span
-          className={`rounded px-1.5 py-0.5 font-mono text-[10.5px] font-bold tabular-nums ${
-            mos >= 0 ? "bg-macropulse-neon-green text-black" : "bg-rose-500 text-white"
-          }`}
-        >
-          {mos >= 0 ? "▲" : "▼"} {mos >= -1 ? `${Math.abs(mos * 100).toFixed(0)}%` : `${(1 - mos).toFixed(1)}×`}
-          <span className="sr-only">{mos >= 0 ? " margin of safety" : " above fair value"}</span>
-        </span>
-      )}
-    </div>
-  );
-}
-
-function StockRow({ leader, inView, onAnalyze }: { leader: Leader; inView: boolean; onAnalyze: (symbol: string) => void }) {
+/**
+ * One listing: name, ticker, live price and market cap. No valuation is fetched from here — the arrow
+ * adds the company to the comparison (Raw Financial Statements), and the DCF Calculator values it there. Opening a country
+ * therefore never triggers per-company SEC downloads.
+ */
+function StockRow({ leader, onAnalyze }: { leader: Leader; onAnalyze: (symbol: string) => void }) {
   const s = leader.snapshot;
   const cov = COVERAGE[leader.coverage];
   // Listings whose statements need an API key stay in the list; clicking the row (or its button) explains
@@ -327,6 +228,11 @@ function StockRow({ leader, inView, onAnalyze }: { leader: Leader; inView: boole
               {cov.label}
             </span>
           )}
+          {leader.market_cap != null && s && (
+            <span className="shrink-0 font-mono text-slate-500 tabular-nums" title="Live market cap: price × shares outstanding (SEC)">
+              {compactMoney(leader.market_cap, s.currency)}
+            </span>
+          )}
           {s && (
             <span className="truncate font-mono text-slate-400 tabular-nums">
               {money(s.price, s.currency)}
@@ -345,14 +251,12 @@ function StockRow({ leader, inView, onAnalyze }: { leader: Leader; inView: boole
         <UnavailableButton subject={leader.name} compact open={explaining} onOpenChange={setExplaining} />
       ) : (
         <>
-          <DcfCell symbol={leader.symbol} name={leader.name} inView={inView} />
           <button
             type="button"
             onClick={() => onAnalyze(leader.symbol)}
-            disabled={leader.coverage === "unavailable"}
-            aria-label={`Analyze ${leader.name}`}
-            title="Load into the comparison matrix"
-            className="grid size-7 shrink-0 place-items-center rounded-md text-cyan-200 ring-1 ring-cyan-400/30 transition hover:bg-cyan-400/15 focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:outline-none disabled:opacity-30"
+            aria-label={`Add ${leader.name} to comparison`}
+            title="Add to the comparison (up to 3) and open Raw Financial Statements"
+            className="grid size-7 shrink-0 place-items-center rounded-md text-cyan-200 ring-1 ring-cyan-400/30 transition hover:bg-cyan-400/15 focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:outline-none"
           >
             →
           </button>
@@ -364,7 +268,7 @@ function StockRow({ leader, inView, onAnalyze }: { leader: Leader; inView: boole
 
 // Virtualized, sector-grouped list: fixed row heights, so offsets are a prefix sum and only the rows
 // in (and just around) the viewport are mounted — long lists (60+ US listings) stay smooth, and only
-// on-screen rows fetch their DCF.
+// on-screen rows are in the DOM.
 const HEADER_H = 34;
 const ROW_H = 64;
 const OVERSCAN_PX = 240;
@@ -474,12 +378,7 @@ function SectorList({ data, onAnalyze }: { data: CountryLeaders; onAnalyze: (sym
                   {it.kind === "header" ? (
                     <SectorHeader sector={it.sector} count={it.count} />
                   ) : (
-                    // Overscanned rows render but only rows inside the viewport fetch their DCF.
-                    <StockRow
-                      leader={it.leader}
-                      inView={offsets[i] + ROW_H > scrollTop && offsets[i] < scrollTop + viewport}
-                      onAnalyze={onAnalyze}
-                    />
+                    <StockRow leader={it.leader} onAnalyze={onAnalyze} />
                   )}
                 </div>
               );
@@ -533,7 +432,7 @@ function CountryPanel({
         </div>
         {state.status === "success" && state.data && (
           <p className="mt-2 font-mono text-[10.5px] text-slate-500">
-            {state.data.leaders.length} listings · ranking {state.data.list_as_of} · live quotes · GuruFocus-style DCF (r_f + 6%)
+            {state.data.leaders.length} listings · ranked by live market cap · live quotes · → adds a company to the comparison
           </p>
         )}
         <button
@@ -562,7 +461,7 @@ function CountryPanel({
           <>
             <div className="flex items-center justify-between border-b border-white/5 px-4 py-2 text-[9.5px] font-semibold tracking-[0.2em] text-slate-500 uppercase">
               <span>Company · ticker · price</span>
-              <span className="pr-9">DCF value · margin of safety</span>
+              <span className="pr-1">Add to comparison →</span>
             </div>
             <SectorList data={state.data} onAnalyze={onAnalyze} />
           </>

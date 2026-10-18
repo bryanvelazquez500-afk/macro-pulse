@@ -3,7 +3,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from dataclasses import asdict
 
 from app.models import (
-    GuruFocusDcfResponse,
+    BasisInputModel,
+    DcfInputsResponse,
+    LiveQuoteResponse,
     CountryLeadersResponse,
     DiscoveryCountriesResponse,
     LeaderModel,
@@ -12,10 +14,6 @@ from app.models import (
     MacroFactorsResponse,
     RateModel,
     ValuationInputsResponse,
-    ChecklistCriterion,
-    ChecklistResponse,
-    InvestorChecklistModel,
-    LegendContextModel,
     QuoteModel,
     CompanyProfile,
     Filing,
@@ -27,7 +25,6 @@ from app.models import (
     PeerItem,
     PeersResponse,
 )
-from app.services.checklist_service import ChecklistService
 from app.services.macro_rates import MacroFactors, MacroFactorsError, load_macro_factors, sync_once
 from app.services.valuation_inputs import get_valuation_inputs
 from app.services.data_router import DataRouter, DataSource
@@ -145,36 +142,6 @@ async def company_peers(
     )
 
 
-@router.get("/companies/{identifier}/checklist", response_model=ChecklistResponse)
-async def company_checklist(
-    identifier: str, request: Request, service: FinancialsService = Depends(get_service)
-) -> ChecklistResponse:
-    """Legend Investment Checklist: Buffett, Lynch, Munger and Ackman rules on annual history (see app/services/vetting.py)."""
-    c = await ChecklistService(service, request.app.state.quote_service).get_checklist(identifier)
-    q = c.price.quote
-    return ChecklistResponse(
-        symbol=c.symbol,
-        entity_name=c.entity_name,
-        fiscal_year=c.fiscal_year,
-        period_end=c.period_end,
-        currency=c.currency,
-        price=QuoteModel(price=q.price, currency=q.currency, source=q.source, as_of=q.as_of, comparable=c.price.comparable, note=c.price.note) if q else None,
-        price_note=c.price.note,
-        investors=[
-            InvestorChecklistModel(
-                key=i.key,
-                name=i.name,
-                philosophy=i.philosophy,
-                criteria=[ChecklistCriterion(**asdict(cr)) for cr in i.criteria],
-                verdict=i.verdict.value,
-                summary=i.summary,
-                context=LegendContextModel.model_validate(asdict(i.context)),
-            )
-            for i in c.investors
-        ],
-    )
-
-
 def _macro_response(f: MacroFactors) -> MacroFactorsResponse:
     return MacroFactorsResponse.model_validate(asdict(f))
 
@@ -226,7 +193,7 @@ async def discovery_countries() -> DiscoveryCountriesResponse:
 async def discovery_country(iso2: str, request: Request, router_: DataRouter = Depends(get_router)) -> CountryLeadersResponse:
     """A country's largest listed companies with live price, day change, 52-week range and data coverage."""
     state = request.app.state
-    leaders = await country_leaders(iso2, state.quote_service, router_, state.fmp_client)
+    leaders = await country_leaders(iso2, state.quote_service, router_, state.fmp_client, state.market_caps)
     if leaders is None:
         raise HTTPException(404, f"No curated listings for {iso2.upper()} yet")
     return CountryLeadersResponse(
@@ -241,13 +208,25 @@ async def discovery_country(iso2: str, request: Request, router_: DataRouter = D
                 sector=l.sector,
                 snapshot=SnapshotModel(**{k: v for k, v in asdict(l.snapshot).items() if k != "symbol"}) if l.snapshot else None,
                 coverage=l.coverage,
+                market_cap=l.market_cap,
+                market_cap_usd=l.market_cap_usd,
             )
             for l in leaders
         ],
     )
 
 
-@router.get("/companies/{identifier}/gurufocus-dcf", response_model=GuruFocusDcfResponse)
-async def company_gurufocus_dcf(identifier: str, request: Request) -> GuruFocusDcfResponse:
-    """GuruFocus-style earnings DCF and margin of safety (cached 6h per company; see app/services/gurufocus.py)."""
-    return GuruFocusDcfResponse(**asdict(await request.app.state.gurufocus_service.evaluate(identifier)))
+@router.get("/companies/{identifier}/dcf-inputs", response_model=DcfInputsResponse)
+async def company_dcf_inputs(identifier: str, request: Request) -> DcfInputsResponse:
+    """Live inputs for the two-stage DCF calculator (see app/services/dcf_inputs.py)."""
+    i = await request.app.state.dcf_service.get(identifier)
+    return DcfInputsResponse(**{**asdict(i), "bases": [BasisInputModel(**asdict(b)) for b in i.bases]})
+
+
+@router.get("/quotes/{symbol}", response_model=LiveQuoteResponse)
+async def live_quote(symbol: str, request: Request) -> LiveQuoteResponse:
+    """Latest price only (cached 5 minutes) — lets the calculator refresh P without refetching its inputs."""
+    q = await request.app.state.dcf_service.quote(symbol)
+    if q is None:
+        raise HTTPException(404, f"No price available for {symbol.upper()}")
+    return LiveQuoteResponse(symbol=q.symbol, price=q.price, currency=q.currency, source=q.source, as_of=q.as_of)

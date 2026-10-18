@@ -150,78 +150,6 @@ class PeersResponse(BaseModel):
     peers: list[PeerItem]
 
 
-class ChecklistCriterion(BaseModel):
-    key: str
-    label: str
-    rule: str
-    value: float | None
-    display: str | None
-    passed: bool | None  # None: couldn't be evaluated (counts as not met)
-    note: str | None
-    value_label: str | None  # raw value, unit-formatted ("76.2%", "8/9")
-
-
-class CaseStudyModel(BaseModel):
-    company: str
-    ticker: str | None
-    period: str
-    summary: str
-    illustrates: list[str]  # criterion keys this episode illustrates
-
-
-class LegendQuoteModel(BaseModel):
-    text: str
-    source: str
-
-
-class AllocationModel(BaseModel):
-    company: str
-    ticker: str | None
-    period: str
-    thesis: str
-
-
-class LegendContextModel(BaseModel):
-    tenure: str
-    approach: str
-    case_study: CaseStudyModel
-    quote: LegendQuoteModel | None
-    rules_of_thumb: list[str]
-    further_reading: list[str]
-    allocations: list[AllocationModel]  # notable past positions
-    metric_rationale: dict[str, str]  # criterion key → why this legend watches it
-
-
-class InvestorChecklistModel(BaseModel):
-    key: str  # buffett | lynch | munger | ackman
-    name: str
-    philosophy: str
-    criteria: list[ChecklistCriterion]
-    verdict: str  # worth_buying | pass
-    summary: str
-    context: LegendContextModel  # historical narrative behind the rules
-
-
-class QuoteModel(BaseModel):
-    price: float
-    currency: str
-    source: str
-    as_of: str | None
-    comparable: bool  # usable against per-share figures from the filings
-    note: str | None
-
-
-class ChecklistResponse(BaseModel):
-    symbol: str
-    entity_name: str
-    fiscal_year: int | None
-    period_end: str | None
-    currency: str
-    price: QuoteModel | None
-    price_note: str | None
-    investors: list[InvestorChecklistModel]
-
-
 class RateModel(BaseModel):
     value: float  # decimal: 0.051 = 5.10%
     as_of: str
@@ -240,6 +168,15 @@ class MacroFactorsResponse(BaseModel):
     sector_betas: dict[str, SectorBetaModel]
     sector_betas_source: str
     updated_at: str
+
+
+class QuoteModel(BaseModel):
+    price: float
+    currency: str
+    source: str
+    as_of: str | None
+    comparable: bool  # usable against per-share figures from the filings
+    note: str | None
 
 
 class BetaChoiceModel(BaseModel):
@@ -278,6 +215,8 @@ class LeaderModel(BaseModel):
     sector: str
     snapshot: SnapshotModel | None  # None when no live quote was available
     coverage: str  # sec | fmp | fmp_key_required | unavailable
+    market_cap: float | None = None  # in the listing's price currency
+    market_cap_usd: float | None = None  # for ranking across currencies
 
 
 class CountryLeadersResponse(BaseModel):
@@ -291,22 +230,43 @@ class DiscoveryCountriesResponse(BaseModel):
     countries: dict[str, int]  # ISO alpha-2 → number of curated leaders
 
 
-class GuruFocusDcfResponse(BaseModel):
+class BasisInputModel(BaseModel):
+    key: str  # eps | fcf | dividend
+    label: str
+    value: float | None  # per share, in DcfInputsResponse.currency
+    period: str | None
+    is_ttm: bool
+    h10: float | None  # historical growth, percent per year
+    h10_years: int | None  # span measured: 10, else 5 or 3
+    h10_note: str | None
+
+
+class DcfInputsResponse(BaseModel):
     symbol: str
-    status: str  # ok | na
-    reason: str | None
-    code: str | None  # api_key_required when an API key / paid plan is what's missing
-    currency: str | None  # reporting currency of fair_value
-    fair_value: float | None
-    growth_stage: float | None
-    terminal_stage: float | None
-    tangible_book_per_share: float | None
-    eps: float | None
-    eps_year: int | None
-    growth_rate: float | None
-    growth_years: int | None
-    discount_rate: float | None
+    name: str
+    source: str
+    currency: str  # of every per-share figure (the price's currency after any FX conversion)
+    reporting_currency: str
+    fx_rate: float | None
     price: float | None
-    price_currency: str | None
-    margin_of_safety: float | None  # None when the price isn't comparable with the filings
+    price_source: str | None
+    price_as_of: str | None
+    price_comparable: bool
     price_note: str | None
+    bases: list[BasisInputModel]
+    tbv: float | None
+    tbv_as_of: str | None
+    shares: float | None
+    t10: float  # percent
+    t10_as_of: str
+    t10_source: str
+    predictability: float | None  # 0–5; None = no source
+    missing: list[str]  # inputs the data sources can't provide, and what's used instead
+
+
+class LiveQuoteResponse(BaseModel):
+    symbol: str
+    price: float
+    currency: str
+    source: str
+    as_of: str | None

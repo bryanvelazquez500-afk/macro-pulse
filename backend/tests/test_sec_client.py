@@ -1,7 +1,7 @@
 import httpx
 import pytest
 
-from app.services.sec_client import CompanyNotFoundError, SecEdgarClient, format_cik
+from app.services.sec_client import CompanyNotFoundError, SecApiError, SecEdgarClient, format_cik
 
 
 def test_format_cik_pads_to_ten_digits():
@@ -49,3 +49,35 @@ def test_cors_origins_accept_comma_separated_or_json(monkeypatch):
     assert Settings(_env_file=None).cors_origins == ["https://a.example"]
     monkeypatch.delenv("IS_CORS_ORIGINS")
     assert Settings(_env_file=None).cors_origins == ["http://localhost:3000", "http://127.0.0.1:3000"]
+
+
+async def test_concurrent_requests_for_one_url_share_a_single_fetch():
+    import asyncio
+
+    calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(200, json={"0": {"cik_str": 320193, "ticker": "AAPL", "title": "Apple"}})
+
+    client = SecEdgarClient(transport=httpx.MockTransport(handler))
+    maps = await asyncio.gather(*(client.get_ticker_map() for _ in range(50)))
+    await client.aclose()
+    assert calls == 1 and all(m["AAPL"]["cik"] == 320193 for m in maps)
+
+
+async def test_throttled_url_cools_down_instead_of_retrying():
+    calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(429)
+
+    client = SecEdgarClient(transport=httpx.MockTransport(handler))
+    for _ in range(5):
+        with pytest.raises(SecApiError):
+            await client.get_ticker_map()
+    await client.aclose()
+    assert calls == 1

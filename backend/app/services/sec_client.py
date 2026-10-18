@@ -69,6 +69,28 @@ def format_cik(cik: int | str) -> str:
     return str(int(cik)).zfill(10)
 
 
+# New registrant CIK → predecessor CIK, for holding-company reorganizations that restarted the XBRL history.
+PREDECESSOR_CIKS: dict[int, int] = {
+    2115436: 34088,  # ExxonMobil Holdings Corp (2026) ← Exxon Mobil Corp
+}
+
+
+def merge_company_facts(older: dict[str, Any], newer: dict[str, Any]) -> dict[str, Any]:
+    """Union of two CompanyFacts documents, fact lists concatenated per taxonomy/concept/unit."""
+    merged: dict[str, Any] = {**newer, "facts": {}}
+    for doc in (older, newer):
+        for taxonomy, concepts in doc.get("facts", {}).items():
+            target = merged["facts"].setdefault(taxonomy, {})
+            for name, concept in concepts.items():
+                entry = target.setdefault(name, {**concept, "units": {}})
+                for unit, facts in concept.get("units", {}).items():
+                    entry["units"][unit] = [*entry["units"].get(unit, []), *facts]
+    return merged
+
+
+_THROTTLE_COOLDOWN_SECONDS = 60
+
+
 class SecEdgarClient:
     def __init__(self, settings: Settings | None = None, transport: httpx.AsyncBaseTransport | None = None):
         self.settings = settings or get_settings()
@@ -84,6 +106,8 @@ class SecEdgarClient:
         )
         self._limiter = _RateLimiter(self.settings.sec_max_requests_per_second)
         self._cache = TTLCache(self.settings.cache_ttl_seconds)
+        self._inflight: dict[str, asyncio.Future[Any]] = {}
+        self._throttled: dict[str, tuple[float, SecApiError]] = {}
 
     async def aclose(self) -> None:
         await self._client.aclose()
@@ -109,7 +133,35 @@ class SecEdgarClient:
         cached = self._cache.get(url)
         if cached is not None:
             return cached
-        data = (await self._fetch(url)).json()
+        # Single flight: concurrent callers of the same URL share one request. Without this, a scout list
+        # resolving 200 tickers at once fetched company_tickers.json 200 times and tripped SEC's throttle.
+        # Cool-down: after SEC throttles or rejects a URL, fail fast for a minute instead of retrying,
+        # so a throttled server doesn't keep the block alive with more requests.
+        throttled = self._throttled.get(url)
+        if throttled is not None and time.monotonic() - throttled[0] < _THROTTLE_COOLDOWN_SECONDS:
+            raise throttled[1]
+        pending = self._inflight.get(url)
+        if pending is not None:
+            return await asyncio.shield(pending)
+        task = asyncio.ensure_future(self._fetch_json(url, cache))
+        self._inflight[url] = task
+        try:
+            return await asyncio.shield(task)
+        finally:
+            if task.done():
+                self._inflight.pop(url, None)
+            else:
+                task.add_done_callback(lambda _: self._inflight.pop(url, None))
+
+    async def _fetch_json(self, url: str, cache: bool) -> Any:
+        try:
+            response = await self._fetch(url)
+        except SecApiError as exc:
+            if exc.status_code in (502, 503):  # 403 (rejected) and 429 (rate limited), as _fetch maps them
+                self._throttled[url] = (time.monotonic(), exc)
+            raise
+        self._throttled.pop(url, None)
+        data = response.json()
         if cache:
             self._cache.set(url, data)
         return data
@@ -149,7 +201,18 @@ class SecEdgarClient:
             raise
 
     async def get_company_facts(self, cik: int | str, cache: bool = True) -> dict[str, Any]:
-        """`cache=False` for bulk one-off reads: each parsed CompanyFacts holds ~15–20 MB of Python objects."""
+        """`cache=False` for bulk one-off reads: each parsed CompanyFacts holds ~15–20 MB of Python objects.
+
+        A registrant that replaced a predecessor in a holding-company reorganization (PREDECESSOR_CIKS)
+        gets the predecessor's history merged in; for periods both report, the newer filing wins downstream.
+        """
+        facts = await self._company_facts(cik, cache)
+        predecessor = PREDECESSOR_CIKS.get(int(cik))
+        if predecessor is None:
+            return facts
+        return merge_company_facts(await self._company_facts(predecessor, cache), facts)
+
+    async def _company_facts(self, cik: int | str, cache: bool) -> dict[str, Any]:
         try:
             return await self._get_json(
                 f"{self.settings.sec_data_base_url}/api/xbrl/companyfacts/CIK{format_cik(cik)}.json", cache=cache

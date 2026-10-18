@@ -578,6 +578,48 @@ def balance_sheet_near(balances: dict[str, dict[Metric, NormalizedValue]], targe
     return dict(balances[best[1]]) if best else {}
 
 
+_YTD_CASH_FLOW_METRICS = (Metric.OPERATING_CASH_FLOW, Metric.CAPITAL_EXPENDITURES, Metric.DIVIDENDS_PAID)
+YTD_DIFFERENCE_SUFFIX = " (year-to-date − prior year-to-date)"
+
+
+def _derive_quarterly_cash_flows(
+    company_facts: dict[str, Any], periods: dict[tuple[str, str], NormalizedPeriod], tag_map: dict[Metric, list[str]], currency: str
+) -> None:
+    """Single-quarter cash flows from 10-Q year-to-date figures: Q3 = 9-month YTD − 6-month YTD.
+
+    10-Qs report the cash flow statement year-to-date only, so without this Q2 and Q3 have no cash flows.
+    """
+    for metric in _YTD_CASH_FLOW_METRICS:
+        for tag in tag_map.get(metric, []):
+            by_span: dict[tuple[str, str], dict[str, Any]] = {}
+            for fact in _unit_facts(company_facts, tag, currency):
+                if fact.get("start") and fact.get("end") and fact.get("form") in _QUARTERLY_FORMS | _ANNUAL_FORMS:
+                    key = (fact["start"], fact["end"])
+                    if key not in by_span or fact["filed"] > by_span[key]["filed"]:
+                        by_span[key] = fact
+            for period in periods.values():
+                if metric in period.values:
+                    continue
+                q_start = date.fromisoformat(period.start)
+                for (ytd_start, ytd_end), ytd in by_span.items():
+                    if ytd_end != period.end or date.fromisoformat(ytd_start) >= q_start - timedelta(days=30):
+                        continue
+                    prior = next(
+                        (f for (s2, e2), f in by_span.items()
+                         if s2 == ytd_start and 0 < (q_start - date.fromisoformat(e2)).days <= 7),
+                        None,
+                    )  # fmt: skip
+                    if prior is not None:
+                        period.values[metric] = NormalizedValue(
+                            value=float(ytd["val"]) - float(prior["val"]),
+                            source_tag=tag + YTD_DIFFERENCE_SUFFIX,
+                            accession_number=ytd["accn"],
+                            form=ytd["form"],
+                            filed=ytd["filed"],
+                        )
+                        break
+
+
 def derive_free_cash_flow(period: NormalizedPeriod) -> None:
     ocf = period.values.get(Metric.OPERATING_CASH_FLOW)
     if ocf is None:
@@ -723,6 +765,8 @@ def normalize_company_facts(
 
     _adjust_for_splits(periods.values(), detect_share_splits(company_facts, tag_map[Metric.DILUTED_SHARES]))
     _derive_sga(company_facts, periods, basis)
+    if period_type is PeriodType.QUARTERLY:
+        _derive_quarterly_cash_flows(company_facts, periods, tag_map, basis.currency)
     balances = normalize_balance_sheets(company_facts, basis)
     for key, period in periods.items():
         derive_free_cash_flow(period)

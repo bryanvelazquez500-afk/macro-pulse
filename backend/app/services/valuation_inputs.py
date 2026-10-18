@@ -9,14 +9,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.services.checklist_service import resolve_price
+from app.services.pricing import PriceContext, resolve_price
 from app.services.data_router import DataSource
 from app.services.financials_service import FinancialsService
 from app.services.gaap_mapping import PeriodType
 from app.services.macro_rates import MacroFactors, SectorBeta, load_macro_factors
 from app.services.peers import PEER_GROUPS, match_peer_group
 from app.services.quotes import QuoteService
-from app.services.vetting import PriceContext
 
 
 @dataclass(frozen=True)
