@@ -54,7 +54,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     target: "tour-news",
     title: "Related News",
-    text: "The latest headlines for the focused company — the two newest show here, and one click reveals the rest.",
+    text: "Live headlines for the focused company glide across this tape — hover to pause it and click any story to read it.",
   },
   {
     target: "tour-drawers",

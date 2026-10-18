@@ -54,3 +54,15 @@ async def test_feed_outage_raises_news_error():
     with pytest.raises(NewsError):
         await service.headlines("AAPL")
     await service.aclose()
+
+
+async def test_falls_back_to_yahoo_when_google_refuses():
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.host == "news.google.com":
+            return httpx.Response(503)  # what Google returns to many cloud hosts
+        return httpx.Response(200, text=FEED)
+
+    service = NewsService(Settings(_env_file=None), transport=httpx.MockTransport(handler))
+    provider, items = await service.latest("AAPL")
+    await service.aclose()
+    assert provider == "Yahoo Finance" and items[0].title == "AAPL Hits Record"

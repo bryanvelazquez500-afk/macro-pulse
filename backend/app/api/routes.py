@@ -91,15 +91,15 @@ async def company_news(
     service: FinancialsService = Depends(get_service),
     news: NewsService = Depends(get_news_service),
 ) -> NewsResponse:
-    """Most recent market headlines mentioning the company's primary ticker (Google News RSS, last 7 days)."""
+    """Most recent market headlines mentioning the company's primary ticker (Google News RSS, else Yahoo Finance; last 7 days)."""
     try:
         profile = await service.get_profile(identifier, filings_limit=0)
         ticker = profile.tickers[0] if profile.tickers else profile.name
     except FmpError:
         # Headlines only need the symbol, so they don't depend on the global provider's plan.
         ticker = identifier.strip().upper()
-    items = await news.headlines(ticker, limit)
-    return NewsResponse(ticker=ticker, provider="Google News", items=[NewsItem(**asdict(h)) for h in items])
+    provider, items = await news.latest(ticker, limit)
+    return NewsResponse(ticker=ticker, provider=provider, items=[NewsItem(**asdict(h)) for h in items])
 
 
 @router.get("/companies/{identifier}/narrative", response_model=NarrativeResponse)

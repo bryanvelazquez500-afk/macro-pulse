@@ -3,7 +3,6 @@
 import { LayoutGroup } from "framer-motion";
 import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
 
-import { ContextPane } from "@/components/ContextPane";
 import { DataDrawers } from "@/components/DataDrawers";
 import { DcfCalculator } from "@/components/DcfCalculator";
 import { EquityDiscovery } from "@/components/EquityDiscovery";
@@ -12,6 +11,7 @@ import { SidePanel } from "@/components/SidePanel";
 import { FinancialsTable, VarianceLegend } from "@/components/FinancialsTable";
 import { HorizontalAnalysis } from "@/components/HorizontalAnalysis";
 import { NoticeToast } from "@/components/NoticeToast";
+import { NewsTicker } from "@/components/NewsTicker";
 import { PeerPills } from "@/components/PeerPills";
 import { PulseBotTour } from "@/components/PulseBotTour";
 import { ValuationPanel } from "@/components/ValuationPanel";
@@ -235,6 +235,7 @@ function Station() {
             />
           </div>
         )}
+        <NewsTicker ticker={focusedReady ? symbolOf(focusedReady) : null} />
       </header>
       <NoticeToast notice={notice} onDismiss={dismissNotice} />
 
@@ -407,12 +408,7 @@ function Station() {
         </main>
 
         <div className="lg:col-start-2 xl:col-start-3 xl:row-start-1">
-          <SidePanel label="News and intrinsic valuation">
-            <div id="tour-news">
-              <ContextPane
-                ticker={focusedReady ? symbolOf(focusedReady) : null}
-              />
-            </div>
+          <SidePanel label="Intrinsic valuation">
             <div id="tour-ivs">
               {focusedReady?.annual ? (
                 // Keyed by company: market inputs refetch and sync overrides reset when focus moves.

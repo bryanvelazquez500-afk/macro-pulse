@@ -267,3 +267,33 @@ body {
 #horizontal-analysis {
   scroll-margin-top: calc(var(--header-h, 6rem) + 1.25rem);
 }
+
+/* News tape: glides to the right (starts shifted one run left, ends at 0); pauses on hover/focus;
+   edges fade so headlines slide in and out. Reduced motion: still, hand-scrollable. */
+.mp-tape {
+  animation: mp-tape-right linear infinite;
+  will-change: transform;
+}
+.mp-tape-viewport:hover .mp-tape,
+.mp-tape-viewport:focus-within .mp-tape {
+  animation-play-state: paused;
+}
+.mp-tape-viewport {
+  mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent);
+}
+@keyframes mp-tape-right {
+  from {
+    transform: translateX(-50%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mp-tape {
+    animation: none;
+  }
+  .mp-tape-viewport {
+    overflow-x: auto;
+  }
+}
