@@ -1,7 +1,7 @@
 "use client";
 
 import { LayoutGroup } from "framer-motion";
-import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
+import { FormEvent, ReactNode, useCallback, useEffect, useRef, useState } from "react";
 
 import { DataDrawers } from "@/components/DataDrawers";
 import { DcfCalculator } from "@/components/DcfCalculator";
@@ -13,6 +13,7 @@ import { HorizontalAnalysis } from "@/components/HorizontalAnalysis";
 import { NoticeToast } from "@/components/NoticeToast";
 import { NewsTicker } from "@/components/NewsTicker";
 import { PeerPills } from "@/components/PeerPills";
+import { InjectBanner, SupplyChainNetwork } from "@/components/SupplyChainNetwork";
 import { PulseBotTour } from "@/components/PulseBotTour";
 import { ValuationPanel } from "@/components/ValuationPanel";
 import { WatchlistSidebar } from "@/components/WatchlistSidebar";
@@ -51,7 +52,7 @@ function Section({
   );
 }
 
-type AnalysisView = "matrix" | "discovery";
+type AnalysisView = "matrix" | "discovery" | "supply";
 
 const ANALYSIS_VIEWS: ViewTab<AnalysisView>[] = [
   {
@@ -65,6 +66,12 @@ const ANALYSIS_VIEWS: ViewTab<AnalysisView>[] = [
     label: "Equity Discovery",
     short: "Discovery",
     hint: "Scout world markets on an interactive map",
+  },
+  {
+    key: "supply",
+    label: "Supply Chain Network",
+    short: "Supply Chain",
+    hint: "Suppliers and clients as an interactive web",
   },
 ];
 
@@ -103,9 +110,14 @@ function Station() {
 
   // The discovery map (and its 120 KB of geometry) loads the first time its tab is opened, then stays mounted.
   const [discoveryOpened, setDiscoveryOpened] = useState(false);
+  // Same for the supply-chain graph (its canvas engine is a separate download).
+  const [supplyOpened, setSupplyOpened] = useState(false);
+  const [injected, setInjected] = useState<string | null>(null);
+  const clearInjected = useCallback(() => setInjected(null), []);
 
   function changeView(next: AnalysisView) {
     if (next === "discovery") setDiscoveryOpened(true);
+    if (next === "supply") setSupplyOpened(true);
     setView(next);
   }
   const searchRef = useRef<HTMLInputElement>(null);
@@ -128,6 +140,17 @@ function Station() {
   }, []);
 
   /** Adding a new column shows the matrix, so its slide-in (and a peer pill's flight) has somewhere to land. */
+  /** From the supply-chain web: add without leaving the tab, and confirm with a green banner. */
+  function injectFromSupplyChain(ticker: string) {
+    const id = normalizeTicker(ticker);
+    const present = entries.some((e) => e.id === id || (id && e.profile?.tickers.includes(id)));
+    if (id && !present && entries.length < MAX_COMPARE) setInjected(`${id} injected into Financial Comparison Tab`);
+    else if (present) setInjected(`${id} is already in the Financial Comparison Tab`);
+    add(ticker); // a full comparison shows the usual "matrix is full" warning instead
+    // Adding focuses the new column; keep the current focus so the web you're exploring doesn't re-centre.
+    if (focusedId) focus(focusedId);
+  }
+
   function addToComparison(input: string) {
     const id = normalizeTicker(input);
     const present = entries.some(
@@ -238,6 +261,7 @@ function Station() {
         <NewsTicker ticker={focusedReady ? symbolOf(focusedReady) : null} />
       </header>
       <NoticeToast notice={notice} onDismiss={dismissNotice} />
+      <InjectBanner message={injected} onDone={clearInjected} />
 
       <button
         id="help-tour-trigger"
@@ -260,6 +284,7 @@ function Station() {
       </button>
       {touring && (
         <PulseBotTour
+          onView={changeView}
           // Focus isn't returned to the help button: Space (the tour key) would press it and reopen the tour.
           onClose={() => {
             setTouring(false);
@@ -353,6 +378,17 @@ function Station() {
                       window.scrollTo({ top: 0, behavior: "smooth" });
                     }}
                   />
+                )}
+              </ViewPanel>
+
+              <ViewPanel view="supply" active={view === "supply"}>
+                {supplyOpened && (
+                  <div id="tour-supply">
+                  <SupplyChainNetwork
+                    focusTicker={focused ? symbolOf(focused) : null}
+                    onInject={injectFromSupplyChain}
+                  />
+                  </div>
                 )}
               </ViewPanel>
             </div>

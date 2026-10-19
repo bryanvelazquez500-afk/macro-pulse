@@ -6,6 +6,11 @@ from app.models import (
     BasisInputModel,
     DcfInputsResponse,
     LiveQuoteResponse,
+    SupplyChainEdgeModel,
+    SupplyChainNodeModel,
+    SupplyChainResponse,
+    RelationshipContextModel,
+    CoveredCompanyModel,
     CountryLeadersResponse,
     DiscoveryCountriesResponse,
     LeaderModel,
@@ -35,6 +40,8 @@ from app.services.gaap_mapping import PeriodType
 from app.services.narrative import NarrativeService
 from app.services.news import NewsService
 from app.services.peers import suggest_peers
+from app.services.relationship_notes import RelationshipNotFoundError
+from app.services.supply_chain import build_graph
 from app.services.variance import DEFAULT_MATERIALITY_THRESHOLD
 
 router = APIRouter(prefix="/api")
@@ -230,3 +237,29 @@ async def live_quote(symbol: str, request: Request) -> LiveQuoteResponse:
     if q is None:
         raise HTTPException(404, f"No price available for {symbol.upper()}")
     return LiveQuoteResponse(symbol=q.symbol, price=q.price, currency=q.currency, source=q.source, as_of=q.as_of)
+
+
+@router.get("/companies/{identifier}/supply-chain", response_model=SupplyChainResponse)
+async def company_supply_chain(identifier: str, request: Request) -> SupplyChainResponse:
+    """Suppliers and clients as a directed graph: curated links (data/supply_chain.json, re-read on change) plus
+    those named in the company's own latest annual report (read once per filing; see filed_relationships.py)."""
+    state = request.app.state
+    g = await build_graph(state.supply_chain_store, state.filed_relationships, identifier)
+    return SupplyChainResponse(
+        focus=g.focus,
+        nodes=[SupplyChainNodeModel(**asdict(n)) for n in g.nodes],
+        edges=[SupplyChainEdgeModel(**asdict(e)) for e in g.edges],
+        covered=[CoveredCompanyModel(id=i, name=n) for i, n in g.covered],
+        filing=g.filing,
+        filing_status=g.filing_status,
+    )
+
+
+@router.get("/supply-chain/relationship", response_model=RelationshipContextModel)
+async def supply_chain_relationship(request: Request, supplier: str = Query(...), client: str = Query(...)) -> RelationshipContextModel:
+    """Filing-backed context for one mapped supplier → client link (fetched on demand; see relationship_notes.py)."""
+    try:
+        ctx = await request.app.state.relationship_notes.context(supplier, client)
+    except RelationshipNotFoundError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    return RelationshipContextModel.model_validate(asdict(ctx))

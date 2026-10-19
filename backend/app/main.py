@@ -15,6 +15,9 @@ from app.services.market_caps import MarketCaps
 from app.services.quotes import QuoteService
 from app.services.news import NewsError, NewsService
 from app.services.sec_client import SecApiError, SecEdgarClient
+from app.services.filed_relationships import FiledRelationships
+from app.services.relationship_notes import RelationshipNotes
+from app.services.supply_chain import SupplyChainError, SupplyChainStore
 
 
 @asynccontextmanager
@@ -27,6 +30,11 @@ async def lifespan(app: FastAPI):
     app.state.quote_service = QuoteService(app.state.fmp_client, settings)
     app.state.dcf_service = DcfInputsService(
         FinancialsService(app.state.sec_client, app.state.fmp_client, app.state.data_router), app.state.quote_service
+    )
+    app.state.supply_chain_store = SupplyChainStore()
+    app.state.filed_relationships = FiledRelationships(app.state.sec_client, app.state.data_router)
+    app.state.relationship_notes = RelationshipNotes(
+        app.state.sec_client, app.state.data_router, app.state.supply_chain_store, filed=app.state.filed_relationships
     )
     app.state.market_caps = MarketCaps(app.state.sec_client, app.state.quote_service)
     app.state.news_service = NewsService(settings)
@@ -64,6 +72,11 @@ async def fmp_error_handler(_: Request, exc: FmpError) -> JSONResponse:
 @app.exception_handler(NarrativeError)
 async def narrative_error_handler(_: Request, exc: NarrativeError) -> JSONResponse:
     return JSONResponse(status_code=exc.status_code, content={"detail": str(exc), "code": exc.code})
+
+
+@app.exception_handler(SupplyChainError)
+async def supply_chain_error_handler(_: Request, exc: SupplyChainError) -> JSONResponse:
+    return JSONResponse(status_code=500, content={"detail": str(exc)})
 
 
 @app.exception_handler(NewsError)

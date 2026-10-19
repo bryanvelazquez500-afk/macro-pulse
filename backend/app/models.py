@@ -270,3 +270,73 @@ class LiveQuoteResponse(BaseModel):
     currency: str
     source: str
     as_of: str | None
+
+
+class SupplyChainNodeModel(BaseModel):
+    id: str
+    name: str
+    public: bool
+    ticker: str | None  # loadable symbol for public companies; None for private ones
+    role: str  # focus | supplier | client | both
+    mentions: list[str]  # names used for it in other companies' filings
+
+
+class SupplyChainEdgeModel(BaseModel):
+    source: str  # supplier
+    target: str  # client
+    type: str  # supplier (into the focus company) | client (out of it) | peer
+    product: str | None
+    revenue_pct: float | None  # client's share of the supplier's revenue, when disclosed
+    major: bool  # disclosed ≥10% customer
+    source_note: str | None
+    origin: str  # curated | filing
+    evidence: str | None  # filing sentence behind a 'filing' link
+
+
+class CoveredCompanyModel(BaseModel):
+    id: str
+    name: str
+
+
+class SupplyChainResponse(BaseModel):
+    focus: str
+    nodes: list[SupplyChainNodeModel]
+    edges: list[SupplyChainEdgeModel]
+    covered: list[CoveredCompanyModel]  # companies with mapped relationships, for exploring
+    filing: dict[str, str] | None  # annual report read for this web (form, filed, url)
+    filing_status: str
+
+
+class FilingNoteModel(BaseModel):
+    company: str
+    form: str
+    accession: str
+    filed: str
+    url: str
+    excerpts: list[str]  # verbatim sentences from the filing that name the partner
+    figures: list[str]  # percentages / dollar amounts appearing in those sentences
+    fingerprint: str
+    as_of: str
+    updated_from: str | None
+    checked_accession: str | None
+    latest_names_partner: bool  # False when only an earlier report names the partner
+
+
+class SideContextModel(BaseModel):
+    company: str
+    name: str
+    public: bool
+    has_filings: bool
+    note: FilingNoteModel | None
+    status: str
+
+
+class RelationshipContextModel(BaseModel):
+    supplier: SideContextModel
+    client: SideContextModel
+    product: str | None
+    major: bool
+    revenue_pct: float | None
+    source_note: str | None
+    summary: str
+    notes_updated: list[str]

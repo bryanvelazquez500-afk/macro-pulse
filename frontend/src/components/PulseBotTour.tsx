@@ -18,6 +18,8 @@ export interface TourStep {
   target: string; // element id
   title: string;
   text: string; // one friendly sentence
+  /** Analysis tab to open for this step (its content only exists once the tab is shown). */
+  view?: "matrix" | "discovery" | "supply";
 }
 
 export const TOUR_STEPS: TourStep[] = [
@@ -28,11 +30,13 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     target: "tour-matrix",
+    view: "matrix",
     title: "Comparison Matrix",
     text: "Up to three companies sit side by side here, every line item straight from their filings with color-coded year-over-year swings.",
   },
   {
     target: "horizontal-analysis",
+    view: "matrix",
     title: "Horizontal Analysis",
     text: "Expand a company to watch every line item change over 5–10 years as % change, an index or raw values — click any row to chart it.",
   },
@@ -40,6 +44,12 @@ export const TOUR_STEPS: TourStep[] = [
     target: "tour-tabs",
     title: "Equity Discovery Map",
     text: "Switch to the Discovery tab to scout world markets on a map, ranked by live market cap, and send any stock here with its arrow.",
+  },
+  {
+    target: "tour-supply",
+    view: "supply",
+    title: "Supply Chain Network",
+    text: "Type any ticker to map who supplies and buys from it, straight from SEC filings — click a bubble to read what the filings say about each other.",
   },
   {
     target: "tour-dcf",
@@ -136,13 +146,18 @@ function Robot() {
   );
 }
 
-export function PulseBotTour({ onClose }: { onClose: () => void }) {
+export function PulseBotTour({ onClose, onView }: { onClose: () => void; onView?: (view: NonNullable<TourStep["view"]>) => void }) {
   const reduceMotion = useReducedMotion();
   // Only steps whose target exists right now (e.g. horizontal analysis needs a loaded company).
-  const [steps] = useState(() => TOUR_STEPS.filter((s) => document.getElementById(s.target)));
+  // Steps whose target is on the page, plus tab steps (their content appears once the tab opens).
+  const [steps] = useState(() => TOUR_STEPS.filter((s) => (s.view && s.view !== "matrix") || document.getElementById(s.target)));
   const [index, setIndex] = useState(0);
   const [rect, setRect] = useState<Rect | null>(null);
   const card = useRef<HTMLDivElement>(null);
+  const onViewRef = useRef(onView);
+  useEffect(() => {
+    onViewRef.current = onView;
+  });
   const step = steps[index];
   const last = index === steps.length - 1;
 
@@ -152,20 +167,29 @@ export function PulseBotTour({ onClose }: { onClose: () => void }) {
   // Bring the target into view, then follow it (scrolling, resizing, layout shifts) every frame.
   useLayoutEffect(() => {
     if (!step) return;
-    const el = document.getElementById(step.target);
-    // Tall features scroll to their top edge (scroll-margin keeps it clear of the header); others center.
-    const tall = el ? el.getBoundingClientRect().height > window.innerHeight * 0.6 : false;
+    if (step.view) onViewRef.current?.(step.view); // open the step's tab first
     const behavior = reduceMotion ? "auto" : "smooth";
-    if (el && tall && !el.closest("aside") && !document.querySelector("header")?.contains(el)) {
-      // Page-level tall feature (the matrix): put its top edge just under the sticky header.
-      const headerBottom = document.querySelector("header")?.getBoundingClientRect().bottom ?? 0;
-      window.scrollTo({ top: window.scrollY + el.getBoundingClientRect().top - headerBottom - 16, behavior });
-    } else {
-      el?.scrollIntoView({ behavior, block: tall ? "start" : "center", inline: "nearest" });
-    }
+    const bringIntoView = (el: HTMLElement) => {
+      // Tall features scroll to their top edge (scroll-margin keeps it clear of the header); others center.
+      const tall = el.getBoundingClientRect().height > window.innerHeight * 0.6;
+      if (tall && !el.closest("aside") && !document.querySelector("header")?.contains(el)) {
+        // Page-level tall feature (the matrix): put its top edge just under the sticky header.
+        const headerBottom = document.querySelector("header")?.getBoundingClientRect().bottom ?? 0;
+        window.scrollTo({ top: window.scrollY + el.getBoundingClientRect().top - headerBottom - 16, behavior });
+      } else {
+        el.scrollIntoView({ behavior, block: tall ? "start" : "center", inline: "nearest" });
+      }
+    };
     let frame = 0;
     let prev = "";
+    let scrolled = false;
     const tick = () => {
+      // A tab's content mounts a frame or two after the switch: scroll once it exists.
+      const el = document.getElementById(step.target);
+      if (el && !scrolled && el.getBoundingClientRect().height > 0) {
+        scrolled = true;
+        bringIntoView(el);
+      }
       const r = readRect(step.target);
       const key = r ? `${Math.round(r.top)}:${Math.round(r.left)}:${Math.round(r.width)}:${Math.round(r.height)}` : "";
       if (key !== prev) {

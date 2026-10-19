@@ -340,3 +340,94 @@ export interface LiveQuote {
 export const fetchLiveQuote = (symbol: string, signal?: AbortSignal) =>
   getJson<LiveQuote>(`/api/quotes/${encodeURIComponent(symbol)}`, signal);
 
+
+export interface SupplyChainNode {
+  id: string;
+  name: string;
+  public: boolean;
+  /** Loadable symbol for public companies; null for private ones. */
+  ticker: string | null;
+  role: "focus" | "supplier" | "client" | "both";
+  /** Names used for it in other companies' filings. */
+  mentions: string[];
+}
+
+export interface SupplyChainEdge {
+  /** Supplier id. */
+  source: string;
+  /** Client id. */
+  target: string;
+  /** "supplier": into the focus company · "client": out of it · "peer": between its partners. */
+  type: "supplier" | "client" | "peer";
+  product: string | null;
+  /** The client's share of the supplier's revenue, when the supplier discloses it. */
+  revenue_pct: number | null;
+  /** Disclosed ≥10% customer. */
+  major: boolean;
+  source_note: string | null;
+  /** "curated": from the relationship file · "filing": named in the focus company's latest annual report. */
+  origin: "curated" | "filing";
+  /** The filing sentence a "filing" link was read from. */
+  evidence: string | null;
+}
+
+export interface SupplyChainGraph {
+  focus: string;
+  nodes: SupplyChainNode[];
+  edges: SupplyChainEdge[];
+  /** Companies with mapped relationships, for exploring. */
+  covered: { id: string; name: string }[];
+  /** The annual report read for this web, when the company files with the SEC. */
+  filing: { form: string; filed: string; url: string } | null;
+  /** Why no report was read, when none was. */
+  filing_status: string;
+}
+
+export const fetchSupplyChain = (id: string, signal?: AbortSignal) =>
+  getJson<SupplyChainGraph>(`/api/companies/${encodeURIComponent(id)}/supply-chain`, signal);
+
+export interface FilingNote {
+  company: string;
+  form: string;
+  accession: string;
+  filed: string;
+  url: string;
+  /** Verbatim sentences from the filing that name the partner. */
+  excerpts: string[];
+  /** Percentages / dollar amounts appearing in those sentences — nothing else. */
+  figures: string[];
+  fingerprint: string;
+  /** When this content was first recorded. */
+  as_of: string;
+  /** Accession of the filing whose content this replaced, when a newer filing said something new. */
+  updated_from: string | null;
+  checked_accession: string | null;
+  /** False when only an earlier annual report names the partner. */
+  latest_names_partner: boolean;
+}
+
+export interface RelationshipSide {
+  company: string;
+  name: string;
+  public: boolean;
+  has_filings: boolean;
+  note: FilingNote | null;
+  status: string;
+}
+
+export interface RelationshipContext {
+  supplier: RelationshipSide;
+  client: RelationshipSide;
+  product: string | null;
+  major: boolean;
+  revenue_pct: number | null;
+  source_note: string | null;
+  summary: string;
+  notes_updated: string[];
+}
+
+export const fetchRelationship = (supplier: string, client: string, signal?: AbortSignal) =>
+  getJson<RelationshipContext>(
+    `/api/supply-chain/relationship?supplier=${encodeURIComponent(supplier)}&client=${encodeURIComponent(client)}`,
+    signal,
+  );

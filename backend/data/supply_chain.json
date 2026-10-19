@@ -1,0 +1,941 @@
+{
+  "_about": "Curated supplier → client relationships for the Supply Chain Network. Edit freely: the API re-reads this file whenever it changes. 'revenue_pct' is the client's share of the SUPPLIER's revenue, filled only from the supplier's own annual report (see 'source'); 'major' marks a disclosed ≥10% customer. Leave both empty rather than estimating. 'mentions' lists the names a company goes by in other firms' filings (case-sensitive, whole words).",
+  "companies": {
+    "AAPL": {
+      "name": "Apple",
+      "public": true,
+      "mentions": [
+        "Apple"
+      ]
+    },
+    "MSFT": {
+      "name": "Microsoft",
+      "public": true,
+      "mentions": [
+        "Microsoft",
+        "Azure"
+      ]
+    },
+    "NVDA": {
+      "name": "NVIDIA",
+      "public": true,
+      "mentions": [
+        "NVIDIA",
+        "Nvidia"
+      ]
+    },
+    "AMZN": {
+      "name": "Amazon",
+      "public": true,
+      "mentions": [
+        "Amazon",
+        "AWS"
+      ]
+    },
+    "GOOGL": {
+      "name": "Alphabet",
+      "public": true,
+      "mentions": [
+        "Google",
+        "Alphabet"
+      ]
+    },
+    "META": {
+      "name": "Meta Platforms",
+      "public": true,
+      "mentions": [
+        "Meta Platforms",
+        "Meta"
+      ]
+    },
+    "ORCL": {
+      "name": "Oracle",
+      "public": true,
+      "mentions": [
+        "Oracle"
+      ]
+    },
+    "TSLA": {
+      "name": "Tesla",
+      "public": true,
+      "mentions": [
+        "Tesla"
+      ]
+    },
+    "AMD": {
+      "name": "Advanced Micro Devices",
+      "public": true,
+      "mentions": [
+        "Advanced Micro Devices",
+        "AMD"
+      ]
+    },
+    "INTC": {
+      "name": "Intel",
+      "public": true,
+      "mentions": [
+        "Intel"
+      ]
+    },
+    "AVGO": {
+      "name": "Broadcom",
+      "public": true,
+      "mentions": [
+        "Broadcom"
+      ]
+    },
+    "QCOM": {
+      "name": "Qualcomm",
+      "public": true,
+      "mentions": [
+        "Qualcomm",
+        "QUALCOMM"
+      ]
+    },
+    "MU": {
+      "name": "Micron Technology",
+      "public": true,
+      "mentions": [
+        "Micron"
+      ]
+    },
+    "TXN": {
+      "name": "Texas Instruments",
+      "public": true,
+      "mentions": [
+        "Texas Instruments"
+      ]
+    },
+    "MRVL": {
+      "name": "Marvell Technology",
+      "public": true,
+      "mentions": [
+        "Marvell"
+      ]
+    },
+    "AMAT": {
+      "name": "Applied Materials",
+      "public": true,
+      "mentions": [
+        "Applied Materials"
+      ]
+    },
+    "LRCX": {
+      "name": "Lam Research",
+      "public": true,
+      "mentions": [
+        "Lam Research"
+      ]
+    },
+    "KLAC": {
+      "name": "KLA",
+      "public": true,
+      "mentions": [
+        "KLA"
+      ]
+    },
+    "DELL": {
+      "name": "Dell Technologies",
+      "public": true,
+      "mentions": [
+        "Dell"
+      ]
+    },
+    "HPQ": {
+      "name": "HP Inc",
+      "public": true,
+      "mentions": [
+        "HP Inc"
+      ]
+    },
+    "SMCI": {
+      "name": "Super Micro Computer",
+      "public": true,
+      "mentions": [
+        "Super Micro",
+        "Supermicro"
+      ]
+    },
+    "GLW": {
+      "name": "Corning",
+      "public": true,
+      "mentions": [
+        "Corning"
+      ]
+    },
+    "CRUS": {
+      "name": "Cirrus Logic",
+      "public": true,
+      "mentions": [
+        "Cirrus Logic"
+      ]
+    },
+    "SWKS": {
+      "name": "Skyworks Solutions",
+      "public": true,
+      "mentions": [
+        "Skyworks"
+      ]
+    },
+    "QRVO": {
+      "name": "Qorvo",
+      "public": true,
+      "mentions": [
+        "Qorvo"
+      ]
+    },
+    "JBL": {
+      "name": "Jabil",
+      "public": true,
+      "mentions": [
+        "Jabil"
+      ]
+    },
+    "AMKR": {
+      "name": "Amkor Technology",
+      "public": true,
+      "mentions": [
+        "Amkor"
+      ]
+    },
+    "ARM": {
+      "name": "Arm Holdings",
+      "public": true,
+      "mentions": [
+        "Arm Holdings",
+        "Arm Limited"
+      ]
+    },
+    "CRWV": {
+      "name": "CoreWeave",
+      "public": true,
+      "mentions": [
+        "CoreWeave"
+      ]
+    },
+    "GM": {
+      "name": "General Motors",
+      "public": true,
+      "mentions": [
+        "General Motors",
+        "GM"
+      ]
+    },
+    "F": {
+      "name": "Ford",
+      "public": true,
+      "mentions": [
+        "Ford"
+      ]
+    },
+    "APTV": {
+      "name": "Aptiv",
+      "public": true,
+      "mentions": [
+        "Aptiv"
+      ]
+    },
+    "VZ": {
+      "name": "Verizon",
+      "public": true,
+      "mentions": [
+        "Verizon"
+      ]
+    },
+    "T": {
+      "name": "AT&T",
+      "public": true,
+      "mentions": [
+        "AT&T"
+      ]
+    },
+    "TMUS": {
+      "name": "T-Mobile US",
+      "public": true,
+      "mentions": [
+        "T-Mobile"
+      ]
+    },
+    "BBY": {
+      "name": "Best Buy",
+      "public": true,
+      "mentions": [
+        "Best Buy"
+      ]
+    },
+    "TSM": {
+      "name": "Taiwan Semiconductor (TSMC)",
+      "public": true,
+      "aliases": [
+        "2330.TW"
+      ],
+      "mentions": [
+        "TSMC",
+        "Taiwan Semiconductor"
+      ]
+    },
+    "ASML": {
+      "name": "ASML",
+      "public": true,
+      "aliases": [
+        "ASML.AS"
+      ],
+      "mentions": [
+        "ASML"
+      ]
+    },
+    "SONY": {
+      "name": "Sony",
+      "public": true,
+      "aliases": [
+        "6758.T"
+      ],
+      "mentions": [
+        "Sony"
+      ]
+    },
+    "2317.TW": {
+      "name": "Hon Hai (Foxconn)",
+      "public": true,
+      "mentions": [
+        "Hon Hai",
+        "Foxconn"
+      ]
+    },
+    "4938.TW": {
+      "name": "Pegatron",
+      "public": true,
+      "mentions": [
+        "Pegatron"
+      ]
+    },
+    "2382.TW": {
+      "name": "Quanta Computer",
+      "public": true,
+      "mentions": [
+        "Quanta"
+      ]
+    },
+    "3231.TW": {
+      "name": "Wistron",
+      "public": true,
+      "mentions": [
+        "Wistron"
+      ]
+    },
+    "2454.TW": {
+      "name": "MediaTek",
+      "public": true,
+      "mentions": [
+        "MediaTek"
+      ]
+    },
+    "002475.SZ": {
+      "name": "Luxshare Precision",
+      "public": true,
+      "mentions": [
+        "Luxshare"
+      ]
+    },
+    "300750.SZ": {
+      "name": "CATL",
+      "public": true,
+      "mentions": [
+        "CATL",
+        "Contemporary Amperex"
+      ]
+    },
+    "005930.KS": {
+      "name": "Samsung Electronics",
+      "public": true,
+      "mentions": [
+        "Samsung"
+      ]
+    },
+    "000660.KS": {
+      "name": "SK hynix",
+      "public": true,
+      "mentions": [
+        "SK hynix",
+        "SK Hynix"
+      ]
+    },
+    "373220.KS": {
+      "name": "LG Energy Solution",
+      "public": true,
+      "mentions": [
+        "LG Energy Solution"
+      ]
+    },
+    "034220.KS": {
+      "name": "LG Display",
+      "public": true,
+      "mentions": [
+        "LG Display"
+      ]
+    },
+    "6752.T": {
+      "name": "Panasonic",
+      "public": true,
+      "mentions": [
+        "Panasonic"
+      ]
+    },
+    "6981.T": {
+      "name": "Murata Manufacturing",
+      "public": true,
+      "mentions": [
+        "Murata"
+      ]
+    },
+    "8035.T": {
+      "name": "Tokyo Electron",
+      "public": true,
+      "mentions": [
+        "Tokyo Electron"
+      ]
+    },
+    "4063.T": {
+      "name": "Shin-Etsu Chemical",
+      "public": true,
+      "mentions": [
+        "Shin-Etsu"
+      ]
+    },
+    "0992.HK": {
+      "name": "Lenovo",
+      "public": true,
+      "mentions": [
+        "Lenovo"
+      ]
+    },
+    "1810.HK": {
+      "name": "Xiaomi",
+      "public": true,
+      "mentions": [
+        "Xiaomi"
+      ]
+    },
+    "OPENAI": {
+      "name": "OpenAI",
+      "public": false,
+      "mentions": [
+        "OpenAI"
+      ]
+    },
+    "ANTHROPIC": {
+      "name": "Anthropic",
+      "public": false,
+      "mentions": [
+        "Anthropic"
+      ]
+    },
+    "XAI": {
+      "name": "xAI",
+      "public": false,
+      "mentions": [
+        "xAI"
+      ]
+    },
+    "BOSCH": {
+      "name": "Robert Bosch GmbH",
+      "public": false,
+      "mentions": [
+        "Bosch"
+      ]
+    },
+    "ZEISS": {
+      "name": "Carl Zeiss SMT",
+      "public": false,
+      "mentions": [
+        "Zeiss",
+        "ZEISS"
+      ]
+    },
+    "TRUMPF": {
+      "name": "TRUMPF",
+      "public": false,
+      "mentions": [
+        "TRUMPF",
+        "Trumpf"
+      ]
+    }
+  },
+  "relationships": [
+    {
+      "supplier": "TSM",
+      "client": "AAPL",
+      "product": "A- and M-series processors",
+      "major": true,
+      "source": "TSMC 20-F: largest customer (unnamed)"
+    },
+    {
+      "supplier": "2317.TW",
+      "client": "AAPL",
+      "product": "iPhone assembly"
+    },
+    {
+      "supplier": "4938.TW",
+      "client": "AAPL",
+      "product": "iPhone assembly"
+    },
+    {
+      "supplier": "002475.SZ",
+      "client": "AAPL",
+      "product": "AirPods / iPhone assembly"
+    },
+    {
+      "supplier": "AVGO",
+      "client": "AAPL",
+      "product": "RF & wireless components",
+      "major": true,
+      "revenue_pct": 20,
+      "source": "Broadcom FY2023 10-K (filed 2023-12-14): sales to Apple ≈20% of net revenue; later 10-Ks no longer name Apple"
+    },
+    {
+      "supplier": "QCOM",
+      "client": "AAPL",
+      "product": "5G modems",
+      "major": true,
+      "source": "Qualcomm 10-K: ≥10% customer"
+    },
+    {
+      "supplier": "005930.KS",
+      "client": "AAPL",
+      "product": "OLED displays & memory"
+    },
+    {
+      "supplier": "034220.KS",
+      "client": "AAPL",
+      "product": "Displays"
+    },
+    {
+      "supplier": "SONY",
+      "client": "AAPL",
+      "product": "Camera image sensors"
+    },
+    {
+      "supplier": "GLW",
+      "client": "AAPL",
+      "product": "Cover glass"
+    },
+    {
+      "supplier": "CRUS",
+      "client": "AAPL",
+      "product": "Audio & mixed-signal chips",
+      "major": true,
+      "source": "Cirrus Logic 10-K: largest customer"
+    },
+    {
+      "supplier": "SWKS",
+      "client": "AAPL",
+      "product": "RF front-end modules",
+      "major": true,
+      "source": "Skyworks 10-K: largest customer"
+    },
+    {
+      "supplier": "QRVO",
+      "client": "AAPL",
+      "product": "RF front-end modules",
+      "major": true,
+      "source": "Qorvo 10-K: largest customer"
+    },
+    {
+      "supplier": "JBL",
+      "client": "AAPL",
+      "product": "Manufacturing services",
+      "major": true,
+      "source": "Jabil 10-K: ≥10% customer"
+    },
+    {
+      "supplier": "TXN",
+      "client": "AAPL",
+      "product": "Analog chips"
+    },
+    {
+      "supplier": "MU",
+      "client": "AAPL",
+      "product": "Memory"
+    },
+    {
+      "supplier": "6981.T",
+      "client": "AAPL",
+      "product": "Capacitors & RF modules"
+    },
+    {
+      "supplier": "ARM",
+      "client": "AAPL",
+      "product": "Processor architecture licence"
+    },
+    {
+      "supplier": "AAPL",
+      "client": "VZ",
+      "product": "iPhone & iPad (carrier channel)"
+    },
+    {
+      "supplier": "AAPL",
+      "client": "T",
+      "product": "iPhone & iPad (carrier channel)"
+    },
+    {
+      "supplier": "AAPL",
+      "client": "TMUS",
+      "product": "iPhone & iPad (carrier channel)"
+    },
+    {
+      "supplier": "AAPL",
+      "client": "BBY",
+      "product": "Retail distribution"
+    },
+    {
+      "supplier": "TSM",
+      "client": "NVDA",
+      "product": "GPU wafers & CoWoS packaging"
+    },
+    {
+      "supplier": "000660.KS",
+      "client": "NVDA",
+      "product": "HBM memory"
+    },
+    {
+      "supplier": "MU",
+      "client": "NVDA",
+      "product": "HBM memory"
+    },
+    {
+      "supplier": "005930.KS",
+      "client": "NVDA",
+      "product": "Memory"
+    },
+    {
+      "supplier": "AMKR",
+      "client": "NVDA",
+      "product": "Packaging & test"
+    },
+    {
+      "supplier": "2317.TW",
+      "client": "NVDA",
+      "product": "AI server assembly"
+    },
+    {
+      "supplier": "2382.TW",
+      "client": "NVDA",
+      "product": "AI server assembly"
+    },
+    {
+      "supplier": "3231.TW",
+      "client": "NVDA",
+      "product": "AI server assembly"
+    },
+    {
+      "supplier": "NVDA",
+      "client": "MSFT",
+      "product": "Data-center GPUs"
+    },
+    {
+      "supplier": "NVDA",
+      "client": "AMZN",
+      "product": "Data-center GPUs"
+    },
+    {
+      "supplier": "NVDA",
+      "client": "GOOGL",
+      "product": "Data-center GPUs"
+    },
+    {
+      "supplier": "NVDA",
+      "client": "META",
+      "product": "Data-center GPUs"
+    },
+    {
+      "supplier": "NVDA",
+      "client": "ORCL",
+      "product": "Data-center GPUs"
+    },
+    {
+      "supplier": "NVDA",
+      "client": "TSLA",
+      "product": "AI training GPUs"
+    },
+    {
+      "supplier": "NVDA",
+      "client": "CRWV",
+      "product": "Data-center GPUs"
+    },
+    {
+      "supplier": "NVDA",
+      "client": "XAI",
+      "product": "AI training GPUs"
+    },
+    {
+      "supplier": "NVDA",
+      "client": "DELL",
+      "product": "GPUs for AI servers"
+    },
+    {
+      "supplier": "NVDA",
+      "client": "SMCI",
+      "product": "GPUs for AI servers"
+    },
+    {
+      "supplier": "AMD",
+      "client": "MSFT",
+      "product": "Data-center GPUs & CPUs"
+    },
+    {
+      "supplier": "AMD",
+      "client": "META",
+      "product": "Data-center GPUs & CPUs"
+    },
+    {
+      "supplier": "AMD",
+      "client": "ORCL",
+      "product": "Data-center GPUs"
+    },
+    {
+      "supplier": "AMD",
+      "client": "OPENAI",
+      "product": "Data-center GPUs"
+    },
+    {
+      "supplier": "TSM",
+      "client": "AMD",
+      "product": "Wafers"
+    },
+    {
+      "supplier": "MSFT",
+      "client": "OPENAI",
+      "product": "Azure cloud compute"
+    },
+    {
+      "supplier": "ORCL",
+      "client": "OPENAI",
+      "product": "Cloud compute"
+    },
+    {
+      "supplier": "CRWV",
+      "client": "OPENAI",
+      "product": "GPU cloud"
+    },
+    {
+      "supplier": "CRWV",
+      "client": "MSFT",
+      "product": "GPU cloud capacity",
+      "major": true,
+      "source": "CoreWeave 10-K: largest customer"
+    },
+    {
+      "supplier": "AMZN",
+      "client": "ANTHROPIC",
+      "product": "AWS cloud & Trainium chips"
+    },
+    {
+      "supplier": "GOOGL",
+      "client": "ANTHROPIC",
+      "product": "Google Cloud TPUs"
+    },
+    {
+      "supplier": "AVGO",
+      "client": "GOOGL",
+      "product": "Custom TPU accelerators"
+    },
+    {
+      "supplier": "AVGO",
+      "client": "META",
+      "product": "Custom AI accelerators"
+    },
+    {
+      "supplier": "TSM",
+      "client": "AVGO",
+      "product": "Wafers"
+    },
+    {
+      "supplier": "MRVL",
+      "client": "AMZN",
+      "product": "Custom AI chips"
+    },
+    {
+      "supplier": "TSM",
+      "client": "MRVL",
+      "product": "Wafers"
+    },
+    {
+      "supplier": "TSM",
+      "client": "QCOM",
+      "product": "Wafers"
+    },
+    {
+      "supplier": "TSM",
+      "client": "2454.TW",
+      "product": "Wafers"
+    },
+    {
+      "supplier": "TSM",
+      "client": "INTC",
+      "product": "Outsourced wafers"
+    },
+    {
+      "supplier": "QCOM",
+      "client": "005930.KS",
+      "product": "Snapdragon processors",
+      "major": true,
+      "source": "Qualcomm 10-K: ≥10% customer"
+    },
+    {
+      "supplier": "QCOM",
+      "client": "1810.HK",
+      "product": "Snapdragon processors"
+    },
+    {
+      "supplier": "ASML",
+      "client": "TSM",
+      "product": "EUV & DUV lithography"
+    },
+    {
+      "supplier": "ASML",
+      "client": "005930.KS",
+      "product": "Lithography systems"
+    },
+    {
+      "supplier": "ASML",
+      "client": "INTC",
+      "product": "Lithography systems"
+    },
+    {
+      "supplier": "ASML",
+      "client": "000660.KS",
+      "product": "Lithography systems"
+    },
+    {
+      "supplier": "ASML",
+      "client": "MU",
+      "product": "Lithography systems"
+    },
+    {
+      "supplier": "ZEISS",
+      "client": "ASML",
+      "product": "EUV optics"
+    },
+    {
+      "supplier": "TRUMPF",
+      "client": "ASML",
+      "product": "EUV laser systems"
+    },
+    {
+      "supplier": "AMAT",
+      "client": "TSM",
+      "product": "Deposition & etch equipment"
+    },
+    {
+      "supplier": "LRCX",
+      "client": "TSM",
+      "product": "Etch equipment"
+    },
+    {
+      "supplier": "KLAC",
+      "client": "TSM",
+      "product": "Process control"
+    },
+    {
+      "supplier": "8035.T",
+      "client": "TSM",
+      "product": "Coater/developer & etch equipment"
+    },
+    {
+      "supplier": "4063.T",
+      "client": "TSM",
+      "product": "Silicon wafers"
+    },
+    {
+      "supplier": "AMAT",
+      "client": "INTC",
+      "product": "Deposition & etch equipment"
+    },
+    {
+      "supplier": "AMAT",
+      "client": "MU",
+      "product": "Deposition & etch equipment"
+    },
+    {
+      "supplier": "LRCX",
+      "client": "MU",
+      "product": "Etch equipment"
+    },
+    {
+      "supplier": "INTC",
+      "client": "DELL",
+      "product": "PC & server CPUs"
+    },
+    {
+      "supplier": "INTC",
+      "client": "HPQ",
+      "product": "PC CPUs"
+    },
+    {
+      "supplier": "INTC",
+      "client": "0992.HK",
+      "product": "PC CPUs"
+    },
+    {
+      "supplier": "MU",
+      "client": "DELL",
+      "product": "Memory"
+    },
+    {
+      "supplier": "6752.T",
+      "client": "TSLA",
+      "product": "Battery cells"
+    },
+    {
+      "supplier": "300750.SZ",
+      "client": "TSLA",
+      "product": "LFP battery cells"
+    },
+    {
+      "supplier": "373220.KS",
+      "client": "TSLA",
+      "product": "Battery cells"
+    },
+    {
+      "supplier": "005930.KS",
+      "client": "TSLA",
+      "product": "AI chips (foundry)"
+    },
+    {
+      "supplier": "BOSCH",
+      "client": "TSLA",
+      "product": "Automotive components"
+    },
+    {
+      "supplier": "373220.KS",
+      "client": "GM",
+      "product": "Ultium battery cells"
+    },
+    {
+      "supplier": "APTV",
+      "client": "GM",
+      "product": "Electrical architecture",
+      "source": "Aptiv 10-K: largest customer"
+    },
+    {
+      "supplier": "BOSCH",
+      "client": "GM",
+      "product": "Automotive components"
+    },
+    {
+      "supplier": "300750.SZ",
+      "client": "F",
+      "product": "LFP battery technology licence"
+    },
+    {
+      "supplier": "BOSCH",
+      "client": "F",
+      "product": "Automotive components"
+    },
+    {
+      "supplier": "APTV",
+      "client": "F",
+      "product": "Electrical architecture"
+    }
+  ]
+}

@@ -2,3 +2,8 @@
 __pycache__/
 .pytest_cache/
 .env
+
+# Filing-excerpt cache for supply-chain cards (rebuilt on demand from SEC filings)
+data/relationship_notes.json
+data/*.tmp
+data/filed_relationships.json
