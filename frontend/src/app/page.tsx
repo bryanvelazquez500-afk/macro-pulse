@@ -27,6 +27,7 @@ import { PulseBotTour } from "@/components/PulseBotTour";
 import { TickerSuggestions } from "@/lib/useTickerSuggestions";
 import { ServerWakeNotice } from "@/components/ServerWakeNotice";
 import { ValuationPanel } from "@/components/ValuationPanel";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { WatchlistMenu } from "@/components/WatchlistMenu";
 import { ViewPanel, ViewTab, ViewTabs } from "@/components/ViewTabs";
 import {
@@ -305,6 +306,7 @@ function Station() {
             <div id="tour-drawers">
               <DataDrawers entry={focused} />
             </div>
+            <ThemeToggle />
           </div>
         </div>
         <NewsTicker ticker={focusedReady ? symbolOf(focusedReady) : null} />
