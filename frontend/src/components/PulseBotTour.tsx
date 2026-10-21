@@ -14,6 +14,8 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
+import { flow } from "@/lib/motion";
+
 export interface TourStep {
   target: string; // element id
   title: string;
@@ -130,19 +132,18 @@ function maskPath(r: Rect): string {
 
 function Robot() {
   return (
-    <div className="pulsebot-levitate relative size-14 shrink-0">
-      <span aria-hidden className="pulsebot-ring absolute inset-0 rounded-2xl" />
+    <div className="relative size-14 shrink-0">
       <svg viewBox="0 0 56 56" className="relative size-14" aria-hidden>
-        <line x1="28" y1="6" x2="28" y2="13" stroke="#ffb700" strokeWidth="2" strokeLinecap="round" />
-        <circle cx="28" cy="5" r="3" fill="#ffb700" className="pulsebot-antenna" />
-        <rect x="9" y="13" width="38" height="30" rx="10" fill="rgba(18,20,24,0.9)" stroke="#ffb700" strokeWidth="2" />
-        <rect x="15" y="20" width="26" height="14" rx="7" fill="#0a0b0d" />
-        <circle cx="22" cy="27" r="3" fill="#00f0ff" className="pulsebot-eye" />
-        <circle cx="34" cy="27" r="3" fill="#00f0ff" className="pulsebot-eye" />
-        <path d="M23 38 Q28 41 33 38" stroke="#ffb700" strokeWidth="1.8" fill="none" strokeLinecap="round" />
-        <rect x="5" y="24" width="4" height="9" rx="2" fill="#ffb700" />
-        <rect x="47" y="24" width="4" height="9" rx="2" fill="#ffb700" />
-        <rect x="19" y="45" width="18" height="6" rx="3" fill="rgba(255,183,0,0.35)" />
+        <line x1="28" y1="6" x2="28" y2="13" stroke="var(--spruce)" strokeWidth="2" strokeLinecap="round" />
+        <circle cx="28" cy="5" r="3" fill="var(--brass)" />
+        <rect x="9" y="13" width="38" height="30" rx="10" fill="var(--mint)" stroke="var(--spruce)" strokeWidth="2" />
+        <rect x="15" y="20" width="26" height="14" rx="7" fill="var(--spruce-strong)" />
+        <circle cx="22" cy="27" r="3" fill="var(--mint)" className="pulsebot-eye" />
+        <circle cx="34" cy="27" r="3" fill="var(--mint)" className="pulsebot-eye" />
+        <path d="M23 38 Q28 41 33 38" stroke="var(--spruce)" strokeWidth="1.8" fill="none" strokeLinecap="round" />
+        <rect x="5" y="24" width="4" height="9" rx="2" fill="var(--spruce)" />
+        <rect x="47" y="24" width="4" height="9" rx="2" fill="var(--spruce)" />
+        <rect x="19" y="45" width="18" height="6" rx="3" fill="var(--line-strong)" />
       </svg>
     </div>
   );
@@ -239,7 +240,7 @@ export function PulseBotTour({ onClose, onView }: { onClose: () => void; onView?
     <div className="fixed inset-0 z-[90]" role="presentation">
       {/* Mask: blurred, dark, with a hole over the active feature. Clicking it does nothing (no accidental exit). */}
       <motion.div
-        className="absolute inset-0 bg-ink/40 backdrop-blur-sm"
+        className="absolute inset-0 bg-[rgb(6_16_14/0.55)] backdrop-blur-[2px]"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1, clipPath: rect ? maskPath(rect) : "none" }}
         exit={{ opacity: 0 }}
@@ -249,7 +250,7 @@ export function PulseBotTour({ onClose, onView }: { onClose: () => void; onView?
       {rect && (
         <motion.div
           aria-hidden
-          className="pointer-events-none absolute rounded-xl ring-2 ring-brass shadow-[0_0_0_1px_rgba(255,183,0,0.3),0_0_28px_rgba(255,183,0,0.45)]"
+          className="pointer-events-none absolute rounded-md shadow-[0_0_0_2px_var(--spruce),0_0_0_6px_var(--mint)]"
           initial={false}
           animate={{ top: rect.top, left: rect.left, width: rect.width, height: rect.height }}
           transition={glide}
@@ -273,7 +274,7 @@ export function PulseBotTour({ onClose, onView }: { onClose: () => void; onView?
           {/* Pointer toward the feature */}
           <span
             aria-hidden
-            className={`absolute size-3.5 rotate-45 border-caution/60 bg-panel ${
+            className={`absolute size-3.5 rotate-45 border-line bg-panel ${
               bot.side === "left"
                 ? "top-12 -left-[7px] border-b border-l"
                 : bot.side === "right"
@@ -283,12 +284,12 @@ export function PulseBotTour({ onClose, onView }: { onClose: () => void; onView?
                     : "-bottom-[7px] left-1/2 border-r border-b"
             }`}
           />
-          <div className="rounded-2xl border border-caution/40 bg-panel p-4 shadow-2 backdrop-blur-xl">
+          <div className="rounded-md border border-line bg-panel p-5 shadow-2">
             <div className="flex gap-3">
               <Robot />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[10px] font-semibold tracking-[0.16em] text-caution uppercase">Pulse-Bot</span>
+                  <span className="eyebrow !text-spruce">Pulse-Bot</span>
                   <span className="text-[12px] text-ink-3">
                     {index + 1}/{steps.length}
                   </span>
@@ -299,11 +300,11 @@ export function PulseBotTour({ onClose, onView }: { onClose: () => void; onView?
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -6 }}
-                    transition={{ duration: 0.18 }}
+                    transition={flow(2)}
                     aria-live="polite"
                   >
-                    <h3 className="mt-1 text-[14px] font-semibold text-ink">{step.title}</h3>
-                    <p className="mt-1 text-[13px] leading-snug text-ink-2">{step.text}</p>
+                    <h3 className="mt-1 text-[16px] font-bold text-ink">{step.title}</h3>
+                    <p className="mt-1 text-[14px] leading-5 text-ink-2">{step.text}</p>
                   </motion.div>
                 </AnimatePresence>
               </div>
@@ -312,7 +313,7 @@ export function PulseBotTour({ onClose, onView }: { onClose: () => void; onView?
             {/* Progress */}
             <div className="mt-3 flex gap-1" aria-hidden>
               {steps.map((s, i) => (
-                <span key={s.target} className={`h-1 flex-1 rounded-full transition-colors ${i <= index ? "bg-brass" : "bg-subtle"}`} />
+                <span key={s.target} className={`h-1 flex-1 rounded-full transition-colors duration-[var(--dur-2)] ${i <= index ? "bg-spruce" : "bg-subtle"}`} />
               ))}
             </div>
 
@@ -321,7 +322,7 @@ export function PulseBotTour({ onClose, onView }: { onClose: () => void; onView?
                 type="button"
                 onClick={back}
                 disabled={index === 0}
-                className="rounded-md px-2 py-1 text-[13px] text-ink-3 hover:text-ink disabled:opacity-30"
+                className="btn-ghost btn-sm"
               >
                 ← Back
               </button>
@@ -329,9 +330,9 @@ export function PulseBotTour({ onClose, onView }: { onClose: () => void; onView?
                 <motion.button
                   type="button"
                   onClick={onClose}
-                  initial={reduceMotion ? false : { scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  className="pulsebot-exit rounded-lg bg-gain px-3.5 py-1.5 text-[12px] font-bold text-on-spruce"
+                  initial={reduceMotion ? false : { opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="btn-primary btn-sm"
                 >
                   Exit tour ✓
                 </motion.button>
@@ -339,10 +340,10 @@ export function PulseBotTour({ onClose, onView }: { onClose: () => void; onView?
                 <button
                   type="button"
                   onClick={next}
-                  className="flex items-center gap-2 rounded-lg bg-caution-bg px-3 py-1.5 text-[12px] font-semibold text-caution ring-1 ring-caution/40 hover:bg-caution-bg"
+                  className="btn-primary btn-sm"
                 >
                   Next
-                  <kbd className="rounded border border-caution/40 px-1.5 font-mono text-[12px]">Space</kbd>
+                  <kbd className="rounded-xs border border-on-spruce/40 px-1.5 font-mono text-[11px]">Space</kbd>
                 </button>
               )}
             </div>
