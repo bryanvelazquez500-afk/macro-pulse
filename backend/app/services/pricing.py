@@ -53,3 +53,25 @@ async def resolve_price(financials: FinancialsService, quotes: QuoteService, loa
     return symbol, price_context(
         quote, loaded.currency, priced_us_listing=route.listing is None and symbol not in US_ORDINARY_SHARE_LISTINGS, foreign_filer=bool(latest and is_foreign_filer(latest))
     )
+
+
+def spinoff_after(splits: list[tuple[str, float]], filed: str | None) -> str | None:
+    """Date of a spin-off (a non-split price-adjustment factor in the split record) after `filed`, if any.
+
+    After a spin-off the share price covers only the remaining company while the latest filing still
+    describes the combined one, so per-share comparisons wait for the next filing.
+    """
+    from app.services.gaap_mapping import _split_like
+
+    if not filed:
+        return None
+    return next((day for day, ratio in splits if day > filed and abs(ratio - 1) > 0.005 and not _split_like(ratio)), None)
+
+
+def spinoff_context(price: PriceContext, day: str) -> PriceContext:
+    return PriceContext(
+        price.quote,
+        False,
+        f"Price not comparable: a spin-off/separation on {day} came after the latest filing — the price is for the "
+        "post-separation company, the filings still for the combined one",
+    )

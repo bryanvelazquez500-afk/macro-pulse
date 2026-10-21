@@ -168,6 +168,7 @@ class MacroFactorsResponse(BaseModel):
     sector_betas: dict[str, SectorBetaModel]
     sector_betas_source: str
     updated_at: str
+    aaa_yield: RateModel | None = None  # Moody's Aaa corporate yield (Graham's "Y")
 
 
 class QuoteModel(BaseModel):
@@ -195,6 +196,7 @@ class ValuationInputsResponse(BaseModel):
     beta: BetaChoiceModel
     risk_free_rate: RateModel
     equity_risk_premium: RateModel
+    aaa_yield: RateModel | None = None  # Moody's Aaa corporate yield (Graham's "Y")
 
 
 class SnapshotModel(BaseModel):

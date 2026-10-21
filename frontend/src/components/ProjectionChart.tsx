@@ -115,7 +115,7 @@ export function ProjectionChart({ data, currency = "USD" }: { data: ChartRow[]; 
       <LineChart data={data} margin={{ top: 16, right: 64, bottom: 4, left: 8 }}>
         {lastActual && last && <ReferenceArea x1={lastActual} x2={last.label} fill={c.band} fillOpacity={1} />}
         <CartesianGrid vertical={false} stroke={c.grid} />
-        <XAxis dataKey="label" interval={0} tick={{ fontSize: 10, fill: c.axis }} tickLine={false} axisLine={{ stroke: c.grid }} />
+        <XAxis dataKey="label" interval="preserveStartEnd" minTickGap={14} tick={{ fontSize: 10, fill: c.axis }} tickLine={false} axisLine={{ stroke: c.grid }} />
         <YAxis
           tickFormatter={(v: number) => compactMoney(v, currency)}
           tick={{ fontSize: 11, fill: c.axis }}

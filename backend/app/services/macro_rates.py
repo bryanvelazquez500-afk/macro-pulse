@@ -51,6 +51,8 @@ TREASURY_CSV_URL = "https://home.treasury.gov/resource-center/data-chart-center/
 FRED_CSV_URL = "https://fred.stlouisfed.org/graph/fredgraph.csv"
 FRED_API_URL = "https://api.stlouisfed.org/fred/series/observations"
 FRED_SERIES = "DGS10"
+FRED_AAA_SERIES = "DAAA"
+FRED_AAA_SOURCE = "FRED DAAA (Moody's Seasoned Aaa Corporate Bond Yield)"
 
 TREASURY_SOURCE = "U.S. Treasury Daily Par Yield Curve (10 Yr)"
 FRED_SOURCE = "FRED DGS10 (10-Year Treasury Constant Maturity)"
@@ -88,6 +90,8 @@ class MacroFactors:
     sector_betas: dict[str, SectorBeta]  # keyed by peers.PEER_GROUPS key, plus "market"
     sector_betas_source: str
     updated_at: str  # ISO timestamp of the last write
+    # Moody's seasoned Aaa corporate bond yield (FRED DAAA): the "Y" in Benjamin Graham's revised formula.
+    aaa_yield: RiskFreeRate | None = None
     schema_version: int = SCHEMA_VERSION
 
     def beta_for(self, group: str | None) -> SectorBeta:
@@ -137,7 +141,9 @@ DEFAULT_SECTOR_BETAS: dict[str, SectorBeta] = {
     "utilities": _b(0.42, 0.27, "Utility (General)", "Power"),
     "reits": _b(0.64, 0.40, "R.E.I.T."),
     "chemicals": _b(0.98, 0.75, "Chemical (Diversified)", "Chemical (Specialty)", "Chemical (Basic)"),
-    "market": _b(0.91, 0.76, "Total Market"),
+    # The market portfolio's beta is 1.0 by definition. Damodaran's "Total Market" row (0.91) is an
+    # equal-weighted average across industries, which understates the cost of equity for unmapped companies.
+    "market": _b(1.0, 0.76, "Total Market (CAPM market beta = 1.0)"),
 }
 
 DEFAULT_FACTORS = MacroFactors(
@@ -174,6 +180,7 @@ def _from_json(raw: dict[str, Any]) -> MacroFactors:
         sector_betas={k: SectorBeta(**v) for k, v in raw["sector_betas"].items()},
         sector_betas_source=raw["sector_betas_source"],
         updated_at=raw["updated_at"],
+        aaa_yield=RiskFreeRate(**raw["aaa_yield"]) if raw.get("aaa_yield") else None,
         schema_version=raw.get("schema_version", SCHEMA_VERSION),
     )
 
@@ -242,16 +249,16 @@ def parse_treasury_csv(text: str) -> YieldObservation | None:
     return latest
 
 
-def parse_fred_csv(text: str) -> YieldObservation | None:
-    """Latest DGS10 value from FRED's fredgraph CSV; holidays appear as blank values and are skipped."""
+def parse_fred_csv(text: str, series: str = FRED_SERIES, source: str = FRED_SOURCE) -> YieldObservation | None:
+    """Latest value of a series from FRED's fredgraph CSV; holidays appear as blank values and are skipped."""
     latest: YieldObservation | None = None
     for row in csv.DictReader(io.StringIO(text)):
         day = (row.get("observation_date") or row.get("DATE") or "").strip()
-        raw = (row.get(FRED_SERIES) or "").strip()
+        raw = (row.get(series) or "").strip()
         if not raw or raw == ".":
             continue
         try:
-            obs = YieldObservation(date.fromisoformat(day), float(raw), FRED_SOURCE)
+            obs = YieldObservation(date.fromisoformat(day), float(raw), source)
         except ValueError:
             continue
         if latest is None or obs.as_of > latest.as_of:
@@ -309,6 +316,18 @@ async def fetch_fred_10y(client: httpx.AsyncClient, api_key: str | None, today: 
         return None
 
 
+async def fetch_fred_aaa(client: httpx.AsyncClient, today: date | None = None) -> YieldObservation | None:
+    """Latest Moody's Aaa corporate yield (keyless fredgraph CSV)."""
+    try:
+        since = ((today or date.today()) - timedelta(days=45)).isoformat()
+        response = await client.get(FRED_CSV_URL, params={"id": FRED_AAA_SERIES, "cosd": since})
+        response.raise_for_status()
+        return parse_fred_csv(response.text, FRED_AAA_SERIES, FRED_AAA_SOURCE)
+    except (httpx.HTTPError, ValueError) as exc:
+        logger.warning("FRED AAA request failed: %s", type(exc).__name__)
+        return None
+
+
 async def _within(coro, seconds: float, name: str) -> YieldObservation | None:
     """A source that's slow (home.treasury.gov can take 30s+) shouldn't hold the sync hostage: the
     other source's figure is used instead."""
@@ -344,24 +363,27 @@ async def sync_live_market_factors(
     client = client or httpx.AsyncClient(timeout=20.0, headers={"User-Agent": settings.sec_user_agent}, follow_redirects=True)
     try:
         api_key = settings.fred_api_key.get_secret_value() if settings.fred_api_key else None
-        treasury, fred = await asyncio.gather(
+        treasury, fred, aaa = await asyncio.gather(
             _within(fetch_treasury_10y(client, today), settings.macro_sync_source_timeout_seconds, "Treasury"),
             _within(fetch_fred_10y(client, api_key, today), settings.macro_sync_source_timeout_seconds, "FRED"),
+            _within(fetch_fred_aaa(client, today), settings.macro_sync_source_timeout_seconds, "FRED AAA"),
         )
         latest = latest_observation(treasury, fred)
         if latest is None:
             raise MacroFactorsError("Couldn't fetch the 10-year Treasury yield from Treasury or FRED; macro factors left unchanged")
 
         current = load_macro_factors(path)
-        if latest.as_of.isoformat() < current.risk_free_rate.as_of:
+        changes: dict[str, Any] = {}
+        if latest.as_of.isoformat() >= current.risk_free_rate.as_of:
+            changes["risk_free_rate"] = RiskFreeRate(value=round(latest.percent / 100, 6), as_of=latest.as_of.isoformat(), source=latest.source)
+        else:
             # Only an older print was reachable (e.g. Treasury timed out, FRED lags a day): keep the newer one.
             logger.info("Fetched %s from %s is older than the cached %s; keeping it", latest.as_of, latest.source, current.risk_free_rate.as_of)
+        if aaa is not None and (current.aaa_yield is None or aaa.as_of.isoformat() >= current.aaa_yield.as_of):
+            changes["aaa_yield"] = RiskFreeRate(value=round(aaa.percent / 100, 6), as_of=aaa.as_of.isoformat(), source=aaa.source, tenor="Aaa")
+        if not changes:
             return current
-        updated = replace(
-            current,
-            risk_free_rate=RiskFreeRate(value=round(latest.percent / 100, 6), as_of=latest.as_of.isoformat(), source=latest.source),
-            updated_at=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        )
+        updated = replace(current, **changes, updated_at=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
         save_macro_factors(updated, path)
         return updated
     finally:
@@ -395,6 +417,8 @@ def main() -> None:
     rf, erp = factors.risk_free_rate, factors.equity_risk_premium
     print(f"10-year Treasury yield: {rf.value * 100:.2f}% as of {rf.as_of} ({rf.source})")
     print(f"Equity risk premium:    {erp.value * 100:.2f}% as of {erp.as_of} (unchanged)")
+    if factors.aaa_yield:
+        print(f"Aaa corporate yield:    {factors.aaa_yield.value * 100:.2f}% as of {factors.aaa_yield.as_of}")
     print(f"Market cost of equity:  {factors.cost_of_equity(None) * 100:.2f}% (β {factors.beta_for(None).beta:.2f})")
     print(f"Saved to {_path(None)}")
 

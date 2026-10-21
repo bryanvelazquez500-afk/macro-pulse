@@ -21,6 +21,7 @@ from app.services.gaap_mapping import (
     NormalizedPeriod,
     PeriodType,
     detect_reporting_basis,
+    apply_market_splits,
     normalize_company_facts,
     tag_map_for,
 )
@@ -98,10 +99,11 @@ def _build_periods(all_periods: list[NormalizedPeriod], limit: int, variance_thr
 
 
 class FinancialsService:
-    def __init__(self, sec: SecEdgarClient, fmp: FmpClient, router: DataRouter | None = None):
+    def __init__(self, sec: SecEdgarClient, fmp: FmpClient, router: DataRouter | None = None, quotes: Any = None):
         self.sec = sec
         self.fmp = fmp
         self.router = router or DataRouter(sec)
+        self.quotes = quotes  # QuoteService: split records for splits the filings haven't restated yet
 
     async def get_profile(self, identifier: str, filings_limit: int = 10) -> CompanyProfile:
         route = await self.router.resolve(identifier)
@@ -171,9 +173,12 @@ class FinancialsService:
         facts = await self.sec.get_company_facts(route.cik, cache=cache_facts)
         basis = detect_reporting_basis(facts)
         taxonomies = facts.get("facts", {}).keys()
+        periods = normalize_company_facts(facts, period_type, basis)
+        if self.quotes is not None and not route.symbol.isdigit():
+            apply_market_splits(periods, await self.quotes.get_splits(route.symbol))
         return LoadedFinancials(
             route=route,
-            periods=normalize_company_facts(facts, period_type, basis),
+            periods=periods,
             currency=basis.currency,
             accounting_standard=STANDARD_LABELS[basis.standard],
             entity_name=facts.get("entityName", ""),

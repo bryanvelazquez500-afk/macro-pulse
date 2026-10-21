@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api.routes import router
@@ -29,7 +30,7 @@ async def lifespan(app: FastAPI):
     app.state.data_router = DataRouter(app.state.sec_client)
     app.state.quote_service = QuoteService(app.state.fmp_client, settings)
     app.state.dcf_service = DcfInputsService(
-        FinancialsService(app.state.sec_client, app.state.fmp_client, app.state.data_router), app.state.quote_service
+        FinancialsService(app.state.sec_client, app.state.fmp_client, app.state.data_router, app.state.quote_service), app.state.quote_service
     )
     app.state.supply_chain_store = SupplyChainStore()
     app.state.filed_relationships = FiledRelationships(app.state.sec_client, app.state.data_router)
@@ -51,6 +52,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="MacroPulse API", lifespan=lifespan)
 
+# The full US list is ~1–2 MB of JSON: compress responses.
+app.add_middleware(GZipMiddleware, minimum_size=1024)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=get_settings().cors_origins,

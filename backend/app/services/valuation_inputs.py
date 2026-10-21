@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.services.pricing import PriceContext, resolve_price
+from app.services.pricing import PriceContext, resolve_price, spinoff_after, spinoff_context
 from app.services.data_router import DataSource
 from app.services.financials_service import FinancialsService
 from app.services.gaap_mapping import PeriodType
@@ -46,6 +46,10 @@ def choose_beta(factors: MacroFactors, group_key: str | None, basis: str) -> Bet
 async def get_valuation_inputs(financials: FinancialsService, quotes: QuoteService, identifier: str) -> ValuationInputs:
     loaded = await financials.load_periods(identifier, PeriodType.ANNUAL)
     symbol, price = await resolve_price(financials, quotes, loaded)
+    latest = loaded.periods[0] if loaded.periods else None
+    filed = max((v.filed for v in latest.values.values()), default=None) if latest else None
+    if price.quote and (day := spinoff_after(await quotes.get_splits(symbol), filed)):
+        price = spinoff_context(price, day)
     factors = load_macro_factors()
 
     group_key, basis = None, "no SEC industry code"

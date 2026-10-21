@@ -33,7 +33,7 @@ from app.models import (
 from app.services.macro_rates import MacroFactors, MacroFactorsError, load_macro_factors, sync_once
 from app.services.valuation_inputs import get_valuation_inputs
 from app.services.data_router import DataRouter, DataSource
-from app.services.discovery import LEADERS, LIST_AS_OF, SECTORS, country_leaders
+from app.services.discovery import LEADERS, LIST_AS_OF, SECTORS, country_count, country_leaders
 from app.services.financials_service import FinancialsService
 from app.services.fmp_client import FmpError
 from app.services.gaap_mapping import PeriodType
@@ -42,6 +42,7 @@ from app.services.news import NewsService
 from app.services.peers import suggest_peers
 from app.services.relationship_notes import RelationshipNotFoundError
 from app.services.supply_chain import build_graph
+from app.services.universe import search
 from app.services.variance import DEFAULT_MATERIALITY_THRESHOLD
 
 router = APIRouter(prefix="/api")
@@ -49,7 +50,7 @@ router = APIRouter(prefix="/api")
 
 def get_service(request: Request) -> FinancialsService:
     state = request.app.state
-    return FinancialsService(state.sec_client, state.fmp_client, state.data_router)
+    return FinancialsService(state.sec_client, state.fmp_client, state.data_router, state.quote_service)
 
 
 def get_router(request: Request) -> DataRouter:
@@ -187,13 +188,14 @@ async def company_valuation_inputs(
         beta=BetaChoiceModel(**asdict(v.beta)),
         risk_free_rate=RateModel(value=f.risk_free_rate.value, as_of=f.risk_free_rate.as_of, source=f.risk_free_rate.source),
         equity_risk_premium=RateModel(**asdict(f.equity_risk_premium)),
+        aaa_yield=RateModel(value=f.aaa_yield.value, as_of=f.aaa_yield.as_of, source=f.aaa_yield.source) if f.aaa_yield else None,
     )
 
 
 @router.get("/discovery/countries", response_model=DiscoveryCountriesResponse)
 async def discovery_countries() -> DiscoveryCountriesResponse:
     """Countries with a curated list of leading listed companies (for the Equity Discovery map)."""
-    return DiscoveryCountriesResponse(countries={iso: len(v) for iso, v in LEADERS.items()})
+    return DiscoveryCountriesResponse(countries={iso: country_count(iso) for iso in LEADERS})
 
 
 @router.get("/discovery/countries/{iso2}", response_model=CountryLeadersResponse)
@@ -263,3 +265,20 @@ async def supply_chain_relationship(request: Request, supplier: str = Query(...)
     except RelationshipNotFoundError as exc:
         raise HTTPException(404, str(exc)) from exc
     return RelationshipContextModel.model_validate(asdict(ctx))
+
+
+@router.get("/universe/search")
+async def universe_search(q: str = Query(..., min_length=1, max_length=40), limit: int = Query(10, ge=1, le=25)) -> dict:
+    """Ticker / company-name suggestions: every US-listed SEC filer plus the scout lists' international listings."""
+    us = [{"ticker": l.ticker, "name": l.name, "exchange": l.exchange, "sector": l.sector} for l in search(q, limit)]
+    if len(us) >= limit:
+        return {"results": us}
+    needle = q.strip().upper()
+    intl = [
+        {"ticker": s, "name": n, "exchange": iso, "sector": sec}
+        for iso, rows in LEADERS.items() if iso != "US"
+        for s, n, sec in rows
+        if s.startswith(needle) or needle in n.upper()
+    ]  # fmt: skip
+    seen = {r["ticker"] for r in us}
+    return {"results": us + [r for r in intl if r["ticker"] not in seen][: limit - len(us)]}

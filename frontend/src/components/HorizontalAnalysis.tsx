@@ -62,7 +62,7 @@ const SECTIONS: { key: Exclude<Statement, "all">; label: string; rows: RowDef[] 
         unit: "perShare",
         derived: true,
         get: (p) => {
-          const [ni, sh] = [item(p, "net_income"), item(p, "diluted_shares")];
+          const [ni, sh] = [item(p, "net_income_common") ?? item(p, "net_income"), item(p, "diluted_shares")];
           return ni != null && sh ? ni / sh : null;
         },
       },
@@ -299,6 +299,401 @@ function TrendChart({
   );
 }
 
+
+// ── vertical analysis ────────────────────────────────────────────────────────
+
+// Validated categorical palette (dataviz reference, dark steps; all checks pass on #121418). A series keeps its
+// slot while other selections change — color follows the line item, never its position.
+const SERIES_COLORS = ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181", "#008300", "#9085e9", "#e66767"];
+const MAX_PICKS = SERIES_COLORS.length;
+const MONEY_ROWS = ALL_ROWS.filter((r) => r.unit === "money");
+const rowByKey = new Map(ALL_ROWS.map((r) => [r.key, r]));
+
+const PRESETS: { key: string; label: string; base: string; items: string[]; hint: string }[] = [
+  { key: "income", label: "Income statement", base: "revenue", items: ["cost_of_goods_sold", "gross_profit", "sga_expense", "operating_income", "net_income"], hint: "common-size: % of revenue" },
+  { key: "balance", label: "Balance sheet", base: "total_assets", items: ["cash_and_equivalents", "accounts_receivable", "inventory", "current_assets", "total_liabilities", "stockholders_equity"], hint: "common-size: % of total assets" },
+  { key: "cash", label: "Cash flow", base: "revenue", items: ["operating_cash_flow", "capital_expenditures", "free_cash_flow", "dividends_paid"], hint: "cash flows as % of revenue" },
+  { key: "returns", label: "Returns", base: "stockholders_equity", items: ["net_income", "operating_income"], hint: "e.g. net income ÷ equity (ROE)" },
+];
+
+type Pick = { key: string; slot: number };
+
+function pct(num: number | null, base: number | null): number | null {
+  return num == null || base == null || base === 0 ? null : (num / base) * 100;
+}
+
+function VerticalChart({
+  periods,
+  series,
+}: {
+  periods: FinancialPeriod[];
+  series: { key: string; label: string; color: string; dashed?: boolean; values: (number | null)[] }[];
+}) {
+  const wrap = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(720);
+  const [hover, setHover] = useState<number | null>(null);
+  const reduceMotion = useReducedMotion();
+  useEffect(() => {
+    const el = wrap.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setWidth(el.clientWidth));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const H = 220;
+  const labelRoom = series.length <= 4 ? 120 : 16; // direct labels at line ends when there are few series
+  const pad = { l: 48, r: labelRoom, t: 12, b: 26 };
+  const all = series.flatMap((s) => s.values.filter((v): v is number => v != null));
+  if (periods.length < 2 || all.length === 0) return <p className="py-6 text-center text-[12px] text-ink-3">Pick line items to compare.</p>;
+  const lo = Math.min(0, ...all);
+  const hi = Math.max(...all);
+  const span = hi - lo || 1;
+  const [y0, y1] = [lo - span * 0.06, hi + span * 0.08];
+  const sx = (i: number) => pad.l + (i / (periods.length - 1)) * (width - pad.l - pad.r);
+  const sy = (v: number) => pad.t + (1 - (v - y0) / (y1 - y0)) * (H - pad.t - pad.b);
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => y0 + (y1 - y0) * f);
+  const step = Math.max(1, Math.ceil(periods.length / 10));
+  const path = (values: (number | null)[]) => {
+    let d = "";
+    let pen = false;
+    values.forEach((v, i) => {
+      if (v == null) {
+        pen = false;
+        return;
+      }
+      d += `${pen ? "L" : "M"}${sx(i).toFixed(1)},${sy(v).toFixed(1)}`;
+      pen = true;
+    });
+    return d;
+  };
+
+  return (
+    <div ref={wrap} className="relative">
+      <svg
+        width={width}
+        height={H}
+        role="img"
+        aria-label={`Percent of base for ${series.map((s) => s.label).join(", ")} across ${periods.length} periods`}
+        onMouseLeave={() => setHover(null)}
+        onMouseMove={(e) => {
+          const x = e.clientX - e.currentTarget.getBoundingClientRect().left;
+          const i = Math.round(((x - pad.l) / (width - pad.l - pad.r)) * (periods.length - 1));
+          setHover(Math.max(0, Math.min(periods.length - 1, i)));
+        }}
+      >
+        {ticks.map((t) => (
+          <g key={t}>
+            <line x1={pad.l} x2={width - pad.r} y1={sy(t)} y2={sy(t)} stroke="rgba(255,255,255,0.06)" />
+            <text x={pad.l - 8} y={sy(t) + 3.5} textAnchor="end" className="fill-[#7d8590] font-mono text-[10px]">
+              {t.toFixed(0)}%
+            </text>
+          </g>
+        ))}
+        {y0 < 0 && y1 > 0 && <line x1={pad.l} x2={width - pad.r} y1={sy(0)} y2={sy(0)} stroke="rgba(255,255,255,0.25)" />}
+        {periods.map((p, i) =>
+          i % step === 0 || i === periods.length - 1 ? (
+            <text key={p.end} x={sx(i)} y={H - 8} textAnchor="middle" className="fill-[#7d8590] font-mono text-[10px]">
+              {periodLabel(p).replace("FY", "")}
+            </text>
+          ) : null,
+        )}
+        {series.map((s) => (
+          <motion.path
+            key={s.key}
+            d={path(s.values)}
+            fill="none"
+            stroke={s.color}
+            strokeWidth={2}
+            strokeDasharray={s.dashed ? "5 4" : undefined}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            initial={reduceMotion ? false : { pathLength: 0, opacity: 0 }}
+            animate={{ pathLength: 1, opacity: 1 }}
+            transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
+          />
+        ))}
+        {series.map((s) =>
+          s.values.map((v, i) =>
+            v == null ? null : (
+              // 2px surface ring keeps overlapping markers legible.
+              <circle key={`${s.key}-${i}`} cx={sx(i)} cy={sy(v)} r={hover === i ? 4.5 : 2.5} fill={s.color} stroke="#121418" strokeWidth={2} />
+            ),
+          ),
+        )}
+        {series.length <= 4 &&
+          series.map((s) => {
+            const lastIdx = s.values.map((v, i) => (v == null ? -1 : i)).filter((i) => i >= 0).pop();
+            if (lastIdx == null) return null;
+            return (
+              <text key={`lbl-${s.key}`} x={sx(lastIdx) + 8} y={sy(s.values[lastIdx]!) + 3.5} className="fill-[#c9d1d9] text-[10.5px]">
+                {s.label.length > 16 ? `${s.label.slice(0, 15)}…` : s.label}
+              </text>
+            );
+          })}
+        {hover != null && <line x1={sx(hover)} x2={sx(hover)} y1={pad.t} y2={H - pad.b} stroke="rgba(255,255,255,0.3)" />}
+      </svg>
+      {hover != null && (
+        <div
+          className="pointer-events-none absolute top-1 z-10 w-56 rounded-md border border-white/10 bg-[#121418]/95 px-2.5 py-2 text-[11px] shadow-xl"
+          style={{ left: Math.min(Math.max(sx(hover) - 112, 0), width - 224) }}
+        >
+          <div className="mb-1 font-semibold text-ink">{periodLabel(periods[hover])}</div>
+          {[...series]
+            .sort((a, b) => (b.values[hover] ?? -Infinity) - (a.values[hover] ?? -Infinity))
+            .map((s) => (
+              <div key={s.key} className="flex items-center justify-between gap-2">
+                <span className="flex min-w-0 items-center gap-1.5 text-ink-3">
+                  <span className="h-0.5 w-3 shrink-0 rounded" style={{ background: s.color }} />
+                  <span className="truncate">{s.label}</span>
+                </span>
+                <span className="font-mono text-ink">{s.values[hover] == null ? "—" : `${s.values[hover]!.toFixed(1)}%`}</span>
+              </div>
+            ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function VerticalView({ periods, currency, periodType }: { periods: FinancialPeriod[]; currency: string; periodType: PeriodType }) {
+  const reduceMotion = useReducedMotion();
+  const [base, setBase] = useState("revenue");
+  const [picks, setPicks] = useState<Pick[]>(() => PRESETS[0].items.map((key, slot) => ({ key, slot })));
+  const [preset, setPreset] = useState<string | null>("income");
+  // The sum only means something for a combination you build (COGS + SG&A), not for overlapping presets.
+  const [showSum, setShowSum] = useState(false);
+
+  // Only line items this company reports somewhere in the span.
+  const available = useMemo(() => new Set(MONEY_ROWS.filter((r) => periods.some((p) => r.get(p) != null)).map((r) => r.key)), [periods]);
+  const baseRow = rowByKey.get(base) ?? MONEY_ROWS[0];
+  const shownPicks = picks.filter((p) => available.has(p.key) && p.key !== base);
+
+  function applyPreset(key: string) {
+    const pr = PRESETS.find((x) => x.key === key)!;
+    setBase(pr.base);
+    setPicks(pr.items.filter((k) => available.has(k)).slice(0, MAX_PICKS).map((k, slot) => ({ key: k, slot })));
+    setPreset(key);
+  }
+  function toggle(key: string) {
+    setPreset(null);
+    setPicks((cur) => {
+      if (cur.some((p) => p.key === key)) return cur.filter((p) => p.key !== key);
+      if (cur.length >= MAX_PICKS) return cur;
+      const used = new Set(cur.map((p) => p.slot));
+      const slot = SERIES_COLORS.findIndex((_, i) => !used.has(i));
+      return [...cur, { key, slot }];
+    });
+  }
+
+  const rows = shownPicks.map((p) => {
+    const row = rowByKey.get(p.key)!;
+    return { ...p, row, values: periods.map((per) => pct(row.get(per), baseRow.get(per))) };
+  });
+  const combined =
+    showSum && rows.length >= 2
+      ? periods.map((per) => {
+          const parts = rows.map((r) => r.row.get(per));
+          return parts.some((v) => v == null) ? null : pct(parts.reduce((a, b) => a! + b!, 0), baseRow.get(per));
+        })
+      : null;
+  type Series = { key: string; label: string; color: string; dashed?: boolean; values: (number | null)[] };
+  const series: Series[] = [
+    ...rows.map((r) => ({ key: r.key, label: r.row.label, color: SERIES_COLORS[r.slot], values: r.values })),
+    ...(combined ? [{ key: "sum", label: "Σ selected", color: "#e6edf3", dashed: true, values: combined }] : []),
+  ];
+  const tableRows = [...rows.map((r) => ({ key: r.key, label: r.row.label, color: SERIES_COLORS[r.slot], values: r.values })), ...(combined ? [{ key: "sum", label: "Σ selected", color: "#e6edf3", values: combined }] : [])];
+  const avg = (vs: (number | null)[]) => {
+    const xs = vs.filter((v): v is number => v != null);
+    return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null;
+  };
+  const shift = (vs: (number | null)[]) => {
+    const xs = vs.filter((v): v is number => v != null);
+    return xs.length >= 2 ? xs[xs.length - 1] - xs[0] : null;
+  };
+
+  return (
+    <motion.div
+      key="vertical"
+      initial={reduceMotion ? false : { opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      className="space-y-4"
+    >
+      {/* Presets + base */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-[11px] text-ink-4">Presets</span>
+        {PRESETS.map((pr) => (
+          <button
+            key={pr.key}
+            type="button"
+            onClick={() => applyPreset(pr.key)}
+            aria-pressed={preset === pr.key}
+            title={pr.hint}
+            className={`rounded-full px-2.5 py-1 text-[11px] font-medium ring-1 ring-inset transition ${
+              preset === pr.key ? "bg-macropulse-cyan/15 text-macropulse-cyan ring-macropulse-cyan/40" : "text-ink-3 ring-white/10 hover:text-ink"
+            }`}
+          >
+            {pr.label}
+          </button>
+        ))}
+        <label className="ml-auto flex items-center gap-2 text-[11.5px] text-ink-3">
+          Base (= 100%)
+          <select
+            value={base}
+            onChange={(e) => {
+              setBase(e.target.value);
+              setPreset(null);
+            }}
+            className="h-8 rounded-md bg-black/40 px-2 text-[12px] text-ink ring-1 ring-white/10 outline-none ring-inset focus:ring-macropulse-cyan"
+          >
+            {SECTIONS.map((sec) => (
+              <optgroup key={sec.key} label={sec.label}>
+                {sec.rows
+                  .filter((r) => r.unit === "money" && available.has(r.key))
+                  .map((r) => (
+                    <option key={r.key} value={r.key}>
+                      {r.label}
+                    </option>
+                  ))}
+              </optgroup>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      {/* Line-item picker */}
+      <div className="space-y-2 rounded-lg border border-white/5 bg-black/20 p-3">
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="text-[11.5px] font-medium text-ink-2">Line items as % of {baseRow.label}</span>
+          <span className="flex items-center gap-3 text-[10.5px] text-ink-4">
+            <label className={`flex items-center gap-1.5 ${shownPicks.length >= 2 ? "cursor-pointer text-ink-3" : "opacity-40"}`}>
+              <input
+                type="checkbox"
+                checked={showSum}
+                disabled={shownPicks.length < 2}
+                onChange={(e) => setShowSum(e.target.checked)}
+                className="size-3.5 accent-cyan-400"
+              />
+              Show Σ of selected
+            </label>
+            {shownPicks.length}/{MAX_PICKS} selected · click to add or remove
+          </span>
+        </div>
+        {SECTIONS.map((sec) => {
+          const options = sec.rows.filter((r) => r.unit === "money" && available.has(r.key));
+          if (!options.length) return null;
+          return (
+            <div key={sec.key} className="flex flex-wrap items-center gap-1.5">
+              <span className="w-24 shrink-0 text-[10px] tracking-wide text-ink-4 uppercase">{sec.label.split(" ·")[0]}</span>
+              {options.map((r) => {
+                const pick = shownPicks.find((p) => p.key === r.key);
+                const isBase = r.key === base;
+                const full = !pick && shownPicks.length >= MAX_PICKS;
+                return (
+                  <button
+                    key={r.key}
+                    type="button"
+                    onClick={() => toggle(r.key)}
+                    disabled={isBase || full}
+                    aria-pressed={!!pick}
+                    title={isBase ? "This is the base (100%)" : full ? `Up to ${MAX_PICKS} line items` : undefined}
+                    className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] ring-1 ring-inset transition disabled:cursor-not-allowed disabled:opacity-40 ${
+                      pick ? "bg-white/[0.06] text-ink ring-white/20" : "text-ink-3 ring-white/10 hover:text-ink"
+                    }`}
+                  >
+                    {pick && <span aria-hidden className="size-2 rounded-full" style={{ background: SERIES_COLORS[pick.slot] }} />}
+                    {r.label}
+                    {isBase && <span className="text-[9.5px] text-ink-4">base</span>}
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Chart */}
+      <div className="rounded-lg border border-white/5 bg-black/25 p-3">
+        <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+          {series.map((s) => (
+            <span key={s.key} className="flex items-center gap-1.5 text-[11px] text-ink-2">
+              <span className="h-0.5 w-4 rounded" style={{ background: s.color, opacity: s.dashed ? 0.8 : 1 }} />
+              {s.label}
+            </span>
+          ))}
+          <span className="ml-auto text-[10.5px] text-ink-4">% of {baseRow.label} · hover for details</span>
+        </div>
+        <VerticalChart periods={periods} series={series} />
+      </div>
+
+      {/* Table */}
+      {tableRows.length > 0 && (
+        <div className="overflow-x-auto rounded-lg ring-1 ring-white/5 ring-inset">
+          <table className="w-full border-separate border-spacing-0 text-[11.5px]">
+            <thead>
+              <tr className="text-ink-4">
+                <th className="sticky left-0 z-10 bg-[#0f1114] px-3 py-2 text-left font-medium">% of {baseRow.label}</th>
+                {periods.map((p) => (
+                  <th key={p.end} className="bg-[#0f1114] px-2.5 py-2 text-right font-mono font-medium whitespace-nowrap">
+                    {periodLabel(p)}
+                  </th>
+                ))}
+                <th className="bg-[#0f1114] px-3 py-2 text-right font-medium whitespace-nowrap">Average</th>
+                <th className="bg-[#0f1114] px-3 py-2 text-right font-medium whitespace-nowrap" title="Change from the first to the last period, in percentage points">
+                  Shift (pp)
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {tableRows.map((r) => {
+                const a = avg(r.values);
+                const d = shift(r.values);
+                return (
+                  <tr key={r.key} className={r.key === "sum" ? "font-semibold" : ""}>
+                    <th scope="row" className="sticky left-0 z-10 border-t border-white/5 bg-[#0f1114] px-3 py-1.5 text-left font-medium whitespace-nowrap text-ink-2">
+                      <span className="flex items-center gap-1.5">
+                        <span aria-hidden className="h-0.5 w-3 rounded" style={{ background: r.color }} />
+                        {r.label}
+                      </span>
+                    </th>
+                    {r.values.map((v, i) => (
+                      <td
+                        key={periods[i].end}
+                        className="border-t border-white/5 px-2.5 py-1.5 text-right whitespace-nowrap"
+                        // Sequential (one hue) intensity by magnitude: how big a share of the base it is.
+                        style={{ backgroundColor: v == null ? undefined : `rgba(0,240,255,${Math.min(Math.abs(v), 100) / 100 * 0.22})` }}
+                        title={`${periodLabel(periods[i])}: ${fmt(r.key === "sum" ? null : (rowByKey.get(r.key)?.get(periods[i]) ?? null), "money", currency)} of ${fmt(baseRow.get(periods[i]), "money", currency)}`}
+                      >
+                        <span className="font-mono text-ink tabular-nums">{v == null ? "—" : `${v.toFixed(1)}%`}</span>
+                      </td>
+                    ))}
+                    <td className="border-t border-white/5 px-3 py-1.5 text-right font-mono text-ink tabular-nums">{a == null ? "—" : `${a.toFixed(1)}%`}</td>
+                    <td className="border-t border-white/5 px-3 py-1.5 text-right font-mono tabular-nums">
+                      {d == null ? <span className="text-ink-4">—</span> : (
+                        <span className="text-ink">
+                          {d >= 0 ? "▲" : "▼"} {d >= 0 ? "+" : "−"}
+                          {Math.abs(d).toFixed(1)}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <p className="text-[10.5px] leading-snug text-ink-4">
+        Vertical analysis divides each selected line item by the base in the same {periodType === "annual" ? "fiscal year" : "quarter"}. Flows (income,
+        cash flow) and period-end balances can be mixed — e.g. net income ÷ stockholders&apos; equity is return on equity. &ldquo;Show Σ of
+        selected&rdquo; adds the picked items before dividing — useful for combinations like COGS + SG&amp;A (shown when every one is reported).
+      </p>
+    </motion.div>
+  );
+}
+
 // ── card ────────────────────────────────────────────────────────────────────
 
 function Segmented<T extends string>({ value, options, onChange, label }: { value: T; options: { key: T; label: string; title?: string }[]; onChange: (v: T) => void; label: string }) {
@@ -346,6 +741,7 @@ function CompanyCard({ entry, periodType, defaultOpen }: { entry: CompanyEntry; 
   const [years, setYears] = useState<5 | 10>(5);
   const [mode, setMode] = useState<Mode>("change");
   const [statement, setStatement] = useState<Statement>("all");
+  const [analysis, setAnalysis] = useState<"horizontal" | "vertical">("horizontal");
   const [selected, setSelected] = useState("revenue");
   const reduceMotion = useReducedMotion();
 
@@ -427,6 +823,33 @@ function CompanyCard({ entry, periodType, defaultOpen }: { entry: CompanyEntry; 
           >
             <div className="space-y-4 p-4">
               <div className="flex flex-wrap items-center gap-3">
+                <div role="radiogroup" aria-label="Analysis method" className="inline-flex rounded-xl bg-black/40 p-1 ring-1 ring-macropulse-cyan/25 ring-inset">
+                  {(
+                    [
+                      ["horizontal", "Horizontal", "trend over time"],
+                      ["vertical", "Vertical", "% of a base"],
+                    ] as const
+                  ).map(([key, label, sub]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      role="radio"
+                      aria-checked={analysis === key}
+                      onClick={() => setAnalysis(key)}
+                      className={`relative rounded-lg px-3.5 py-1.5 text-left transition ${analysis === key ? "text-black" : "text-ink-3 hover:text-ink"}`}
+                    >
+                      {analysis === key && (
+                        <motion.span
+                          layoutId={`ha-method-${entry.id}`}
+                          className="absolute inset-0 rounded-lg bg-macropulse-cyan shadow-[0_0_14px_rgba(0,240,255,0.45)]"
+                          transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                        />
+                      )}
+                      <span className="relative block text-[12px] font-semibold">{label}</span>
+                      <span className={`relative block text-[10px] ${analysis === key ? "text-black/70" : "text-ink-4"}`}>{sub}</span>
+                    </button>
+                  ))}
+                </div>
                 <Segmented
                   label="Time span"
                   value={String(years) as "5" | "10"}
@@ -436,9 +859,13 @@ function CompanyCard({ entry, periodType, defaultOpen }: { entry: CompanyEntry; 
                     { key: "10", label: periodType === "annual" ? "10 years" : "10 yrs · 30 Qs" },
                   ]}
                 />
-                <Segmented label="Display" value={mode} onChange={setMode} options={MODES.map((m) => ({ key: m.key, label: m.label, title: m.hint }))} />
-                <Segmented label="Statement" value={statement} onChange={setStatement} options={STATEMENT_OPTIONS} />
-                <span className="ml-auto text-[11px] text-ink-4">{rowCount} line items</span>
+                {analysis === "horizontal" && (
+                  <>
+                    <Segmented label="Display" value={mode} onChange={setMode} options={MODES.map((m) => ({ key: m.key, label: m.label, title: m.hint }))} />
+                    <Segmented label="Statement" value={statement} onChange={setStatement} options={STATEMENT_OPTIONS} />
+                    <span className="ml-auto text-[11px] text-ink-4">{rowCount} line items</span>
+                  </>
+                )}
               </div>
               {short && (
                 <p className="rounded-md bg-macropulse-neon-amber/10 px-3 py-1.5 text-[11.5px] text-amber-200 ring-1 ring-macropulse-neon-amber/25 ring-inset">
@@ -447,6 +874,16 @@ function CompanyCard({ entry, periodType, defaultOpen }: { entry: CompanyEntry; 
                 </p>
               )}
 
+              <AnimatePresence mode="wait" initial={false}>
+                {analysis === "horizontal" ? (
+                  <motion.div
+                    key="horizontal"
+                    initial={reduceMotion ? false : { opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="space-y-4"
+                  >
               <div className="rounded-lg border border-white/5 bg-black/25 p-3">
                 <div className="mb-1 flex items-baseline justify-between gap-2">
                   <h4 className="text-[13px] font-semibold text-ink">
@@ -544,8 +981,13 @@ function CompanyCard({ entry, periodType, defaultOpen }: { entry: CompanyEntry; 
                   ? `Each fiscal year (${form}) is compared with the one before.`
                   : "Each quarter (10-Q) is compared with the same quarter a year earlier. Q4 has no 10-Q — it's in the annual 10-K; switch to Annual to include it. Q2/Q3 cash flows are year-to-date figures minus the prior quarter's."}{" "}
                 Balance-sheet items are period-end balances; &ldquo;calc&rdquo; rows are derived (gross profit = revenue − COGS, EPS = net income ÷ diluted
-                shares). Line items a company doesn&apos;t report are hidden. Click a row to chart it; n/m = not meaningful (negative or zero base).
+                shares, using net income available to common shareholders when reported). Line items a company doesn&apos;t report are hidden. Click a row to chart it; n/m = not meaningful (negative or zero base).
               </p>
+                  </motion.div>
+                ) : (
+                  <VerticalView periods={periods} currency={currency} periodType={periodType} />
+                )}
+              </AnimatePresence>
             </div>
           </motion.div>
         )}
@@ -566,9 +1008,11 @@ export function HorizontalAnalysis({ entries, periodType, focusedId }: { entries
           <div>
             <div className="eyebrow text-macropulse-cyan/80">Trend over time · {periodType === "annual" ? "annual reports" : "quarterly 10-Qs"}</div>
             <h2 id="ha-title" className="mt-0.5 text-xl font-semibold tracking-tight text-white">
-              Horizontal Analysis
+              Horizontal &amp; Vertical Analysis
             </h2>
-            <p className="mt-0.5 text-[12.5px] text-ink-3">Every line item across 5–10 years, as % change, an index or reported values.</p>
+            <p className="mt-0.5 text-[12.5px] text-ink-3">
+              Horizontal: every line item across 5–10 years. Vertical: any line items as a % of the base you choose.
+            </p>
           </div>
         </div>
         <span className="rounded-full bg-white/[0.04] px-3 py-1 text-[11px] text-ink-3 ring-1 ring-white/10 ring-inset">

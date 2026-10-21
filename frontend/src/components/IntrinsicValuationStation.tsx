@@ -11,13 +11,13 @@ import {
   capm,
   defaultDividendGrowth,
   dividendGrowthCeiling,
+  GRAHAM_GROWTH_CAP_PCT,
   gordonDdm,
+  grahamGrowthPct,
   grahamValue,
   marginOfSafety,
   statementInputs,
 } from "@/lib/intrinsic";
-import { deriveBaseline } from "@/lib/valuation";
-import { useAssumptions } from "@/lib/valuationAssumptions";
 import { useFetch } from "@/lib/useFetch";
 
 const pct = (v: number, digits = 2) => `${(v * 100).toFixed(digits)}%`;
@@ -141,12 +141,10 @@ export function IntrinsicValuationStation({
   currency: string;
 }) {
   const inputs = useFetch((signal) => fetchValuationInputs(companyId, signal));
-  const baseline = useMemo(() => deriveBaseline(annualPeriods), [annualPeriods]);
-  const [assumptions] = useAssumptions(companyId, baseline?.defaults ?? null);
   const statements = useMemo(() => statementInputs(annualPeriods), [annualPeriods]);
 
   // Overrides from "Sync Live Market Factors" replace the cached rate immediately.
-  const [synced, setSynced] = useState<{ riskFree: Rate; erp: Rate } | null>(null);
+  const [synced, setSynced] = useState<{ riskFree: Rate; erp: Rate; aaa: Rate | null } | null>(null);
   const [sync, setSync] = useState<SyncState>({ status: "idle" });
   const [dividendGrowth, setDividendGrowth] = useState<number | null>(null);
 
@@ -162,19 +160,22 @@ export function IntrinsicValuationStation({
     try {
       const f: MacroFactors = await syncMacroFactors();
       setSync({ status: "done", previous: rf });
-      setSynced({ riskFree: f.risk_free_rate, erp: f.equity_risk_premium });
+      setSynced({ riskFree: f.risk_free_rate, erp: f.equity_risk_premium, aaa: f.aaa_yield ?? null });
     } catch (e) {
       setSync({ status: "error", message: e instanceof Error ? e.message : "Sync failed" });
     }
   }
 
-  const growth = assumptions?.revenueGrowthPct ?? null;
+  // Graham: Y is the Aaa corporate yield (the Treasury only if Aaa is unavailable), g the company's own EPS growth.
+  const aaa = synced?.aaa ?? loaded?.aaa_yield ?? null;
+  const grahamY = aaa?.value ?? rf;
+  const grahamG = grahamGrowthPct(statements);
   const gd = dividendGrowth ?? (ke != null ? defaultDividendGrowth(statements, ke, rf) : 0);
   const gdCeiling = ke != null ? dividendGrowthCeiling(rf, ke) : null;
   const pending: ModelResult = { ok: false, reason: inputs.status === "error" ? inputs.error : "Loading market inputs…" };
 
   const ddm = ke != null ? gordonDdm(statements, gd, ke) : pending;
-  const graham = growth != null ? grahamValue(statements, growth, rf) : pending;
+  const graham = inputs.status === "loading" ? pending : grahamValue(statements, grahamG, grahamY);
   const quote = loaded?.price ?? null;
   const price = quote ? { value: quote.price, comparable: quote.comparable, note: loaded?.price_note ?? null } : null;
 
@@ -268,18 +269,17 @@ export function IntrinsicValuationStation({
             <TargetRow name="Gordon Growth DDM" formula="D₀(1+g)/(kₑ − g)" result={ddm} price={price} currency={currency} />
             <TargetRow
               name="Benjamin Graham"
-              formula="EPS × (8.5 + 2g) × 4.4 / r_f"
+              formula="EPS × (8.5 + 2g) × 4.4 / Y (Aaa yield)"
               result={graham}
               price={price}
               currency={currency}
               extra={
-                growth != null &&
-                growth > 15 && (
-                  <span className="text-amber-700 dark:text-amber-400">
-                    g {growth.toFixed(0)}% gives a {(8.5 + 2 * growth).toFixed(0)}× multiple — Graham meant modest 7–10 year EPS growth, so this
-                    reads high.
-                  </span>
-                )
+                <span className="text-ink-4">
+                  g = {statements.epsCagr != null ? `${statements.epsCagrYears}-yr EPS growth ${(statements.epsCagr * 100).toFixed(1)}%` : "no EPS history"}
+                  {statements.epsCagr != null && statements.epsCagr * 100 > GRAHAM_GROWTH_CAP_PCT && `, held to ${GRAHAM_GROWTH_CAP_PCT}%`}
+                  {(statements.epsCagr == null || statements.epsCagr < 0) && ", taken as 0%"} · Y ={" "}
+                  {aaa ? `Moody's Aaa ${(aaa.value * 100).toFixed(2)}% (${aaa.as_of})` : `10Y Treasury ${(rf * 100).toFixed(2)}% (Aaa yield unavailable)`}
+                </span>
               }
             />
           </ul>
@@ -288,8 +288,10 @@ export function IntrinsicValuationStation({
         {/* Inputs that drive the models */}
         <div className="space-y-2 border-t border-line pt-3 text-[11px] text-ink-3">
           <div className="flex justify-between gap-2">
-            <span>Growth (center Valuation slider, for Graham)</span>
-            <span className="font-mono text-ink-2">{growth != null ? `${growth.toFixed(1)}%` : "—"}</span>
+            <span>Graham g · Y</span>
+            <span className="font-mono text-ink-2">
+              {grahamG.toFixed(1)}% · {(grahamY * 100).toFixed(2)}%
+            </span>
           </div>
           <div className="flex justify-between gap-2">
             <span>FY{statements.fiscalYear ?? "—"} diluted EPS · shares (SEC)</span>

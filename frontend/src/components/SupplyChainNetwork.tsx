@@ -24,6 +24,7 @@ import {
   fetchRelationship,
   fetchSupplyChain,
 } from "@/lib/api";
+import { TickerSuggestions } from "@/lib/useTickerSuggestions";
 
 type GNode = SupplyChainNode & { x?: number; y?: number };
 type GLink = Omit<SupplyChainEdge, "source" | "target"> & { source: string | GNode; target: string | GNode };
@@ -381,7 +382,6 @@ export function SupplyChainNetwork({ focusTicker, onInject }: { focusTicker: str
   const [explore, setExplore] = useState<string | null>(null);
   const [selected, setSelected] = useState<SupplyChainNode | null>(null);
   const [query, setQuery] = useState("");
-  const [suggestions, setSuggestions] = useState<{ id: string; name: string }[]>([]);
   const target = explore ?? focusTicker ?? "AAPL";
   const [state, setState] = useState<{ key: string; data?: SupplyChainGraph; error?: string } | null>(null);
 
@@ -390,7 +390,6 @@ export function SupplyChainNetwork({ focusTicker, onInject }: { focusTicker: str
     fetchSupplyChain(target, ctrl.signal).then(
       (data) => {
         setState({ key: target, data });
-        if (data.covered.length) setSuggestions(data.covered);
       },
       (e) => !ctrl.signal.aborted && setState({ key: target, error: e instanceof Error ? e.message : "Request failed" }),
     );
@@ -458,13 +457,7 @@ export function SupplyChainNetwork({ focusTicker, onInject }: { focusTicker: str
             maxLength={16}
             className="h-9 w-full rounded-lg bg-black/30 pr-3 pl-8 font-mono text-[12.5px] text-ink uppercase ring-1 ring-white/10 outline-none ring-inset placeholder:text-ink-4 placeholder:normal-case focus:ring-macropulse-cyan"
           />
-          <datalist id="supply-chain-tickers">
-            {suggestions.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </datalist>
+          <TickerSuggestions id="supply-chain-tickers" query={query} />
         </div>
         <button type="submit" disabled={!query.trim()} className="h-9 rounded-lg bg-macropulse-cyan/15 px-4 text-[12px] font-semibold text-macropulse-cyan ring-1 ring-macropulse-cyan/40 ring-inset hover:bg-macropulse-cyan/25 disabled:opacity-40">
           Map it

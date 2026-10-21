@@ -28,6 +28,7 @@ import {
 import { currencySymbol } from "@/lib/format";
 import { normalizeTicker } from "@/lib/portfolioStore";
 import { useSavedDcfs } from "@/lib/savedDcfStore";
+import { TickerSuggestions } from "@/lib/useTickerSuggestions";
 
 const PRICE_POLL_MS = 60_000;
 // "EPS without NRI" is a GuruFocus adjustment the filings don't carry: GAAP diluted EPS is used (see Data sources & gaps).
@@ -296,8 +297,10 @@ export function DcfCalculator({ symbol }: { symbol: string | null }) {
             onChange={(e) => setQuery(e.target.value.toUpperCase())}
             placeholder="Ticker (AAPL, ASML.AS…)"
             aria-label="Ticker"
+            list="dcf-ticker-suggestions"
             className="h-8 min-w-0 flex-1 rounded-md bg-black/30 px-2.5 font-mono text-[12.5px] text-ink uppercase ring-1 ring-line-strong outline-none ring-inset placeholder:text-ink-4 placeholder:normal-case focus:ring-macropulse-cyan"
           />
+          <TickerSuggestions id="dcf-ticker-suggestions" query={query} />
           <button
             type="submit"
             disabled={load.status === "loading"}

@@ -1,3 +1,4 @@
+import pytest
 from app.services.gaap_mapping import Metric, PeriodType, normalize_company_facts
 
 
@@ -140,3 +141,61 @@ def test_quarterly_cash_flows_are_derived_from_year_to_date_figures():
     assert q1.values[Metric.OPERATING_CASH_FLOW].value == 30
     assert q2.values[Metric.OPERATING_CASH_FLOW].value == 45  # 75 − 30
     assert "year-to-date" in q2.values[Metric.OPERATING_CASH_FLOW].source_tag
+
+
+def test_share_counts_tagged_in_millions_are_rescaled_not_treated_as_splits():
+    """McDonald's 10-Ks from 2024 tag 741.3 for 741,300,000 diluted shares (restating earlier years the same way)."""
+    from app.services.gaap_mapping import Metric, PeriodType, detect_share_splits, normalize_company_facts
+
+    def fact(val, start, end, filed, form="10-K"):
+        return {"val": val, "start": start, "end": end, "form": form, "filed": filed, "fy": int(end[:4]), "fp": "FY", "accn": f"a-{filed}"}
+
+    shares = [
+        fact(741_300_000, "2022-01-01", "2022-12-31", "2023-02-20"),
+        fact(741.3, "2022-01-01", "2022-12-31", "2024-02-20"),  # same year, restated "in millions"
+        fact(732.3, "2023-01-01", "2023-12-31", "2024-02-20"),
+    ]
+    data = {"facts": {"us-gaap": {
+        "WeightedAverageNumberOfDilutedSharesOutstanding": {"units": {"shares": shares}},
+        "NetIncomeLoss": {"units": {"USD": [fact(6.18e9, "2022-01-01", "2022-12-31", "2024-02-20"), fact(8.47e9, "2023-01-01", "2023-12-31", "2024-02-20")]}},
+        "EarningsPerShareDiluted": {"units": {"USD/shares": [fact(8.33, "2022-01-01", "2022-12-31", "2024-02-20"), fact(11.56, "2023-01-01", "2023-12-31", "2024-02-20")]}},
+    }}}  # fmt: skip
+    assert detect_share_splits(data, ["WeightedAverageNumberOfDilutedSharesOutstanding"]) == []  # ×1e-6 is not a split
+    fy23, fy22 = normalize_company_facts(data, PeriodType.ANNUAL)
+    assert fy23.values[Metric.DILUTED_SHARES].value == pytest.approx(732_300_000)
+    assert fy22.values[Metric.DILUTED_SHARES].value == pytest.approx(741_300_000)
+    assert "corrected" in fy23.values[Metric.DILUTED_SHARES].source_tag
+
+
+def test_market_split_records_cover_splits_after_the_latest_filing():
+    """HDFC Bank's 1:1 bonus issue (Aug 2025) came after its FY2025 20-F: only the split record shows it."""
+    from app.services.gaap_mapping import Metric, NormalizedPeriod, NormalizedValue, PeriodType, apply_market_splits
+
+    def period(shares, filed, tag="WeightedAverageNumberOfDilutedSharesOutstanding"):
+        return NormalizedPeriod(PeriodType.ANNUAL, "2024-04-01", "2025-03-31", 2025, "FY",
+                                {Metric.DILUTED_SHARES: NormalizedValue(shares, tag, "a", "20-F", filed)})  # fmt: skip
+
+    fy25 = period(7.66e9, "2025-07-14")
+    restated = period(15.3e9, "2025-07-14", "WeightedAverageNumberOfDilutedSharesOutstanding (split-adjusted ×2)")
+    later = period(15.3e9, "2026-07-14")
+    apply_market_splits([fy25, restated, later], [("2019-09-19", 2.0), ("2025-08-26", 2.0)])
+    assert fy25.values[Metric.DILUTED_SHARES].value == pytest.approx(15.32e9)  # filed before the bonus issue
+    assert restated.values[Metric.DILUTED_SHARES].value == pytest.approx(15.3e9)  # already restated: untouched
+    assert later.values[Metric.DILUTED_SHARES].value == pytest.approx(15.3e9)  # filed after: already on the new basis
+
+
+def test_eps_numerator_is_net_income_available_to_common():
+    from app.services.gaap_mapping import Metric, PeriodType, normalize_company_facts
+
+    def fact(val, unit_end="2025-12-31"):
+        return {"val": val, "start": "2025-01-01", "end": unit_end, "form": "10-K", "filed": "2026-02-20", "fy": 2025, "fp": "FY", "accn": "a"}
+
+    data = {"facts": {"us-gaap": {
+        "NetIncomeLoss": {"units": {"USD": [fact(16.0e9)]}},
+        "NetIncomeLossAvailableToCommonStockholdersDiluted": {"units": {"USD": [fact(15.2e9)]}},  # after preferred dividends
+        "WeightedAverageNumberOfDilutedSharesOutstanding": {"units": {"shares": [fact(300e6)]}},
+        "EarningsPerShareDiluted": {"units": {"USD/shares": [fact(50.67)]}},
+    }}}  # fmt: skip
+    (fy,) = normalize_company_facts(data, PeriodType.ANNUAL)
+    eps = fy.values[Metric.NET_INCOME_COMMON].value / fy.values[Metric.DILUTED_SHARES].value
+    assert eps == pytest.approx(50.67, abs=0.01)  # matches the reported GAAP EPS, not 16.0e9 / 300e6 = 53.33

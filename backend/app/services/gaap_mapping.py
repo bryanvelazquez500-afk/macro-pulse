@@ -21,6 +21,9 @@ IFRS tags are written qualified (`ifrs-full:Revenue`); bare names are US GAAP.
 
 from __future__ import annotations
 
+import math
+import re
+
 from collections import Counter
 from dataclasses import dataclass, field
 from datetime import date, timedelta
@@ -34,6 +37,8 @@ class Metric(StrEnum):
     COST_OF_GOODS_SOLD = "cost_of_goods_sold"
     OPERATING_INCOME = "operating_income"
     NET_INCOME = "net_income"
+    # GAAP EPS numerator: net income less preferred dividends and other claims ahead of common shareholders.
+    NET_INCOME_COMMON = "net_income_common"
     PRETAX_INCOME = "pretax_income"
     INCOME_TAX_EXPENSE = "income_tax_expense"
     DIVIDENDS_PAID = "dividends_paid"  # cash dividends to common shareholders (positive outflow)
@@ -88,6 +93,10 @@ INCOME_STATEMENT_TAG_MAP: dict[Metric, list[str]] = {
     Metric.NET_INCOME: [
         "NetIncomeLoss",
         "ProfitLoss",
+        "NetIncomeLossAvailableToCommonStockholdersBasic",
+    ],
+    Metric.NET_INCOME_COMMON: [
+        "NetIncomeLossAvailableToCommonStockholdersDiluted",
         "NetIncomeLossAvailableToCommonStockholdersBasic",
     ],
     # Pre-tax income and tax give the effective tax rate used for ROIC's NOPAT.
@@ -193,6 +202,10 @@ IFRS_INCOME_STATEMENT_TAG_MAP: dict[Metric, list[str]] = {
     Metric.NET_INCOME: [
         "ifrs-full:ProfitLossAttributableToOwnersOfParent",
         "ifrs-full:ProfitLoss",
+    ],
+    Metric.NET_INCOME_COMMON: [
+        "ifrs-full:ProfitLossAttributableToOrdinaryEquityHoldersOfParentEntityIncludingDilutiveEffects",
+        "ifrs-full:ProfitLossAttributableToOrdinaryEquityHoldersOfParentEntity",
     ],
     Metric.PRETAX_INCOME: ["ifrs-full:ProfitLossBeforeTax"],
     Metric.INCOME_TAX_EXPENSE: ["ifrs-full:IncomeTaxExpenseContinuingOperations"],
@@ -643,8 +656,17 @@ _SPLIT_RATIO_TOLERANCE = 0.02
 _SPLIT_CLUSTER_DAYS = 400
 
 
+def _scale_like(ratio: float) -> bool:
+    """A factor of 1,000 / 1,000,000 / 10⁹ (either way): a filer switching units, not a stock split."""
+    exponent = math.log10(abs(ratio)) if ratio else 0.0
+    nearest = round(exponent / 3) * 3
+    return nearest != 0 and abs(exponent - nearest) <= math.log10(1 + _SPLIT_RATIO_TOLERANCE)
+
+
 def _split_like(ratio: float) -> bool:
-    """3-for-2, 2-for-1, 10-for-1 … (or the reverse), within 2%."""
+    """3-for-2, 2-for-1, 10-for-1 … (or the reverse), within 2%. Unit rescalings (×1,000, ×1,000,000) are not splits."""
+    if _scale_like(ratio):
+        return False
     for r in (ratio, 1 / ratio):
         if r >= 1.45:
             nearest = 1.5 if abs(r - 1.5) / 1.5 <= _SPLIT_RATIO_TOLERANCE else round(r)
@@ -709,6 +731,149 @@ def _adjust_for_splits(periods: Iterable[NormalizedPeriod], splits: list[tuple[s
             )
 
 
+EPS_DILUTED_TAGS = [
+    "EarningsPerShareDiluted",
+    "EarningsPerShareBasicAndDiluted",
+    "ifrs-full:DilutedEarningsLossPerShare",
+    "ifrs-full:BasicAndDilutedEarningsLossPerShare",
+]
+# A share count this small is never a listed company's: it was reported in thousands or millions.
+_IMPLAUSIBLE_SHARE_COUNT = 100_000
+
+
+def _derive_income_to_common(period: NormalizedPeriod, eps: float | None) -> None:
+    """GAAP EPS numerator when the filer doesn't tag it: reported diluted EPS × diluted shares.
+
+    Used only when that comes in 80–100% of net income — i.e. it differs by claims ahead of common
+    shareholders (TransDigm's dividend equivalents, preferred dividends), not by a unit slip or a split.
+    """
+    if Metric.NET_INCOME_COMMON in period.values or eps is None:
+        return
+    ni, shares = period.values.get(Metric.NET_INCOME), period.values.get(Metric.DILUTED_SHARES)
+    if ni is None or shares is None or ni.value <= 0 or eps <= 0 or "split" in shares.source_tag or "corrected" in shares.source_tag:
+        return
+    common = eps * shares.value
+    if 0.8 <= common / ni.value < 0.995:
+        period.values[Metric.NET_INCOME_COMMON] = NormalizedValue(
+            value=common,
+            source_tag="derived: reported diluted EPS × diluted shares",
+            accession_number=ni.accession_number,
+            form=ni.form,
+            filed=ni.filed,
+        )
+
+
+def _nearest_split(ratio: float) -> float:
+    """The common split ratio (or its inverse) closest to `ratio`: 3-for-2 … 50-for-1."""
+    candidates = [x for r in (1.5, 2, 3, 4, 5, 8, 10, 15, 20, 25, 50) for x in (r, 1 / r)]
+    return min(candidates, key=lambda x: abs(math.log(ratio / x)))
+
+
+def _cover_shares(company_facts: dict[str, Any]) -> list[dict[str, Any]]:
+    """Cover-page shares outstanding (dei), oldest first."""
+    facts = company_facts.get("facts", {}).get("dei", {}).get("EntityCommonStockSharesOutstanding", {}).get("units", {}).get("shares", [])
+    return sorted((f for f in facts if f.get("val") and f.get("end")), key=lambda f: (f["end"], f.get("filed", "")))
+
+
+def _fix_share_scale(company_facts: dict[str, Any], periods: dict[tuple[str, str], NormalizedPeriod], basis: ReportingBasis) -> None:
+    """Corrects diluted share counts that don't match the company's own per-share reporting.
+
+    1. Units: McDonald's 10-Ks from 2024 on tag 741.3 for 741,300,000 shares; Vivo tags 1.643 for 1.643
+       billion. Each period's count is checked against net income (to common) ÷ the company's own reported
+       diluted EPS. A gap of a power of 1,000 — alone or combined with a stock split the restated EPS
+       already reflects — is corrected to the EPS-implied count. A gap equal to a split we've already
+       applied is expected (the 10-K's EPS predates the split) and left alone.
+    2. Without a usable EPS figure, a count below 100,000 is rescaled by the power of 1,000 that brings it
+       in line with the company's other periods, or failing that, its cover-page shares outstanding.
+    3. A split or bonus issue after the latest report (HDFC Bank's 1:1 bonus) shows up as cover-page shares
+       a split ratio away from the latest count; every period is moved onto that new share basis.
+    """
+    period_type = next(iter(periods.values())).period_type
+    eps_by_period: dict[tuple[str, str], float] = {}
+    for tag in EPS_DILUTED_TAGS:
+        for key, facts in _group_by_period(_unit_facts(company_facts, tag, f"{basis.currency}/shares"), period_type).items():
+            eps_by_period.setdefault(key, _latest(facts, tag).value)
+
+    def fix(period: NormalizedPeriod, factor: float, why: str) -> None:
+        shares = period.values[Metric.DILUTED_SHARES]
+        period.values[Metric.DILUTED_SHARES] = NormalizedValue(
+            value=shares.value * factor,
+            source_tag=f"{shares.source_tag} (corrected ×{factor:.6g}: {why})",
+            accession_number=shares.accession_number,
+            form=shares.form,
+            filed=shares.filed,
+        )
+
+    unresolved: list[NormalizedPeriod] = []
+    for key, period in periods.items():
+        shares = period.values.get(Metric.DILUTED_SHARES)
+        if shares is None or shares.value <= 0:
+            continue
+        _derive_income_to_common(period, eps_by_period.get(key))
+        ni = period.values.get(Metric.NET_INCOME_COMMON) or period.values.get(Metric.NET_INCOME)
+        eps = eps_by_period.get(key)
+        if ni is not None and eps is not None and abs(eps) >= 0.01 and ni.value * eps > 0:
+            ratio = (ni.value / eps) / shares.value
+            # (A ratio equal to a split already applied — the 10-K's EPS predates it — has exponent 0: left alone.)
+            exponent = round(math.log10(ratio) / 3) * 3 if ratio > 0 else 0
+            residual = ratio / 10**exponent if exponent else ratio
+            if exponent and (abs(residual - 1) <= 0.02 or _split_like(residual)):
+                # Keep the filer's own digits: rescale by the unit (and any split the EPS already reflects).
+                split = 1.0 if abs(residual - 1) <= 0.02 else _nearest_split(residual)
+                fix(period, 10**exponent * split, "net income ÷ reported diluted EPS")
+                continue
+        if shares.value < _IMPLAUSIBLE_SHARE_COUNT:
+            unresolved.append(period)
+
+    plausible = sorted(p.values[Metric.DILUTED_SHARES].value for p in periods.values()
+                       if Metric.DILUTED_SHARES in p.values and p.values[Metric.DILUTED_SHARES].value >= _IMPLAUSIBLE_SHARE_COUNT)  # fmt: skip
+    cover = _cover_shares(company_facts)
+    reference = plausible[len(plausible) // 2] if plausible else (cover[-1]["val"] if cover else None)
+    for period in unresolved:
+        value = period.values[Metric.DILUTED_SHARES].value
+        if reference and reference / value >= 500:
+            fix(period, 10 ** (round(math.log10(reference / value) / 3) * 3), "too small for a listed company; unit from its other share counts")
+
+    # 3. A split after the latest report: cover shares a split ratio away from the latest period's count.
+    dated = [p for p in periods.values() if Metric.DILUTED_SHARES in p.values]
+    if cover and dated:
+        latest = max(dated, key=lambda p: p.end)
+        newest_cover = cover[-1]
+        if newest_cover["end"] > latest.end:
+            ratio = float(newest_cover["val"]) / latest.values[Metric.DILUTED_SHARES].value
+            if _split_like(ratio):
+                factor = _nearest_split(ratio)
+                if abs(ratio / factor - 1) <= 0.03:
+                    for p in dated:
+                        fix(p, factor, f"split or bonus issue after the report (cover shares {newest_cover['end']})")
+
+
+def apply_market_splits(periods: Iterable[NormalizedPeriod], splits: list[tuple[str, float]]) -> None:
+    """Puts share counts on today's basis for splits the filings haven't restated yet.
+
+    A count filed before a split's date, and not already split-adjusted from restated filings, is
+    multiplied by the split ratio (HDFC Bank's FY2025 count × 2 for its August 2025 1:1 bonus issue).
+    """
+    for period in periods:
+        shares = period.values.get(Metric.DILUTED_SHARES)
+        if shares is None or "split-adjusted" in shares.source_tag or "split or bonus" in shares.source_tag:
+            continue
+        factor = 1.0
+        for day, ratio in splits:
+            # Only true splits: price-adjustment factors for spin-offs (Corteva 6.665, S&P Global 1.057) don't
+            # change the share count.
+            if shares.filed < day and ratio > 0 and _split_like(ratio):
+                factor *= _nearest_split(ratio)
+        if factor != 1.0:
+            period.values[Metric.DILUTED_SHARES] = NormalizedValue(
+                value=shares.value * factor,
+                source_tag=f"{shares.source_tag} (split-adjusted ×{factor:g}: market split record after filing)",
+                accession_number=shares.accession_number,
+                form=shares.form,
+                filed=shares.filed,
+            )
+
+
 def _derive_sga(company_facts: dict[str, Any], periods: dict[tuple[str, str], NormalizedPeriod], basis: ReportingBasis) -> None:
     def by_period(tags: list[str]) -> list[dict[tuple[str, str], list[dict]]]:
         return [_group_by_period(_unit_facts(company_facts, t, basis.currency), periods_type) for t in tags]
@@ -764,6 +929,8 @@ def normalize_company_facts(
                     period.values[metric] = _latest(facts, tag)
 
     _adjust_for_splits(periods.values(), detect_share_splits(company_facts, tag_map[Metric.DILUTED_SHARES]))
+    if periods:
+        _fix_share_scale(company_facts, periods, basis)
     _derive_sga(company_facts, periods, basis)
     if period_type is PeriodType.QUARTERLY:
         _derive_quarterly_cash_flows(company_facts, periods, tag_map, basis.currency)

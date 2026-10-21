@@ -412,6 +412,14 @@ function CountryPanel({
 }) {
   const reduceMotion = useReducedMotion();
   const state = useFetch((signal) => (covered ? fetchCountryLeaders(country.iso, signal) : Promise.resolve<CountryLeaders | null>(null)));
+  const [filter, setFilter] = useState("");
+  const loaded = state.status === "success" ? state.data : null;
+  // Long lists (every US-listed SEC filer) filter by ticker or name as you type.
+  const shown = useMemo(() => {
+    const q = filter.trim().toUpperCase();
+    if (!loaded || !q) return loaded;
+    return { ...loaded, leaders: loaded.leaders.filter((l) => l.symbol.toUpperCase().startsWith(q) || l.name.toUpperCase().includes(q)) };
+  }, [loaded, filter]);
   return (
     <motion.aside
       role="dialog"
@@ -432,7 +440,7 @@ function CountryPanel({
         </div>
         {state.status === "success" && state.data && (
           <p className="mt-2 font-mono text-[10.5px] text-slate-500">
-            {state.data.leaders.length} listings · ranked by live market cap · live quotes · → adds a company to the comparison
+            {state.data.leaders.length.toLocaleString()} listings · ranked by live market cap · live quotes · → adds a company to the comparison
           </p>
         )}
         <button
@@ -450,6 +458,9 @@ function CountryPanel({
         </p>
       ) : state.status === "loading" ? (
         <ul className="space-y-px p-4" aria-busy="true">
+          {country.iso === "US" && (
+            <li className="pb-2 text-[11.5px] text-slate-400">Pricing every US-listed SEC filer — the first load can take up to a minute.</li>
+          )}
           {Array.from({ length: 8 }, (_, i) => (
             <li key={i} className="h-14 animate-pulse rounded bg-white/[0.04]" />
           ))}
@@ -457,13 +468,28 @@ function CountryPanel({
       ) : state.status === "error" ? (
         <p className="m-4 text-[13px] text-rose-300">{state.error}</p>
       ) : (
-        state.data && (
+        shown && (
           <>
+            {loaded && loaded.leaders.length > 60 && (
+              <div className="border-b border-white/5 px-4 py-2">
+                <input
+                  value={filter}
+                  onChange={(e) => setFilter(e.target.value)}
+                  placeholder={`Filter ${loaded.leaders.length.toLocaleString()} companies by name or ticker`}
+                  aria-label="Filter companies"
+                  className="h-8 w-full rounded-md bg-black/40 px-3 font-mono text-[12px] text-white ring-1 ring-white/10 outline-none ring-inset placeholder:font-sans placeholder:text-slate-500 focus:ring-cyan-400/60"
+                />
+              </div>
+            )}
             <div className="flex items-center justify-between border-b border-white/5 px-4 py-2 text-[9.5px] font-semibold tracking-[0.2em] text-slate-500 uppercase">
               <span>Company · ticker · price</span>
               <span className="pr-1">Add to comparison →</span>
             </div>
-            <SectorList data={state.data} onAnalyze={onAnalyze} />
+            {shown.leaders.length === 0 ? (
+              <p className="p-4 text-[12.5px] text-slate-400">No company matches “{filter}”.</p>
+            ) : (
+              <SectorList key={filter} data={shown} onAnalyze={onAnalyze} />
+            )}
           </>
         )
       )}

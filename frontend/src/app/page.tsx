@@ -15,6 +15,7 @@ import { NewsTicker } from "@/components/NewsTicker";
 import { PeerPills } from "@/components/PeerPills";
 import { InjectBanner, SupplyChainNetwork } from "@/components/SupplyChainNetwork";
 import { PulseBotTour } from "@/components/PulseBotTour";
+import { TickerSuggestions } from "@/lib/useTickerSuggestions";
 import { ValuationPanel } from "@/components/ValuationPanel";
 import { WatchlistSidebar } from "@/components/WatchlistSidebar";
 import { ViewPanel, ViewTab, ViewTabs } from "@/components/ViewTabs";
@@ -203,9 +204,11 @@ function Station() {
                   : "Add ticker or CIK to compare — MSFT, 320193"
               }
               aria-label="Add a ticker or CIK to the comparison"
+              list="header-ticker-suggestions"
               maxLength={16}
               className="field min-w-0 flex-1 font-mono uppercase sm:max-w-md"
             />
+            <TickerSuggestions id="header-ticker-suggestions" query={query} />
             <button
               type="submit"
               disabled={!query.trim()}
@@ -341,7 +344,7 @@ function Station() {
                       href="#horizontal-analysis"
                       className="mp-interactive inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11.5px] font-medium text-macropulse-cyan ring-1 ring-macropulse-cyan/40 ring-inset hover:bg-macropulse-cyan/10"
                     >
-                      Horizontal analysis <span aria-hidden>↓</span>
+                      Horizontal & vertical analysis <span aria-hidden>↓</span>
                     </a>
                   </div>
                   <div id="tour-matrix">
@@ -429,7 +432,7 @@ function Station() {
               {focusedReady.annual && (
                 <Section
                   title="Valuation"
-                  meta="5-year DCF · drag assumptions to re-price"
+                  meta="Equity DCF at the CAPM cost of equity · drag assumptions to re-price"
                 >
                   <ValuationPanel
                     key={focusedReady.annual.cik ?? focusedReady.annual.symbol}

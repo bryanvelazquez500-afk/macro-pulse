@@ -1,32 +1,46 @@
 /**
- * 5-year earnings & free-cash-flow projection with a discounted-cash-flow valuation.
+ * Equity DCF for the center Valuation panel: a 10-year projection of free cash flow to equity.
  *
- *   Revenue_t          = Revenue_base × (1 + growth)^t
+ *   Revenue_t          = Revenue_(t−1) × (1 + growth_t)
+ *                        growth_t = slider growth for years 1–5, then fading linearly to g_T by year 10
  *   Operating income_t = Revenue_t × target operating margin
- *   Earnings_t         = Operating income_t × earnings conversion   (historical Net Income ÷ Operating Income)
- *   FCF_t              = Earnings_t × FCF conversion                (historical Free Cash Flow ÷ Net Income)
- *   Enterprise value   = Σ FCF_t ÷ (1 + WACC)^t  +  terminal value ÷ (1 + WACC)^5
- *   Terminal value     = FCF_5 × (1 + g) ÷ (WACC − g)                (Gordon growth, g = TERMINAL_GROWTH_PCT)
+ *   Earnings_t         = Operating income_t × earnings conversion   (historical Net income ÷ Operating income)
+ *   FCF_t              = Earnings_t × FCF conversion                (historical Free cash flow ÷ Net income)
+ *   Equity value       = Σ FCF_t ÷ (1 + k_e)^t  +  TV ÷ (1 + k_e)^10,   TV = FCF_10 × (1 + g_T) ÷ (k_e − g_T)
+ *   Value per share    = Equity value ÷ diluted shares;  Enterprise value = Equity value + long-term debt − cash
  *
- * The two conversion rates come from the company's own last three fiscal years, so
- * tax, interest and capex intensity carry forward without extra assumptions.
+ * Free cash flow here is GAAP operating cash flow − capital expenditures. It is measured after interest,
+ * so it belongs to shareholders: it is discounted at the cost of equity (CAPM, k_e = r_f + β × ERP) and
+ * gives EQUITY value. (Audit, Oct 2026: this panel used to discount it at a flat 9% labelled WACC and call
+ * the result enterprise value — the wrong rate for after-interest cash flow, and not company-specific.)
+ *
+ * Defaults are the company's own GAAP history, kept to realistic ranges: growth = 3-year revenue CAGR held
+ * to −10%…20% (and faded, not held forever), margin = 3-year pooled operating margin (not one possibly-peak
+ * year), conversions = 3-year pooled ratios, terminal growth 2.5% (long-run GDP; CLAUDE.md caps it at 2.5–3%).
  */
 
 import type { FinancialPeriod } from "@/lib/api";
 
-export const PROJECTION_YEARS = 5;
+export const PROJECTION_YEARS = 5; // explicit growth stage
+export const FADE_YEARS = 5; // growth fades linearly to terminal growth over years 6–10
 export const TERMINAL_GROWTH_PCT = 2.5;
+/** Terminal value above this share of total value needs a reality check on near-term growth (CLAUDE.md). */
+export const TERMINAL_SHARE_WARNING = 0.75;
 
 export const SLIDER_RANGES = {
   revenueGrowthPct: { min: -20, max: 50, step: 0.5 },
   operatingMarginPct: { min: 0, max: 100, step: 0.5 },
-  waccPct: { min: 5, max: 20, step: 0.25 },
+  costOfEquityPct: { min: 5, max: 20, step: 0.25 },
 } as const;
+
+// Realistic bounds for the DEFAULT growth (the slider still reaches −20…50%).
+const DEFAULT_GROWTH_FLOOR = -10;
+const DEFAULT_GROWTH_CAP = 20;
 
 export interface Assumptions {
   revenueGrowthPct: number;
   operatingMarginPct: number;
-  waccPct: number;
+  costOfEquityPct: number;
 }
 
 export interface Baseline {
@@ -36,12 +50,17 @@ export interface Baseline {
   fcfConversion: number;
   historicalRevenueCagrPct: number | null;
   latestOperatingMarginPct: number | null;
+  pooledOperatingMarginPct: number | null;
+  shares: number | null;
+  longTermDebt: number | null;
+  cashAndInvestments: number | null;
   defaults: Assumptions;
   notes: string[];
 }
 
 export interface ProjectedYear {
   fiscalYear: number;
+  growth: number; // decimal
   revenue: number;
   operatingIncome: number;
   earnings: number;
@@ -54,11 +73,13 @@ export interface Valuation {
   pvExplicitFcf: number;
   terminalValue: number;
   pvTerminalValue: number;
-  enterpriseValue: number;
+  equityValue: number;
+  perShare: number | null;
+  enterpriseValue: number | null;
+  terminalShare: number; // PV of terminal value ÷ equity value
 }
 
-const DEFAULT_WACC_PCT = 9;
-// Fallbacks when history can't support a conversion rate: 21% statutory tax, FCF ≈ earnings.
+// Fallbacks when history can't support a conversion rate: 21% US statutory tax, FCF ≈ earnings.
 const DEFAULT_EARNINGS_CONVERSION = 0.79;
 const DEFAULT_FCF_CONVERSION = 1;
 
@@ -84,8 +105,11 @@ function pooledRatio(periods: FinancialPeriod[], num: (p: FinancialPeriod) => nu
   return d > 0 ? n / d : null;
 }
 
-/** Derives the projection's starting point and default slider values from annual history (newest first). */
-export function deriveBaseline(annualPeriods: FinancialPeriod[]): Baseline | null {
+/**
+ * Starting point and default slider values from annual history (newest first). `costOfEquity` is the
+ * company's CAPM rate (decimal); without it the default discount rate falls back to 9% and says so.
+ */
+export function deriveBaseline(annualPeriods: FinancialPeriod[], costOfEquity: number | null = null): Baseline | null {
   const withRevenue = annualPeriods.filter((p) => val(p, "revenue") != null && p.fiscal_year != null);
   const base = withRevenue[0];
   if (!base) return null;
@@ -117,14 +141,28 @@ export function deriveBaseline(annualPeriods: FinancialPeriod[]): Baseline | nul
 
   const operatingIncome = val(base, "operating_income");
   const latestOperatingMarginPct = operatingIncome != null ? (operatingIncome / baseRevenue) * 100 : null;
-  let defaultMargin = latestOperatingMarginPct;
+  const pooled = pooledRatio(recent, (p) => val(p, "operating_income"), (p) => val(p, "revenue"));
+  const pooledOperatingMarginPct = pooled != null ? pooled * 100 : null;
+  let defaultMargin = pooledOperatingMarginPct ?? latestOperatingMarginPct;
   if (defaultMargin == null) {
     const netIncome = val(base, "net_income");
     defaultMargin = netIncome != null ? ((netIncome / baseRevenue) * 100) / earningsConversion : 15;
     notes.push("Operating margin not reported — default margin implied from net margin.");
   }
 
-  const { revenueGrowthPct: g, operatingMarginPct: m } = SLIDER_RANGES;
+  let growthDefault = historicalRevenueCagrPct ?? 5;
+  if (historicalRevenueCagrPct == null) notes.push("Too little revenue history for a growth rate — default growth set to 5%.");
+  if (growthDefault > DEFAULT_GROWTH_CAP || growthDefault < DEFAULT_GROWTH_FLOOR) {
+    notes.push(
+      `Default growth held to ${clamp(growthDefault, DEFAULT_GROWTH_FLOOR, DEFAULT_GROWTH_CAP)}% (3-year CAGR ${growthDefault.toFixed(1)}%) — few companies sustain more than ${DEFAULT_GROWTH_CAP}% for five years.`,
+    );
+    growthDefault = clamp(growthDefault, DEFAULT_GROWTH_FLOOR, DEFAULT_GROWTH_CAP);
+  }
+
+  if (costOfEquity == null) notes.push("CAPM inputs unavailable — default cost of equity set to 9%.");
+
+  const { revenueGrowthPct: g, operatingMarginPct: m, costOfEquityPct: k } = SLIDER_RANGES;
+  const cash = val(base, "cash_and_equivalents");
   return {
     baseFiscalYear: base.fiscal_year!,
     baseRevenue,
@@ -132,34 +170,51 @@ export function deriveBaseline(annualPeriods: FinancialPeriod[]): Baseline | nul
     fcfConversion,
     historicalRevenueCagrPct,
     latestOperatingMarginPct,
+    pooledOperatingMarginPct,
+    shares: val(base, "diluted_shares"),
+    longTermDebt: val(base, "long_term_debt"),
+    cashAndInvestments: cash != null ? cash + (val(base, "short_term_investments") ?? 0) : null,
     defaults: {
-      revenueGrowthPct: clamp(snap(historicalRevenueCagrPct ?? 5, g.step), g.min, g.max),
+      revenueGrowthPct: clamp(snap(growthDefault, g.step), g.min, g.max),
       operatingMarginPct: clamp(snap(defaultMargin, m.step), m.min, m.max),
-      waccPct: DEFAULT_WACC_PCT,
+      costOfEquityPct: clamp(snap((costOfEquity ?? 0.09) * 100, k.step), k.min, k.max),
     },
     notes,
   };
 }
 
 export function project(baseline: Baseline, a: Assumptions): Valuation {
-  const growth = a.revenueGrowthPct / 100;
+  const g = a.revenueGrowthPct / 100;
   const margin = a.operatingMarginPct / 100;
-  const wacc = a.waccPct / 100;
-  const terminalGrowth = TERMINAL_GROWTH_PCT / 100;
+  const ke = a.costOfEquityPct / 100;
+  const gT = TERMINAL_GROWTH_PCT / 100;
 
   const years: ProjectedYear[] = [];
-  for (let t = 1; t <= PROJECTION_YEARS; t++) {
-    const revenue = baseline.baseRevenue * (1 + growth) ** t;
+  let revenue = baseline.baseRevenue;
+  for (let t = 1; t <= PROJECTION_YEARS + FADE_YEARS; t++) {
+    // Years 1–5 at the slider growth; years 6–10 step down evenly so year 10 grows at g_T.
+    const growth = t <= PROJECTION_YEARS ? g : g + ((gT - g) * (t - PROJECTION_YEARS)) / FADE_YEARS;
+    revenue *= 1 + growth;
     const operatingIncome = revenue * margin;
     const earnings = operatingIncome * baseline.earningsConversion;
     const fcf = earnings * baseline.fcfConversion;
-    years.push({ fiscalYear: baseline.baseFiscalYear + t, revenue, operatingIncome, earnings, fcf, pvFcf: fcf / (1 + wacc) ** t });
+    years.push({ fiscalYear: baseline.baseFiscalYear + t, growth, revenue, operatingIncome, earnings, fcf, pvFcf: fcf / (1 + ke) ** t });
   }
 
   const pvExplicitFcf = years.reduce((sum, y) => sum + y.pvFcf, 0);
-  // WACC's 5% floor keeps it above the 2.5% terminal growth rate, so the denominator stays positive.
-  const terminalValue = (years[years.length - 1].fcf * (1 + terminalGrowth)) / (wacc - terminalGrowth);
-  const pvTerminalValue = terminalValue / (1 + wacc) ** PROJECTION_YEARS;
-
-  return { years, pvExplicitFcf, terminalValue, pvTerminalValue, enterpriseValue: pvExplicitFcf + pvTerminalValue };
+  // The cost-of-equity slider's 5% floor keeps k_e above the 2.5% terminal growth, so the denominator stays positive.
+  const terminalValue = (years[years.length - 1].fcf * (1 + gT)) / (ke - gT);
+  const pvTerminalValue = terminalValue / (1 + ke) ** years.length;
+  const equityValue = pvExplicitFcf + pvTerminalValue;
+  const { shares, longTermDebt, cashAndInvestments } = baseline;
+  return {
+    years,
+    pvExplicitFcf,
+    terminalValue,
+    pvTerminalValue,
+    equityValue,
+    perShare: shares && equityValue > 0 ? equityValue / shares : null,
+    enterpriseValue: longTermDebt != null && cashAndInvestments != null ? equityValue + longTermDebt - cashAndInvestments : null,
+    terminalShare: equityValue > 0 ? pvTerminalValue / equityValue : 0,
+  };
 }

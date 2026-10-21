@@ -1,7 +1,7 @@
 {
   "risk_free_rate": {
-    "value": 0.051,
-    "as_of": "2026-10-15",
+    "value": 0.0509,
+    "as_of": "2026-10-16",
     "source": "FRED DGS10 (10-Year Treasury Constant Maturity)",
     "tenor": "10Y"
   },
@@ -260,14 +260,20 @@
       ]
     },
     "market": {
-      "beta": 0.91,
+      "beta": 1.0,
       "unlevered_beta": 0.76,
       "industries": [
-        "Total Market"
+        "Total Market (CAPM market beta = 1.0)"
       ]
     }
   },
   "sector_betas_source": "Damodaran, Betas by Sector (US), January 2026 \u2014 mapped to peer groups",
-  "updated_at": "2026-10-16T22:32:32Z",
+  "updated_at": "2026-10-19T21:27:16Z",
+  "aaa_yield": {
+    "value": 0.0606,
+    "as_of": "2026-10-16",
+    "source": "FRED DAAA (Moody's Seasoned Aaa Corporate Bond Yield)",
+    "tenor": "Aaa"
+  },
   "schema_version": 1
 }

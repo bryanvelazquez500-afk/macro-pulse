@@ -26,8 +26,9 @@ export type BalanceSheetKey =
 
 export type MetricKey = IncomeStatementKey | CashFlowKey | BalanceSheetKey;
 
-/** Extracted for models (ROIC, SG&A, DDM) but not shown as matrix rows. */
-export type HelperMetricKey = "pretax_income" | "income_tax_expense" | "sga_expense" | "dividends_paid" | "goodwill_and_intangibles";
+/** Extracted for models (ROIC, SG&A, DDM, EPS) but not shown as matrix rows. `net_income_common` is the GAAP EPS
+ * numerator: net income available to common shareholders, after preferred dividends. */
+export type HelperMetricKey = "pretax_income" | "income_tax_expense" | "sga_expense" | "dividends_paid" | "goodwill_and_intangibles" | "net_income_common";
 
 export type RatioKey =
   | "current_ratio"
@@ -227,6 +228,8 @@ export interface MacroFactors {
   sector_betas: Record<string, { beta: number; unlevered_beta: number; industries: string[] }>;
   sector_betas_source: string;
   updated_at: string;
+  /** Moody's Aaa corporate bond yield — Graham's "Y". */
+  aaa_yield?: Rate | null;
 }
 
 export interface ValuationInputs {
@@ -238,6 +241,8 @@ export interface ValuationInputs {
   beta: { value: number; group_key: string; group_label: string; basis: string; source: string };
   risk_free_rate: Rate;
   equity_risk_premium: Rate;
+  /** Moody's Aaa corporate bond yield — Graham's "Y". */
+  aaa_yield?: Rate | null;
 }
 
 export const fetchValuationInputs = (id: string, signal?: AbortSignal) =>

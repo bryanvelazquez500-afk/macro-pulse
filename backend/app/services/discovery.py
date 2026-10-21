@@ -21,6 +21,7 @@ from app.services.fmp_client import FmpClient
 from app.services.listings import SEC_REGISTRANT_FOR_LISTING, parse_listing
 from app.services.market_caps import MarketCaps
 from app.services.quotes import QuoteService, Snapshot
+from app.services.universe import us_listings
 from app.services.sec_client import CompanyNotFoundError, SecApiError
 
 # GICS-style sectors.
@@ -348,6 +349,8 @@ async def country_leaders(
 ) -> list[Leader] | None:
     """None when the country has no curated list. Ranked by live market cap."""
     iso2 = iso2.upper()
+    if iso2 == "US":
+        return await _us_leaders(quotes, caps)
     entries = LEADERS.get(iso2)
     if entries is None:
         return None
@@ -374,5 +377,44 @@ async def country_leaders(
             cap_usd = cap * rate if rate else None
         leaders.append(Leader(0, symbol, name, sector, snap, coverage, cap, cap_usd))
 
+    order = sorted(range(len(leaders)), key=lambda i: (leaders[i].market_cap_usd is None, -(leaders[i].market_cap_usd or 0), i))
+    return [replace(leaders[i], rank=r + 1) for r, i in enumerate(order)]
+
+
+def country_count(iso2: str) -> int:
+    if iso2 == "US":
+        return len(us_listings()) or len(LEADERS["US"])
+    return len(LEADERS.get(iso2, []))
+
+
+MAX_PLAUSIBLE_SHARES = 25e9
+
+
+async def _us_leaders(quotes: QuoteService, caps: MarketCaps) -> list[Leader]:
+    """Every US-listed SEC filer (data/us_universe.json), priced in batches and ranked by live market cap.
+
+    Every entry files with the SEC by construction (its CIK comes from EDGAR), so no routing lookups are made.
+    """
+    listings = us_listings()
+    if not listings:  # universe file missing: fall back to the curated list
+        entries = LEADERS["US"]
+        snaps = await quotes.get_snapshots([s for s, _, _ in entries])
+        tickers = await caps.sec.get_ticker_map()
+        rows = [(s, n, sec, tickers.get(s.replace(".", "-"), {}).get("cik")) for s, n, sec in entries]
+    else:
+        snaps = await quotes.get_snapshots([l.ticker for l in listings])
+        rows = [(l.ticker, l.name, l.sector, l.cik) for l in listings]
+    shares = await caps.shares_by_cik()
+    curated = {s for s, _, _ in LEADERS["US"]}
+    leaders = []
+    for symbol, name, sector, cik in rows:
+        snap = snaps.get(symbol.upper())
+        count = shares.get(cik)
+        # No US company outside the curated large caps has 25 billion shares: such a count is a unit slip
+        # (Taboola's 291 billion) or ordinary shares behind a depositary receipt (Akari), so no market cap.
+        if count and count > MAX_PLAUSIBLE_SHARES and symbol not in curated:
+            count = None
+        cap = snap.price * count if snap and count and snap.currency == "USD" else None
+        leaders.append(Leader(0, symbol, name, sector, snap, "sec", cap, cap))
     order = sorted(range(len(leaders)), key=lambda i: (leaders[i].market_cap_usd is None, -(leaders[i].market_cap_usd or 0), i))
     return [replace(leaders[i], rank=r + 1) for r, i in enumerate(order)]

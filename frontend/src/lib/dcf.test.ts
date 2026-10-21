@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { defaultDiscountRate, defaultGrowthRate, marginOfSafety, projection, reverseDcfGrowth, twoStage } from "./dcf.ts";
+import { DEFAULT_TERMINAL_GROWTH, defaultDiscountRate, defaultGrowthRate, marginOfSafety, projection, reverseDcfGrowth, twoStage } from "./dcf.ts";
 
 const base = { e0: 2.0, d: 0.1, g1: 0.12, n: 10, g2: 0.04, m: 10 };
 const price = 40.0;
@@ -25,8 +25,12 @@ test("TBV on with TBV = 5.00", () => {
 
 test("default rules", () => {
   assert.equal(r2(defaultDiscountRate(4.2) * 100), 11);
-  assert.equal(r2(defaultGrowthRate(55) * 100), 20);
-  assert.equal(r2(defaultGrowthRate(2) * 100), 5);
+  // Realistic bounds (audit, Oct 2026): growth held to 0–15%, terminal growth 3%.
+  assert.equal(r2(defaultGrowthRate(55) * 100), 15);
+  assert.equal(r2(defaultGrowthRate(2) * 100), 2);
+  assert.equal(r2(defaultGrowthRate(-6) * 100), 0);
+  assert.equal(r2(defaultGrowthRate(null) * 100), 0);
+  assert.equal(DEFAULT_TERMINAL_GROWTH, 0.03);
 });
 
 test("x = 1 and y = 1 don't divide by zero", () => {

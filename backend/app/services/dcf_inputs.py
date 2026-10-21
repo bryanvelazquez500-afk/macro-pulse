@@ -15,22 +15,29 @@ NRI" (non-recurring items stripped by GuruFocus analysts) and its Business Predi
 
 from __future__ import annotations
 
+import math
+
 from dataclasses import dataclass, field, replace
 from datetime import date, timedelta
 from typing import Any
 
-from app.services.pricing import is_foreign_filer, price_context
+from app.services.pricing import is_foreign_filer, price_context, spinoff_after, spinoff_context
 from app.services.data_router import DataSource
 from app.services.financials_service import FinancialsService
 from app.services.fmp_client import FmpNotConfiguredError
 from app.services.fmp_mapping import normalize_fmp_statements
 from app.services.gaap_mapping import (
+    _cover_shares,
+    _nearest_split,
+    _scale_like,
+    _split_like as _gaap_split_like,
     Metric,
     NormalizedPeriod,
     PeriodType,
     _ANNUAL_FORMS,
     _QUARTERLY_FORMS,
     _unit_facts,
+    apply_market_splits,
     detect_reporting_basis,
     normalize_balance_sheets,
     normalize_company_facts,
@@ -104,6 +111,7 @@ class _Fundamentals:
     tbv_as_of: str | None
     shares: float | None
     notes: list[str]
+    spinoff: str | None = None  # date of a spin-off after the latest filing (price not comparable)
 
 
 # ---------------------------------------------------------------- TTM from raw XBRL facts
@@ -166,8 +174,8 @@ def ttm_value(company_facts: dict[str, Any], tags: list[str], unit: str) -> tupl
     return best
 
 
-def latest_shares(company_facts: dict[str, Any], tags: list[str]) -> tuple[float, str] | None:
-    """Most recent diluted weighted-average share count (any quarterly or annual period)."""
+def latest_shares(company_facts: dict[str, Any], tags: list[str]) -> tuple[float, str, str] | None:
+    """Most recent diluted weighted-average share count (any quarterly or annual period): (value, end, filed)."""
     facts = [
         f
         for tag in tags
@@ -177,7 +185,7 @@ def latest_shares(company_facts: dict[str, Any], tags: list[str]) -> tuple[float
     if not facts:
         return None
     f = _newest(facts)
-    return float(f["val"]), f["end"]
+    return float(f["val"]), f["end"], f.get("filed", f["end"])
 
 
 # ---------------------------------------------------------------- history (H10)
@@ -189,7 +197,9 @@ def _v(p: NormalizedPeriod, m: Metric) -> float | None:
 
 
 def _split_like(ratio: float, tolerance: float) -> float | None:
-    """The split factor a share-count ratio looks like (2-for-1, 3-for-2, 1-for-10…), if any."""
+    """The split factor a share-count ratio looks like (2-for-1, 3-for-2, 1-for-10…), if any. ×1,000 / ×1,000,000 are unit errors, not splits."""
+    if _scale_like(ratio):
+        return None
     for r, inverse in ((ratio, False), (1 / ratio, True)):
         nearest = 1.5 if abs(r - 1.5) / 1.5 <= tolerance else round(r)
         if nearest >= 1.5 and abs(r - nearest) / nearest <= tolerance:
@@ -252,7 +262,9 @@ def _per_share(p: NormalizedPeriod, key: str, shares: float | None = None) -> fl
     if not shares:
         return None
     if key == "eps":
-        ni = _v(p, Metric.NET_INCOME)
+        # GAAP EPS numerator: net income available to common (after preferred dividends), when tagged.
+        ni = _v(p, Metric.NET_INCOME_COMMON)
+        ni = ni if ni is not None else _v(p, Metric.NET_INCOME)
         return ni / shares if ni is not None else None
     if key == "fcf":
         fcf = _v(p, Metric.FREE_CASH_FLOW)
@@ -311,6 +323,8 @@ class DcfInputsService:
         facts = await self.financials.sec.get_company_facts(route.cik, cache=cache_facts)
         basis = detect_reporting_basis(facts)
         annual = normalize_company_facts(facts, PeriodType.ANNUAL, basis)
+        splits = await self.quotes.get_splits(route.symbol) if not route.symbol.isdigit() else []
+        apply_market_splits(annual, splits)
         durations = ordered_tag_maps(basis)[0]
         notes: list[str] = []
 
@@ -318,7 +332,17 @@ class DcfInputsService:
             return ttm_value(facts, durations[metric], basis.currency)
 
         ni, ocf, capex, div = ttm(Metric.NET_INCOME), ttm(Metric.OPERATING_CASH_FLOW), ttm(Metric.CAPITAL_EXPENDITURES), ttm(Metric.DIVIDENDS_PAID)
-        shares = self._shares(facts, durations[Metric.DILUTED_SHARES], annual, basis.currency, ni[1] if ni else None)
+        # EPS uses the GAAP numerator: net income available to common shareholders, when it reaches as far.
+        ni_common = ttm(Metric.NET_INCOME_COMMON)
+        eps_income = ni_common if ni_common and ni and ni_common[1] == ni[1] else ni
+        if eps_income is ni and ni and annual:
+            # No trailing "to common" figure: carry the latest year's share of net income that reached common
+            # shareholders (preferred dividends, dividend equivalents) onto the trailing net income.
+            latest_year = annual[0]
+            common, total = _v(latest_year, Metric.NET_INCOME_COMMON), _v(latest_year, Metric.NET_INCOME)
+            if common and total and total > 0 and 0.8 <= common / total < 1:
+                eps_income = (ni[0] * common / total, ni[1], ni[2])
+        shares = self._shares(facts, durations[Metric.DILUTED_SHARES], annual, basis.currency, ni[1] if ni else None, splits)
 
         history_shares = annual_shares(annual, facts, basis.currency)
 
@@ -330,7 +354,7 @@ class DcfInputsService:
 
         fcf_parts = ocf and capex and ocf[1] == capex[1]
         bases = [
-            basis_input("eps", ni[0] if ni else None, ni[1] if ni else None, bool(ni and ni[2])),
+            basis_input("eps", eps_income[0] if eps_income else None, eps_income[1] if eps_income else None, bool(eps_income and eps_income[2])),
             basis_input(
                 "fcf",
                 ocf[0] - capex[0] if fcf_parts else None,
@@ -345,6 +369,7 @@ class DcfInputsService:
 
         tbv, tbv_as_of = self._tbv(normalize_balance_sheets(facts, basis), shares)
         latest = annual[0] if annual else None
+        newest_filing = max((v.filed for v in latest.values.values()), default=None) if latest else None
         return _Fundamentals(
             route_symbol=route.symbol,
             us_listing=route.listing is None and route.symbol not in US_ORDINARY_SHARE_LISTINGS,
@@ -357,19 +382,51 @@ class DcfInputsService:
             tbv_as_of=tbv_as_of,
             shares=shares,
             notes=notes,
+            spinoff=spinoff_after(splits, max(newest_filing or "", ni[1] if ni else "")) if newest_filing else None,
         )
 
     @staticmethod
-    def _shares(facts: dict[str, Any], diluted_tags: list[str], annual: list[NormalizedPeriod], currency: str, as_of: str | None) -> float | None:
+    def _shares(
+        facts: dict[str, Any],
+        diluted_tags: list[str],
+        annual: list[NormalizedPeriod],
+        currency: str,
+        as_of: str | None,
+        splits: list[tuple[str, float]] | None = None,
+    ) -> float | None:
         """Diluted weighted-average shares, else net income ÷ diluted EPS of the latest year, else basic shares.
 
         A count dated more than ~15 months before the earnings it divides is stale (a discontinued tag) and skipped.
         """
 
-        def fresh(found: tuple[float, str] | None) -> float | None:
+        # The annual series is unit-checked against reported EPS (gaap_mapping._fix_share_scale); a raw
+        # quarterly count that differs from it by ×1,000 / ×1,000,000 carries the same filer unit error.
+        reference = next((v.value for p in annual if (v := p.values.get(Metric.DILUTED_SHARES)) and v.value > 0), None)
+        from_annual = reference is not None
+        if reference is None:  # no annual diluted count (Vale): the cover page gives at least the order of magnitude
+            cover = _cover_shares(facts)
+            reference = float(cover[-1]["val"]) if cover else None
+
+        def fresh(found: tuple[float, str] | tuple[float, str, str] | None) -> float | None:
             if found is None or (as_of and (_d(as_of) - _d(found[1])).days > 460):
                 return None
-            return found[0]
+            value = found[0]
+            if reference:
+                ratio = reference / value
+                exponent = round(math.log10(ratio) / 3) * 3
+                # A gap of a power of 1,000 is a unit slip (counts filed in thousands or millions). Against the
+                # recent annual count, a split on top of it is the newer share basis (Vivo: thousands + 2:1).
+                if exponent and abs(math.log10(ratio) - exponent) <= math.log10(2.5):
+                    value *= 10**exponent
+                    residual = ratio / 10**exponent
+                    if from_annual and _gaap_split_like(residual):
+                        value *= _nearest_split(residual)
+            # Splits after the count was filed (not yet restated by any filing).
+            filed = found[2] if len(found) > 2 else found[1]
+            for day, ratio in splits or []:
+                if filed < day and _gaap_split_like(ratio):  # true splits only, not spin-off price factors
+                    value *= _nearest_split(ratio)
+            return value
 
         if (shares := fresh(latest_shares(facts, diluted_tags))) is not None:
             return shares
@@ -430,6 +487,9 @@ class DcfInputsService:
                 currency, rate, comparable = quote.currency, fx.price, True
                 note = f"Filings are in {f.currency}; per-share figures converted to {quote.currency} at {fx.price:.4g} (Yahoo FX)"
 
+        if f.spinoff and quote:
+            comparable = False
+            note = spinoff_context(ctx, f.spinoff).note
         scale = rate or 1.0
         bases = [replace(b, value=b.value * scale if b.value is not None else None) for b in f.bases]
         factors = load_macro_factors()

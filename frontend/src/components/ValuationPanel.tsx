@@ -3,14 +3,18 @@
 import { useMemo } from "react";
 
 import { ChartRow, ProjectionChart, SeriesKey, useDarkMode } from "@/components/ProjectionChart";
-import type { FinancialPeriod } from "@/lib/api";
-import { formatMoney } from "@/lib/format";
+import { FinancialPeriod, fetchValuationInputs } from "@/lib/api";
+import { currencySymbol, formatMoney } from "@/lib/format";
+import { capm } from "@/lib/intrinsic";
+import { useFetch } from "@/lib/useFetch";
 import {
   Assumptions,
   Baseline,
+  FADE_YEARS,
   PROJECTION_YEARS,
   SLIDER_RANGES,
   TERMINAL_GROWTH_PCT,
+  TERMINAL_SHARE_WARNING,
   deriveBaseline,
   project,
 } from "@/lib/valuation";
@@ -106,7 +110,14 @@ export function ValuationPanel({
   currency?: string;
 }) {
   const formatUsd = (v: number | null | undefined) => formatMoney(v, currency);
-  const baseline = useMemo(() => deriveBaseline(annualPeriods), [annualPeriods]);
+  // CAPM inputs (live 10Y Treasury, sector beta, ERP) and the share price — the panel is keyed by company.
+  const inputs = useFetch((signal) => fetchValuationInputs(companyId, signal));
+  const loaded = inputs.status === "success" ? inputs.data : null;
+  const ke = loaded ? capm(loaded.risk_free_rate.value, loaded.beta.value, loaded.equity_risk_premium.value) : null;
+  const baseline = useMemo(
+    () => (inputs.status === "loading" ? null : deriveBaseline(annualPeriods, ke)),
+    [annualPeriods, ke, inputs.status],
+  );
   const dark = useDarkMode();
   // Shared with the side panel's Intrinsic Valuation Station, per company.
   const [assumptions, setShared] = useAssumptions(companyId, baseline?.defaults ?? null);
@@ -117,13 +128,15 @@ export function ValuationPanel({
     [annualPeriods, baseline, valuation],
   );
 
+  if (inputs.status === "loading") return <p className="text-ink-3">Loading CAPM inputs…</p>;
   if (!baseline || !assumptions || !valuation) {
     return <p className="text-ink-3">Not enough annual revenue history to build a projection.</p>;
   }
+  const price = loaded?.price && loaded.price.comparable ? loaded.price.price : null;
+  const mos = price != null && valuation.perShare != null ? (valuation.perShare - price) / valuation.perShare : null;
 
   const set = (key: keyof Assumptions) => (v: number) => setShared({ ...assumptions, [key]: v });
-  const final = valuation.years[valuation.years.length - 1];
-  const terminalShare = valuation.enterpriseValue > 0 ? (valuation.pvTerminalValue / valuation.enterpriseValue) * 100 : null;
+  const terminalShare = valuation.terminalShare * 100;
   const isDefault = (Object.keys(assumptions) as (keyof Assumptions)[]).every((k) => assumptions[k] === baseline.defaults[k]);
 
   return (
@@ -155,14 +168,25 @@ export function ValuationPanel({
             value={assumptions.operatingMarginPct}
             onChange={set("operatingMarginPct")}
             range={SLIDER_RANGES.operatingMarginPct}
-            hint={baseline.latestOperatingMarginPct != null ? `FY${baseline.baseFiscalYear} ${baseline.latestOperatingMarginPct.toFixed(1)}%` : undefined}
+            hint={
+              baseline.pooledOperatingMarginPct != null
+                ? `3-yr avg ${baseline.pooledOperatingMarginPct.toFixed(1)}%`
+                : baseline.latestOperatingMarginPct != null
+                  ? `FY${baseline.baseFiscalYear} ${baseline.latestOperatingMarginPct.toFixed(1)}%`
+                  : undefined
+            }
           />
           <Slider
-            id="wacc"
-            label="Discount Rate / WACC"
-            value={assumptions.waccPct}
-            onChange={set("waccPct")}
-            range={SLIDER_RANGES.waccPct}
+            id="ke"
+            label="Cost of Equity (CAPM)"
+            value={assumptions.costOfEquityPct}
+            onChange={set("costOfEquityPct")}
+            range={SLIDER_RANGES.costOfEquityPct}
+            hint={
+              loaded && ke != null
+                ? `${(loaded.risk_free_rate.value * 100).toFixed(2)}% + ${loaded.beta.value.toFixed(2)}β × ${(loaded.equity_risk_premium.value * 100).toFixed(2)}%`
+                : undefined
+            }
           />
           <dl className="space-y-1 border-t border-line pt-4 text-[11px] text-ink-3">
             <div className="flex justify-between">
@@ -177,28 +201,54 @@ export function ValuationPanel({
               <dt>Terminal growth</dt>
               <dd className="font-mono">{TERMINAL_GROWTH_PCT}%</dd>
             </div>
-            <p className="pt-1 text-[11px] leading-snug text-ink-4">Conversion rates are this company&apos;s 3-year historical averages.</p>
+            <p className="pt-1 text-[11px] leading-snug text-ink-4">
+              Conversion rates are this company&apos;s 3-year GAAP averages. Free cash flow (operating cash flow − capex) is after interest, so
+              it&apos;s discounted at the cost of equity and gives equity value. Growth holds for {PROJECTION_YEARS} years, then fades to{" "}
+              {TERMINAL_GROWTH_PCT}% over the next {FADE_YEARS}.
+            </p>
           </dl>
         </div>
 
         <div className="min-w-0 space-y-4">
           <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-            <Stat label="Enterprise value (DCF)" value={formatUsd(valuation.enterpriseValue)} />
-            <Stat label="PV of 5-yr FCF" value={formatUsd(valuation.pvExplicitFcf)} />
+            <Stat
+              label="Equity value (DCF)"
+              value={formatUsd(valuation.equityValue)}
+              sub={valuation.enterpriseValue != null ? `EV ${formatUsd(valuation.enterpriseValue)} (+ debt − cash)` : undefined}
+            />
+            <Stat
+              label="Value per share"
+              value={valuation.perShare != null ? `${currencySymbol(currency)}${valuation.perShare.toFixed(2)}` : "—"}
+              sub={
+                mos != null && price != null && valuation.perShare != null
+                  ? mos >= 0
+                    ? `▲ ${(mos * 100).toFixed(0)}% margin of safety vs price ${currencySymbol(currency)}${price.toFixed(2)}`
+                    : `▼ price ${currencySymbol(currency)}${price.toFixed(2)} is ${(price / valuation.perShare).toFixed(1)}× this value`
+                  : (loaded?.price_note ?? "No comparable share price")
+              }
+            />
+            <Stat label={`PV of ${PROJECTION_YEARS + FADE_YEARS}-yr FCF`} value={formatUsd(valuation.pvExplicitFcf)} />
             <Stat
               label="PV of terminal value"
               value={formatUsd(valuation.pvTerminalValue)}
-              sub={terminalShare != null ? `${terminalShare.toFixed(0)}% of EV` : undefined}
+              sub={`${terminalShare.toFixed(0)}% of equity value`}
             />
-            <Stat label={`FY${final.fiscalYear}E earnings`} value={formatUsd(final.earnings)} sub={`FCF ${formatUsd(final.fcf)}`} />
           </div>
           <div>
             <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-              <h4 className="text-[13px] text-ink">Earnings &amp; free cash flow — actual vs. {PROJECTION_YEARS}-year projection</h4>
+              <h4 className="text-[13px] text-ink">
+                Earnings &amp; free cash flow — actual vs. {PROJECTION_YEARS + FADE_YEARS}-year projection
+              </h4>
               <SeriesKey dark={dark} />
             </div>
             <ProjectionChart data={chartData} currency={currency} />
           </div>
+          {valuation.terminalShare > TERMINAL_SHARE_WARNING && (
+            <p role="alert" className="rounded-md bg-amber-400/10 px-3 py-2 text-[12px] text-amber-200 ring-1 ring-amber-400/30 ring-inset">
+              ⚠ Terminal value is {terminalShare.toFixed(0)}% of the total (over {TERMINAL_SHARE_WARNING * 100}%): most of this value sits beyond
+              year {PROJECTION_YEARS + FADE_YEARS}, so check whether the near-term growth and margin are realistic.
+            </p>
+          )}
           {baseline.notes.length > 0 && (
             <ul className="space-y-0.5 text-xs text-ink-3">
               {baseline.notes.map((n) => (
@@ -216,6 +266,7 @@ export function ValuationPanel({
             <thead className="text-ink-3">
               <tr>
                 <th className="py-1 text-left font-sans font-medium">Fiscal year</th>
+                <th className="font-sans font-medium">Growth</th>
                 <th className="font-sans font-medium">Revenue</th>
                 <th className="font-sans font-medium">Operating income</th>
                 <th className="font-sans font-medium">Earnings</th>
@@ -227,6 +278,7 @@ export function ValuationPanel({
               {valuation.years.map((y) => (
                 <tr key={y.fiscalYear} className="border-t border-line">
                   <td className="py-1 text-left font-sans">FY{y.fiscalYear}E</td>
+                  <td>{(y.growth * 100).toFixed(1)}%</td>
                   <td>{formatUsd(y.revenue)}</td>
                   <td>{formatUsd(y.operatingIncome)}</td>
                   <td>{formatUsd(y.earnings)}</td>

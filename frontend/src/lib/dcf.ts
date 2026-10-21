@@ -13,10 +13,14 @@
 
 export const DEFAULT_GROWTH_YEARS = 10;
 export const DEFAULT_TERMINAL_YEARS = 10;
-export const DEFAULT_TERMINAL_GROWTH = 0.04;
+// Defaults tuned for realism (audit, Oct 2026) rather than GuruFocus's 4% / 5–20%:
+// - terminal growth 3%: the top of the long-run GDP range (CLAUDE.md caps terminal growth at 2.5–3%);
+// - growth floor 0%: a shrinking business isn't given growth it has never shown;
+// - growth cap 15%: few companies compound earnings faster than that for ten years.
+export const DEFAULT_TERMINAL_GROWTH = 0.03;
 export const EQUITY_RISK_PREMIUM = 0.06;
-export const GROWTH_FLOOR = 0.05;
-export const GROWTH_CAP = 0.2;
+export const GROWTH_FLOOR = 0;
+export const GROWTH_CAP = 0.15;
 
 export interface DcfParams {
   e0: number; // base per-share value
@@ -57,7 +61,7 @@ export function defaultDiscountRate(t10Pct: number): number {
   return (Math.ceil(Number(t10Pct.toFixed(6))) + EQUITY_RISK_PREMIUM * 100) / 100;
 }
 
-/** g1 = the metric's historical 10-year growth, clamped to 5–20% (5% when there's no history). */
+/** g1 = the metric's historical 10-year growth, held to 0–15% (0% when there's no history). */
 export function defaultGrowthRate(h10Pct: number | null): number {
   if (h10Pct == null || !Number.isFinite(h10Pct)) return GROWTH_FLOOR;
   return Math.min(GROWTH_CAP, Math.max(GROWTH_FLOOR, h10Pct / 100));

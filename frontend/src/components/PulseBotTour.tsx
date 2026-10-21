@@ -37,8 +37,8 @@ export const TOUR_STEPS: TourStep[] = [
   {
     target: "horizontal-analysis",
     view: "matrix",
-    title: "Horizontal Analysis",
-    text: "Expand a company to watch every line item change over 5–10 years as % change, an index or raw values — click any row to chart it.",
+    title: "Horizontal & Vertical Analysis",
+    text: "Flip between trends over 5–10 years and vertical analysis — pick any line items and see them instantly as a % of the base you choose.",
   },
   {
     target: "tour-tabs",

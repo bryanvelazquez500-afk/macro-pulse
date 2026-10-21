@@ -1,8 +1,8 @@
 """Live market capitalization for the scout lists: price × shares outstanding.
 
 Shares come from SEC EDGAR's XBRL "frames" API, which returns one concept for every filer in a single
-call: the cover-page `dei:EntityCommonStockSharesOutstanding` of each 10-K/10-Q/20-F/40-F, falling back to
-quarterly diluted weighted-average shares for companies that only tag shares per class (Alphabet, Meta).
+call: quarterly diluted weighted-average shares (all share classes), falling back to the cover-page
+`dei:EntityCommonStockSharesOutstanding` for filers without US-GAAP share facts.
 A handful of requests covers every SEC registrant, so ranking a 200-stock list needs no per-company filings.
 
 Companies that aren't SEC registrants have no free share count, so they have no market cap and rank
@@ -13,9 +13,11 @@ a bundle of shares, so price × ordinary shares would be wrong.
 from __future__ import annotations
 
 import asyncio
+import math
 import logging
 from datetime import date
 
+from app.services.gaap_mapping import _scale_like
 from app.services.quotes import QuoteService
 from app.services.sec_client import SecApiError, SecEdgarClient, TTLCache
 
@@ -36,6 +38,12 @@ def recent_quarters(today: date, count: int) -> list[tuple[int, int]]:
             year, quarter = year - 1, 4
         out.append((year, quarter))
     return out
+
+
+def _unit_gap(ratio: float) -> bool:
+    """Within ±40% of a power of 1,000 (counts at different dates differ a little, units by ×1,000)."""
+    exponent = round(math.log10(ratio) / 3) * 3 if ratio > 0 else 0
+    return exponent != 0 and 0.7 <= ratio / 10**exponent <= 1.4
 
 
 class MarketCaps:
@@ -69,8 +77,18 @@ class MarketCaps:
             cover: dict[int, tuple[str, float]] = {}
             for y, q in reversed(quarters):
                 cover.update(await self._frame("dei", "EntityCommonStockSharesOutstanding", f"CY{y}Q{q}I"))
-            shares = {cik: v for cik, (_, v) in diluted.items()}
-            shares.update({cik: v for cik, (_, v) in cover.items()})
+            # Diluted weighted shares cover every share class (Mobileye's Class B, Alphabet's three classes) and
+            # aren't subject to cover-page slips (Alibaba's 2026 cover states 1.86B for ~18.6B shares); the
+            # cover page fills in for filers without US-GAAP share facts (IFRS 20-F/40-F filers).
+            shares = {cik: v for cik, (_, v) in cover.items()}
+            for cik, (_, v) in diluted.items():
+                c = shares.get(cik)
+                # The two counts disagreeing by ~×1,000 / ×1,000,000 means one was tagged in the wrong unit
+                # (McDonald's diluted "716.4"; Aeluma's diluted 18 billion vs 19 million on its cover):
+                # the cover page — a plain share count — wins.
+                if v < 100_000 or (c and _unit_gap(c / v)):
+                    continue
+                shares[cik] = v
             # A failed or throttled frame leaves a partial map: use it, but try again on the next request.
             if len(shares) >= _MIN_COMPLETE:
                 self._cache.set("shares", shares)
