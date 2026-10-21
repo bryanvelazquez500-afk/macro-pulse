@@ -289,7 +289,7 @@ export function PulseBotTour({ onClose, onView }: { onClose: () => void; onView?
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-[10px] font-semibold tracking-[0.16em] text-caution uppercase">Pulse-Bot</span>
-                  <span className="text-[10.5px] text-ink-4">
+                  <span className="text-[12px] text-ink-3">
                     {index + 1}/{steps.length}
                   </span>
                 </div>
@@ -303,7 +303,7 @@ export function PulseBotTour({ onClose, onView }: { onClose: () => void; onView?
                     aria-live="polite"
                   >
                     <h3 className="mt-1 text-[14px] font-semibold text-ink">{step.title}</h3>
-                    <p className="mt-1 text-[12.5px] leading-snug text-ink-2">{step.text}</p>
+                    <p className="mt-1 text-[13px] leading-snug text-ink-2">{step.text}</p>
                   </motion.div>
                 </AnimatePresence>
               </div>
@@ -321,7 +321,7 @@ export function PulseBotTour({ onClose, onView }: { onClose: () => void; onView?
                 type="button"
                 onClick={back}
                 disabled={index === 0}
-                className="rounded-md px-2 py-1 text-[11.5px] text-ink-3 hover:text-ink disabled:opacity-30"
+                className="rounded-md px-2 py-1 text-[13px] text-ink-3 hover:text-ink disabled:opacity-30"
               >
                 ← Back
               </button>
@@ -342,11 +342,11 @@ export function PulseBotTour({ onClose, onView }: { onClose: () => void; onView?
                   className="flex items-center gap-2 rounded-lg bg-caution-bg px-3 py-1.5 text-[12px] font-semibold text-caution ring-1 ring-caution/40 hover:bg-caution-bg"
                 >
                   Next
-                  <kbd className="rounded border border-caution/40 px-1.5 font-mono text-[10px]">Space</kbd>
+                  <kbd className="rounded border border-caution/40 px-1.5 font-mono text-[12px]">Space</kbd>
                 </button>
               )}
             </div>
-            <p className="mt-2 text-center text-[10px] text-ink-4">Space to continue · ← back · Esc to exit</p>
+            <p className="mt-2 text-center text-[12px] text-ink-3">Space to continue · ← back · Esc to exit</p>
           </div>
         </motion.div>
       )}

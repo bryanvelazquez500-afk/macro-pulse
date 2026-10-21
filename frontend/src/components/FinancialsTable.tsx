@@ -35,7 +35,7 @@ function AlertIcon() {
 export function VarianceBadge({ direction, tier, pct }: { direction: "up" | "down"; tier: Tier; pct: number | null }) {
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-2 py-[3px] text-[11px] leading-none font-semibold tabular-nums ring-1 ring-inset ${badgeClass(direction, tier)}`}
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-[3px] text-[12px] leading-none font-semibold tabular-nums ring-1 ring-inset ${badgeClass(direction, tier)}`}
       aria-label={`${TIER_LABELS[tier].name} ${direction === "up" ? "increase" : "decrease"} ${pct == null ? "from zero" : formatChange(pct)}`}
     >
       {tier === 4 && <AlertIcon />}
@@ -58,7 +58,7 @@ export function VarianceLegend({ thresholdPct }: { thresholdPct: number }) {
             <span
               key={t}
               title={`${TIER_LABELS[t].name}: ${TIER_LABELS[t].range}`}
-              className={`inline-flex items-center gap-1 rounded-xs px-2 py-1 text-[11px] leading-none font-semibold whitespace-nowrap ring-1 ring-inset ${badgeClass(direction, t)}`}
+              className={`inline-flex items-center gap-1 rounded-xs px-2 py-1 text-[12px] leading-none font-semibold whitespace-nowrap ring-1 ring-inset ${badgeClass(direction, t)}`}
             >
               {t === 4 && <AlertIcon />}
               <span aria-hidden>{direction === "up" ? "▲" : "▼"}</span>
@@ -153,7 +153,7 @@ function qualifiedTag(tag: string): string {
 }
 
 function Cell({ row, period, currency }: { row: Row; period: FinancialPeriod | undefined; currency: string }): ReactNode {
-  if (!period) return <span className="text-ink-4">—</span>;
+  if (!period) return <span className="text-ink-3">—</span>;
 
   switch (row.kind) {
     case "section":
@@ -164,7 +164,7 @@ function Cell({ row, period, currency }: { row: Row; period: FinancialPeriod | u
       const show = row.unit === "shares" ? formatShares : (v: number | null | undefined) => formatAccounting(v, currency);
       if (!item)
         return (
-          <span className="text-ink-4" title="Not reported">
+          <span className="text-ink-3" title="Not reported">
             —
           </span>
         );
@@ -191,7 +191,7 @@ function Cell({ row, period, currency }: { row: Row; period: FinancialPeriod | u
       const ratio = period.ratios[row.key];
       if (!ratio)
         return (
-          <span className="text-ink-4" title="Inputs not reported">
+          <span className="text-ink-3" title="Inputs not reported">
             —
           </span>
         );
@@ -209,14 +209,14 @@ function Cell({ row, period, currency }: { row: Row; period: FinancialPeriod | u
       const f = period.forensics.piotroski;
       if (!f)
         return (
-          <span className="text-[11px] text-ink-4" title={period.forensics.note ?? ""}>
+          <span className="text-[12px] text-ink-3" title={period.forensics.note ?? ""}>
             annual only
           </span>
         );
       const detail = f.signals.map((s) => `${s.passed == null ? "–" : s.passed ? "✓" : "✗"} ${s.label}`).join("\n");
       if (f.score == null) {
         return (
-          <span className="text-[11px] text-ink-4" title={`Only ${f.available}/9 signals have data\n${detail}`}>
+          <span className="text-[12px] text-ink-3" title={`Only ${f.available}/9 signals have data\n${detail}`}>
             insufficient data
           </span>
         );
@@ -239,11 +239,11 @@ function Cell({ row, period, currency }: { row: Row; period: FinancialPeriod | u
       const s = row.kind === "altman" ? period.forensics.altman_z : period.forensics.sloan_accruals_pct;
       if (!s)
         return (
-          <span className="text-[11px] text-ink-4" title={period.forensics.note ?? ""}>
+          <span className="text-[12px] text-ink-3" title={period.forensics.note ?? ""}>
             annual only
           </span>
         );
-      if (s.value == null) return <span className="text-[11px] text-ink-4">{s.note ?? "n/a"}</span>;
+      if (s.value == null) return <span className="text-[12px] text-ink-3">{s.note ?? "n/a"}</span>;
       return (
         <div className="text-right">
           <div className="text-[14px] font-semibold text-ink tabular-nums">{row.kind === "altman" ? s.value.toFixed(2) : formatChange(s.value)}</div>
@@ -336,7 +336,7 @@ function Chevron({ open }: { open: boolean }) {
   return (
     <motion.svg
       viewBox="0 0 12 12"
-      className="size-3 shrink-0 text-ink-4"
+      className="size-3 shrink-0 text-ink-3"
       animate={{ rotate: open ? 90 : 0 }}
       transition={flow(2)}
       aria-hidden
@@ -464,7 +464,7 @@ function CompanyColumn({
             {period ? `${periodLabel(period)} · ${period.end}` : loading ? "" : "no data"}
           </span>
           {flags > 0 && (
-            <span className="shrink-0 rounded-full bg-mint px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap text-mint-ink" title="Material YoY variances in this period">
+            <span className="shrink-0 rounded-full bg-mint px-2 py-0.5 text-[12px] font-semibold whitespace-nowrap text-mint-ink" title="Material YoY variances in this period">
               {flags} flags
             </span>
           )}
@@ -611,7 +611,7 @@ export function FinancialsTable({
                 ) : (
                   <div className="min-w-0" title={"hint" in row ? row.hint : undefined}>
                     <div className="truncate text-[13px] leading-5 text-ink sm:text-[14px]">{row.label}</div>
-                    {"hint" in row && <div className="truncate text-[11px] text-ink-3">{row.hint}</div>}
+                    {"hint" in row && <div className="truncate text-[12px] text-ink-3">{row.hint}</div>}
                   </div>
                 )}
               </div>

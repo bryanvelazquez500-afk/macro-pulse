@@ -1,10 +1,12 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
+  Area,
   CartesianGrid,
+  ComposedChart,
   LabelList,
   Line,
-  LineChart,
   ReferenceArea,
   ReferenceLine,
   ResponsiveContainer,
@@ -13,7 +15,8 @@ import {
   YAxis,
 } from "recharts";
 
-import { formatMoney } from "@/lib/format";
+import { formatAccounting, formatMoney } from "@/lib/format";
+import { DUR } from "@/lib/motion";
 
 export interface ChartRow {
   label: string;
@@ -24,25 +27,27 @@ export interface ChartRow {
   projected: boolean;
 }
 
-// Series: categorical slots 1 & 2 of the reference palette, validated for both surfaces.
-// Chrome (grid, axes, projection band): the zinc/slate terminal tokens from globals.css.
-const PALETTE = {
-  light: { earnings: "#2a78d6", fcf: "#eb6834", grid: "#e4e4e7", axis: "#64748b", band: "#f4f4f5", text: "#18181b" },
-  dark: { earnings: "#3987e5", fcf: "#d95926", grid: "#27272a", axis: "#94a3b8", band: "#18181b", text: "#fafafa" },
+// Theme tokens (CSS variables), so the chart follows the Daylight / Night ledger theme with no JS.
+// Primary series spruce over a mint area; the second series in ink-2. Smooth monotone curves throughout.
+const C = {
+  earnings: "var(--spruce)",
+  fcf: "var(--ink-2)",
+  area: "var(--mint)",
+  grid: "var(--line)",
+  axis: "var(--ink-3)",
+  band: "var(--subtle)",
+  text: "var(--ink)",
+  panel: "var(--panel)",
 };
-
-// MacroPulse is dark-only, so charts always use the dark palette (the OS setting no longer applies).
-const useDarkMode = () => true;
 
 const compactMoney = (v: number, currency: string) => formatMoney(v, currency).replace(/\.\d+([TBM])$/, "$1");
 
-export function SeriesKey({ dark }: { dark?: boolean }) {
-  const c = dark ? PALETTE.dark : PALETTE.light;
+export function SeriesKey() {
   return (
-    <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[11px] text-ink-3">
+    <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[13px] text-ink-3">
       {[
-        { name: "Earnings (net income)", color: c.earnings },
-        { name: "Free cash flow", color: c.fcf },
+        { name: "Earnings (net income)", color: C.earnings },
+        { name: "Free cash flow", color: C.fcf },
       ].map((s) => (
         <span key={s.name} className="flex items-center gap-1.5">
           <span className="h-0.5 w-4 rounded" style={{ background: s.color }} />
@@ -65,24 +70,31 @@ function ChartTooltip({ active, payload, currency }: { active?: boolean; payload
   const earnings = row.earnings ?? row.earningsProjected;
   const fcf = row.fcf ?? row.fcfProjected;
   return (
-    <div className="rounded-md border border-line bg-panel px-3 py-2 text-xs shadow-sm">
+    <div className="rounded-md border border-line bg-panel px-3 py-2.5 text-[13px] shadow-2">
       <div className="mb-1 font-semibold text-ink">
         {row.label} <span className="font-normal text-ink-3">{row.projected ? "· projected" : "· actual"}</span>
       </div>
       <div className="grid grid-cols-[auto_auto] gap-x-4 gap-y-0.5 text-ink-2">
         <span>Earnings</span>
-        <span className="text-right tabular-nums">{formatMoney(earnings, currency)}</span>
+        <span className={`text-right font-semibold tabular-nums ${earnings != null && earnings < 0 ? "text-loss" : ""}`}>{formatAccounting(earnings, currency)}</span>
         <span>Free cash flow</span>
-        <span className="text-right tabular-nums">{formatMoney(fcf, currency)}</span>
+        <span className={`text-right font-semibold tabular-nums ${fcf != null && fcf < 0 ? "text-loss" : ""}`}>{formatAccounting(fcf, currency)}</span>
       </div>
     </div>
   );
 }
 
 export function ProjectionChart({ data, currency = "USD" }: { data: ChartRow[]; currency?: string }) {
-  const c = useDarkMode() ? PALETTE.dark : PALETTE.light;
+  // Lines draw in once on first render; after that they redraw instantly so slider drags stay smooth.
+  const [drawIn, setDrawIn] = useState(true);
+  useEffect(() => {
+    const t = setTimeout(() => setDrawIn(false), DUR[3] * 1000 + 100);
+    return () => clearTimeout(t);
+  }, []);
+
   const last = data[data.length - 1];
-  const lastActual = [...data].reverse().find((d) => !d.projected)?.label;
+  const lastActualIdx = data.map((d) => !d.projected).lastIndexOf(true);
+  const lastActual = lastActualIdx >= 0 ? data[lastActualIdx].label : undefined;
   // End labels can sit on top of each other when the two series converge: put the
   // higher one above its point and the lower one below.
   const earningsOnTop = (last?.earningsProjected ?? 0) >= (last?.fcfProjected ?? 0);
@@ -91,14 +103,7 @@ export function ProjectionChart({ data, currency = "USD" }: { data: ChartRow[]; 
       dataKey={key}
       content={({ x, y, value, index }) =>
         index === data.length - 1 && typeof value === "number" ? (
-          <text
-            x={Number(x) + 8}
-            y={Number(y)}
-            dy={(key === "earningsProjected") === earningsOnTop ? -3 : 11}
-            fontSize={11}
-            fontWeight={600}
-            fill={c.text}
-          >
+          <text x={Number(x) + 8} y={Number(y)} dy={(key === "earningsProjected") === earningsOnTop ? -3 : 12} fontSize={12} fontWeight={600} fill={C.text}>
             <tspan fill={color}>● </tspan>
             {compactMoney(value, currency)}
           </text>
@@ -106,51 +111,46 @@ export function ProjectionChart({ data, currency = "USD" }: { data: ChartRow[]; 
       }
     />
   );
+  // Only the last actual point gets a dot (spruce fill, panel ring).
+  const lastDot = (color: string) =>
+    function LastDot({ cx, cy, index }: { cx?: number; cy?: number; index?: number }) {
+      return index === lastActualIdx && cx != null && cy != null ? (
+        <circle key={`dot-${index}`} cx={cx} cy={cy} r={4.5} fill={color} stroke={C.panel} strokeWidth={2} />
+      ) : (
+        <g key={`dot-${index}`} />
+      );
+    };
 
-  // Every line is static per render (no animation) so slider drags redraw instantly.
-  const lineProps = { type: "monotone" as const, strokeWidth: 2, isAnimationActive: false, connectNulls: false };
+  const lineProps = {
+    type: "monotone" as const,
+    strokeWidth: 2,
+    connectNulls: false,
+    isAnimationActive: drawIn,
+    animationDuration: DUR[3] * 1000,
+    animationEasing: "ease-out" as const,
+  };
 
   return (
     <ResponsiveContainer width="100%" height={340}>
-      <LineChart data={data} margin={{ top: 16, right: 64, bottom: 4, left: 8 }}>
-        {lastActual && last && <ReferenceArea x1={lastActual} x2={last.label} fill={c.band} fillOpacity={1} />}
-        <CartesianGrid vertical={false} stroke={c.grid} />
-        <XAxis dataKey="label" interval="preserveStartEnd" minTickGap={14} tick={{ fontSize: 10, fill: c.axis }} tickLine={false} axisLine={{ stroke: c.grid }} />
-        <YAxis
-          tickFormatter={(v: number) => compactMoney(v, currency)}
-          tick={{ fontSize: 11, fill: c.axis }}
-          tickLine={false}
-          axisLine={false}
-          width={56}
-        />
+      <ComposedChart data={data} margin={{ top: 16, right: 64, bottom: 4, left: 8 }}>
+        {lastActual && last && <ReferenceArea x1={lastActual} x2={last.label} fill={C.band} fillOpacity={1} />}
+        <CartesianGrid vertical={false} stroke={C.grid} />
+        <XAxis dataKey="label" interval="preserveStartEnd" minTickGap={14} tick={{ fontSize: 11, fill: C.axis }} tickLine={false} axisLine={{ stroke: C.grid }} />
+        <YAxis tickFormatter={(v: number) => compactMoney(v, currency)} tick={{ fontSize: 11, fill: C.axis }} tickLine={false} axisLine={false} width={56} />
         {lastActual && (
-          <ReferenceLine
-            x={lastActual}
-            stroke={c.axis}
-            strokeDasharray="2 3"
-            label={{ value: "Projection →", position: "insideTopLeft", fontSize: 11, fill: c.axis }}
-          />
+          <ReferenceLine x={lastActual} stroke={C.axis} strokeDasharray="2 3" label={{ value: "Projection →", position: "insideTopLeft", fontSize: 12, fill: C.axis }} />
         )}
-        <Tooltip content={<ChartTooltip currency={currency} />} cursor={{ stroke: c.axis, strokeWidth: 1 }} />
-        <Line {...lineProps} dataKey="earnings" name="Earnings" stroke={c.earnings} dot={{ r: 3, strokeWidth: 0, fill: c.earnings }} activeDot={{ r: 5 }} />
-        <Line {...lineProps} dataKey="fcf" name="Free cash flow" stroke={c.fcf} dot={{ r: 3, strokeWidth: 0, fill: c.fcf }} activeDot={{ r: 5 }} />
-        <Line
-          {...lineProps}
-          dataKey="earningsProjected"
-          name="Earnings (projected)"
-          stroke={c.earnings}
-          strokeDasharray="6 4"
-          dot={false}
-          activeDot={{ r: 5 }}
-        >
-          {endLabel("earningsProjected", c.earnings)}
+        <Tooltip content={<ChartTooltip currency={currency} />} cursor={{ stroke: C.axis, strokeWidth: 1 }} />
+        <Area {...lineProps} dataKey="earnings" stroke="none" fill={C.area} fillOpacity={0.75} activeDot={false} />
+        <Line {...lineProps} dataKey="earnings" name="Earnings" stroke={C.earnings} dot={lastDot(C.earnings)} activeDot={{ r: 5, stroke: C.panel, strokeWidth: 2 }} />
+        <Line {...lineProps} dataKey="fcf" name="Free cash flow" stroke={C.fcf} dot={lastDot(C.fcf)} activeDot={{ r: 5, stroke: C.panel, strokeWidth: 2 }} />
+        <Line {...lineProps} dataKey="earningsProjected" name="Earnings (projected)" stroke={C.earnings} strokeDasharray="6 4" dot={false} activeDot={{ r: 5 }}>
+          {endLabel("earningsProjected", C.earnings)}
         </Line>
-        <Line {...lineProps} dataKey="fcfProjected" name="FCF (projected)" stroke={c.fcf} strokeDasharray="6 4" dot={false} activeDot={{ r: 5 }}>
-          {endLabel("fcfProjected", c.fcf)}
+        <Line {...lineProps} dataKey="fcfProjected" name="FCF (projected)" stroke={C.fcf} strokeDasharray="6 4" dot={false} activeDot={{ r: 5 }}>
+          {endLabel("fcfProjected", C.fcf)}
         </Line>
-      </LineChart>
+      </ComposedChart>
     </ResponsiveContainer>
   );
 }
-
-export { useDarkMode };

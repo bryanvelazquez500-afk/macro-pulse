@@ -326,6 +326,17 @@ body {
     translate: 0 -1px;
   }
 
+  /* Range slider: spruce track fill and thumb (accent-color), mint focus halo. */
+  .range {
+    accent-color: var(--spruce);
+    height: 20px;
+  }
+  .range:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 4px var(--mint);
+    border-radius: var(--radius-pill);
+  }
+
   /* Status pill: uppercase label with a leading dot (forensic zones, flags). */
   .pill {
     display: inline-flex;

@@ -2,9 +2,9 @@
 
 import { useMemo } from "react";
 
-import { ChartRow, ProjectionChart, SeriesKey, useDarkMode } from "@/components/ProjectionChart";
+import { ChartRow, ProjectionChart, SeriesKey } from "@/components/ProjectionChart";
 import { FinancialPeriod, fetchValuationInputs } from "@/lib/api";
-import { currencySymbol, formatMoney } from "@/lib/format";
+import { currencySymbol, formatMoney, formatAccounting } from "@/lib/format";
 import { capm } from "@/lib/intrinsic";
 import { useFetch } from "@/lib/useFetch";
 import {
@@ -38,10 +38,10 @@ function Slider({
   return (
     <div>
       <div className="mb-1.5 flex items-baseline justify-between gap-2">
-        <label htmlFor={id} className="text-[13px] text-ink">
+        <label htmlFor={id} className="text-[14px] font-medium text-ink">
           {label}
         </label>
-        <output htmlFor={id} className="text-[13px] text-ink tabular-nums">
+        <output htmlFor={id} className="text-[14px] font-semibold text-spruce tabular-nums">
           {value > 0 && range.min < 0 ? "+" : ""}
           {value.toFixed(range.step < 0.5 ? 2 : 1)}%
         </output>
@@ -54,9 +54,9 @@ function Slider({
         step={range.step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full cursor-pointer accent-spruce dark:accent-spruce"
+        className="range w-full cursor-pointer"
       />
-      <div className="mt-0.5 flex justify-between text-[11px] text-ink-4">
+      <div className="mt-1 flex justify-between text-[12px] text-ink-3">
         <span>{range.min}%</span>
         {hint && <span className="text-ink-3">{hint}</span>}
         <span>{range.max > 0 && range.min < 0 ? "+" : ""}{range.max}%</span>
@@ -67,10 +67,10 @@ function Slider({
 
 function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="border-l border-line py-0.5 pl-3">
+    <div className="rounded-md border border-line bg-panel p-4">
       <div className="eyebrow">{label}</div>
-      <div className="mt-1 text-xl tracking-tight text-ink tabular-nums">{value}</div>
-      {sub && <div className="text-[11px] text-ink-3">{sub}</div>}
+      <div className={`type-big-figure mt-1 !text-[24px] ${value.startsWith("(") ? "text-loss" : "text-ink"}`}>{value}</div>
+      {sub && <div className="mt-0.5 text-[13px] leading-5 text-ink-3">{sub}</div>}
     </div>
   );
 }
@@ -118,7 +118,6 @@ export function ValuationPanel({
     () => (inputs.status === "loading" ? null : deriveBaseline(annualPeriods, ke)),
     [annualPeriods, ke, inputs.status],
   );
-  const dark = useDarkMode();
   // Shared with the Intrinsic Valuation Station, per company.
   const [assumptions, setShared] = useAssumptions(companyId, baseline?.defaults ?? null);
 
@@ -141,7 +140,7 @@ export function ValuationPanel({
 
   return (
     <div className="panel">
-      <div className="grid gap-6 p-5 lg:grid-cols-[260px_minmax(0,1fr)]">
+      <div className="grid gap-8 p-6 max-sm:p-4 lg:grid-cols-[280px_minmax(0,1fr)]">
         <div className="space-y-5">
           <div className="flex items-center justify-between">
             <h4 className="eyebrow">Assumptions</h4>
@@ -149,7 +148,7 @@ export function ValuationPanel({
               type="button"
               onClick={() => setShared(baseline.defaults)}
               disabled={isDefault}
-              className="text-xs link disabled:text-ink-4 disabled:no-underline"
+              className="btn-ghost btn-sm disabled:opacity-45"
             >
               Reset
             </button>
@@ -188,20 +187,20 @@ export function ValuationPanel({
                 : undefined
             }
           />
-          <dl className="space-y-1 border-t border-line pt-4 text-[11px] text-ink-3">
+          <dl className="space-y-1.5 border-t border-line pt-4 text-[13px] text-ink-3">
             <div className="flex justify-between">
               <dt>Earnings ÷ operating income</dt>
-              <dd className="">{(baseline.earningsConversion * 100).toFixed(0)}%</dd>
+              <dd className="font-semibold text-ink tabular-nums">{(baseline.earningsConversion * 100).toFixed(0)}%</dd>
             </div>
             <div className="flex justify-between">
               <dt>FCF ÷ earnings</dt>
-              <dd className="">{(baseline.fcfConversion * 100).toFixed(0)}%</dd>
+              <dd className="font-semibold text-ink tabular-nums">{(baseline.fcfConversion * 100).toFixed(0)}%</dd>
             </div>
             <div className="flex justify-between">
               <dt>Terminal growth</dt>
-              <dd className="">{TERMINAL_GROWTH_PCT}%</dd>
+              <dd className="font-semibold text-ink tabular-nums">{TERMINAL_GROWTH_PCT}%</dd>
             </div>
-            <p className="pt-1 text-[11px] leading-snug text-ink-4">
+            <p className="pt-1 text-[13px] leading-5 text-ink-3">
               Conversion rates are this company&apos;s 3-year GAAP averages. Free cash flow (operating cash flow − capex) is after interest, so
               it&apos;s discounted at the cost of equity and gives equity value. Growth holds for {PROJECTION_YEARS} years, then fades to{" "}
               {TERMINAL_GROWTH_PCT}% over the next {FADE_YEARS}.
@@ -209,11 +208,11 @@ export function ValuationPanel({
           </dl>
         </div>
 
-        <div className="min-w-0 space-y-4">
+        <div className="min-w-0 space-y-5">
           <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
             <Stat
               label="Equity value (DCF)"
-              value={formatUsd(valuation.equityValue)}
+              value={formatAccounting(valuation.equityValue, "USD")}
               sub={valuation.enterpriseValue != null ? `EV ${formatUsd(valuation.enterpriseValue)} (+ debt − cash)` : undefined}
             />
             <Stat
@@ -227,30 +226,30 @@ export function ValuationPanel({
                   : (loaded?.price_note ?? "No comparable share price")
               }
             />
-            <Stat label={`PV of ${PROJECTION_YEARS + FADE_YEARS}-yr FCF`} value={formatUsd(valuation.pvExplicitFcf)} />
+            <Stat label={`PV of ${PROJECTION_YEARS + FADE_YEARS}-yr FCF`} value={formatAccounting(valuation.pvExplicitFcf, "USD")} />
             <Stat
               label="PV of terminal value"
-              value={formatUsd(valuation.pvTerminalValue)}
+              value={formatAccounting(valuation.pvTerminalValue, "USD")}
               sub={`${terminalShare.toFixed(0)}% of equity value`}
             />
           </div>
           <div>
             <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-              <h4 className="text-[13px] text-ink">
+              <h4 className="text-[15px] font-semibold text-ink">
                 Earnings &amp; free cash flow — actual vs. {PROJECTION_YEARS + FADE_YEARS}-year projection
               </h4>
-              <SeriesKey dark={dark} />
+              <SeriesKey />
             </div>
             <ProjectionChart data={chartData} currency={currency} />
           </div>
           {valuation.terminalShare > TERMINAL_SHARE_WARNING && (
-            <p role="alert" className="rounded-md bg-caution-bg px-3 py-2 text-[12px] text-caution ring-1 ring-caution/30 ring-inset">
+            <p role="alert" className="rounded-sm bg-caution-bg px-4 py-2.5 text-[13px] text-caution">
               ⚠ Terminal value is {terminalShare.toFixed(0)}% of the total (over {TERMINAL_SHARE_WARNING * 100}%): most of this value sits beyond
               year {PROJECTION_YEARS + FADE_YEARS}, so check whether the near-term growth and margin are realistic.
             </p>
           )}
           {baseline.notes.length > 0 && (
-            <ul className="space-y-0.5 text-xs text-ink-3">
+            <ul className="space-y-0.5 text-[13px] text-ink-3">
               {baseline.notes.map((n) => (
                 <li key={n}>• {n}</li>
               ))}
@@ -259,10 +258,10 @@ export function ValuationPanel({
         </div>
       </div>
 
-      <details className="border-t border-line px-5 py-3 text-[13px]">
+      <details className="border-t border-line px-6 py-4 text-[14px]">
         <summary className="eyebrow cursor-pointer">Projection table</summary>
         <div className="mt-3 overflow-x-auto">
-          <table className="w-full text-right text-xs tabular-nums">
+          <table className="w-full text-right tabular-nums [&_td]:py-2 [&_th]:border-b [&_th]:border-line-strong [&_th]:pb-2 [&_th]:text-[11px] [&_th]:font-bold [&_th]:tracking-[0.09em] [&_th]:uppercase">
             <thead className="text-ink-3">
               <tr>
                 <th className="py-1 text-left font-sans font-medium">Fiscal year</th>
@@ -277,13 +276,13 @@ export function ValuationPanel({
             <tbody>
               {valuation.years.map((y) => (
                 <tr key={y.fiscalYear} className="border-t border-line">
-                  <td className="py-1 text-left font-sans">FY{y.fiscalYear}E</td>
+                  <td className="text-left font-mono text-ink-2">FY{y.fiscalYear}E</td>
                   <td>{(y.growth * 100).toFixed(1)}%</td>
-                  <td>{formatUsd(y.revenue)}</td>
-                  <td>{formatUsd(y.operatingIncome)}</td>
-                  <td>{formatUsd(y.earnings)}</td>
-                  <td>{formatUsd(y.fcf)}</td>
-                  <td>{formatUsd(y.pvFcf)}</td>
+                  <td className={y.revenue < 0 ? "text-loss" : "font-medium text-ink"}>{formatAccounting(y.revenue, "USD")}</td>
+                  <td className={y.operatingIncome < 0 ? "text-loss" : "font-medium text-ink"}>{formatAccounting(y.operatingIncome, "USD")}</td>
+                  <td className={y.earnings < 0 ? "text-loss" : "font-medium text-ink"}>{formatAccounting(y.earnings, "USD")}</td>
+                  <td className={y.fcf < 0 ? "text-loss" : "font-medium text-ink"}>{formatAccounting(y.fcf, "USD")}</td>
+                  <td className={y.pvFcf < 0 ? "text-loss" : "font-medium text-ink"}>{formatAccounting(y.pvFcf, "USD")}</td>
                 </tr>
               ))}
             </tbody>

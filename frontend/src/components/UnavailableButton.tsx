@@ -89,7 +89,7 @@ export function UnavailableButton({
         aria-expanded={open}
         aria-controls={id}
         className={`inline-flex shrink-0 items-center gap-1.5 rounded-md font-semibold text-loss ring-1 ring-loss/40 ring-inset transition hover:bg-loss-bg hover:text-loss focus-visible:ring-2 focus-visible:ring-loss/30 focus-visible:outline-none ${
-          compact ? "px-2 py-1 text-[10.5px]" : "px-2.5 py-1.5 text-[12px]"
+          compact ? "px-2 py-1 text-[12px]" : "px-2.5 py-1.5 text-[12px]"
         } bg-loss-bg`}
       >
         <span aria-hidden>⚠</span>
@@ -122,7 +122,7 @@ export function UnavailableButton({
                     ×
                   </button>
                 </div>
-                <p className="mt-1 text-[12.5px] leading-relaxed text-ink-2">
+                <p className="mt-1 text-[13px] leading-relaxed text-ink-2">
                   Financial data for <span className="font-medium text-ink">{subject}</span> is unavailable at the moment. Please check
                   back later.
                 </p>

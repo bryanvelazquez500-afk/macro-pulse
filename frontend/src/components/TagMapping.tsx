@@ -22,9 +22,9 @@ export function TagMapping({
         return (
           <div key={key}>
             <div className="mb-2 text-[13px] text-ink">{METRIC_LABELS[key]}</div>
-            <ul className="space-y-1 font-mono text-[11px] break-all">
+            <ul className="space-y-1 font-mono text-[12px] break-all">
               {[...tags, ...derived].map((tag) => (
-                <li key={tag} className={used.has(tag) ? "text-ink" : "text-ink-4"}>
+                <li key={tag} className={used.has(tag) ? "text-ink" : "text-ink-3"}>
                   <span aria-hidden className="mr-1.5">{used.has(tag) ? "■" : "□"}</span>
                   {tag}
                 </li>

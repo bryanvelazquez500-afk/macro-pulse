@@ -331,17 +331,32 @@ function TrendChart({
   );
 }
 
+/**
+ * Heat square for a % change: the same four steps as the comparison legend (10 / 20 / 30 / 40%), mirrored
+ * for drops; changes under 10% get a faint tint so every cell still reads at a glance.
+ */
+function heat(change: number | null): { bg: string; step: number } | null {
+  if (change == null) return null;
+  const a = Math.abs(change);
+  const dir = change >= 0 ? "surge" : "drop";
+  if (a < 10) return { bg: `color-mix(in srgb, var(--${dir}-1) 55%, transparent)`, step: 0 };
+  const step = a >= 40 ? 4 : a >= 30 ? 3 : a >= 20 ? 2 : 1;
+  return { bg: `var(--${dir}-${step})`, step };
+}
+
 /** "calc" marks a derived line item. */
 function CalcTag() {
-  return <span className="ml-1.5 rounded-xs bg-mint px-1 py-px align-middle font-mono text-[10px] font-medium text-mint-ink">calc</span>;
+  return <span className="ml-1.5 rounded-xs bg-mint px-1 py-px align-middle font-mono text-[12px] font-medium text-mint-ink">calc</span>;
 }
 
 /** A percent change with its direction: ▲ gain / ▼ loss, never color alone. */
-function Delta({ change, className = "" }: { change: number | null; className?: string }) {
+function Delta({ change, className = "", step = 0 }: { change: number | null; className?: string; step?: number }) {
   if (change == null) return <span className={`text-ink-3 ${className}`}>—</span>;
   const up = change >= 0;
+  // On a heat square: ink on steps 2–3, the step's own on-color on step 4 (contrast first; ▲/▼ carry direction).
+  const color = step === 4 ? (up ? "text-on-surge-4" : "text-on-drop-4") : step >= 2 ? "text-ink" : up ? "text-gain" : "text-loss";
   return (
-    <span className={`whitespace-nowrap ${up ? "text-gain" : "text-loss"} ${className}`}>
+    <span className={`whitespace-nowrap ${color} ${className}`}>
       <span aria-hidden>{up ? "▲" : "▼"}</span> {formatChange(change)}
     </span>
   );
@@ -624,7 +639,7 @@ function VerticalView({ periods, currency, periodType }: { periods: FinancialPer
                   >
                     {pick && <span aria-hidden className="size-2 rounded-full" style={{ background: SERIES_COLORS[pick.slot] }} />}
                     {r.label}
-                    {isBase && <span className="rounded-xs bg-mint px-1 font-mono text-[10px] text-mint-ink">base</span>}
+                    {isBase && <span className="rounded-xs bg-mint px-1 font-mono text-[12px] text-mint-ink">base</span>}
                   </button>
                 );
               })}
@@ -936,6 +951,8 @@ function CompanyCard({ entry, periodType, defaultOpen }: { entry: CompanyEntry; 
                             </th>
                             {cells.map((c, i) => {
                               const neg = c.value != null && c.value < 0 && row.unit !== "shares";
+                              const h = mode === "change" ? heat(c.change) : null;
+                              const up = (c.change ?? 0) >= 0;
                               const top =
                                 mode === "index" ? (c.index == null ? "n/m" : c.index.toFixed(0)) : fmt(c.value, row.unit, currency);
                               return (
@@ -945,18 +962,37 @@ function CompanyCard({ entry, periodType, defaultOpen }: { entry: CompanyEntry; 
                                   title={`${periodLabel(c.period)}: ${fmt(c.value, row.unit, currency)}${c.change == null ? "" : ` · ${formatChange(c.change)} vs prior`}${c.index == null ? "" : ` · index ${c.index.toFixed(1)}`}`}
                                 >
                                   <div
-                                    className={`tabular-nums ${rule.includes("font-bold") ? "font-bold" : "font-semibold"} ${
-                                      top === "n/m" ? "text-ink-3" : mode !== "index" && neg ? "text-loss" : "text-ink"
-                                    }`}
+                                    className="-mx-2 -my-1 rounded-xs px-2 py-1 transition-colors duration-[var(--dur-2)]"
+                                    style={h ? { backgroundColor: h.bg } : undefined}
                                   >
-                                    {top}
-                                  </div>
-                                  {mode === "change" && (
-                                    <div className="text-[12px] font-medium tabular-nums">
-                                      {c.change == null ? <span className="text-ink-3">{i === 0 && c.value != null ? "base" : "—"}</span> : <Delta change={c.change} />}
+                                    <div
+                                      className={`tabular-nums ${rule.includes("font-bold") ? "font-bold" : "font-semibold"} ${
+                                        h?.step === 4
+                                          ? up
+                                            ? "text-on-surge-4"
+                                            : "text-on-drop-4"
+                                          : top === "n/m"
+                                            ? "text-ink-3"
+                                            : h && h.step >= 2
+                                              ? "text-ink"
+                                            : mode !== "index" && neg
+                                              ? "text-loss"
+                                              : "text-ink"
+                                      }`}
+                                    >
+                                      {top}
                                     </div>
-                                  )}
+                                    {mode === "change" && (
+                                      <div className="text-[12px] font-medium tabular-nums">
+                                        {c.change == null ? (
+                                          <span className="text-ink-3">{i === 0 && c.value != null ? "base" : "—"}</span>
+                                        ) : (
+                                          <Delta change={c.change} step={h?.step} />
+                                        )}
+                                      </div>
+                                    )}
                                   {mode === "index" && <div className="text-[12px] text-ink-3 tabular-nums">{fmt(c.value, row.unit, currency)}</div>}
+                                  </div>
                                 </td>
                               );
                             })}

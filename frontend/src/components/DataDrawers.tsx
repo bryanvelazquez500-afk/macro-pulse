@@ -20,7 +20,7 @@ function LineageBody({ entry }: { entry: CompanyEntry }) {
     <>
       <p className="mb-4 text-[12px] text-ink-3">
         Every number in the matrix traces back to one of these tags: <span className="text-ink">■ in use</span> for this company,{" "}
-        <span className="text-ink-4">□ available</span> but not reported. {f.accounting_standard} · {f.currency} ·{" "}
+        <span className="text-ink-3">□ available</span> but not reported. {f.accounting_standard} · {f.currency} ·{" "}
         {f.source === "sec" ? "SEC EDGAR CompanyFacts" : "Financial Modeling Prep"} · {f.period_type} periods.
       </p>
       <TagMapping tagMap={f.tag_map} periods={f.periods} bare />

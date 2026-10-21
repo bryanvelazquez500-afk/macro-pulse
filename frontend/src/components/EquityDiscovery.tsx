@@ -218,7 +218,7 @@ function StockRow({ leader, onAnalyze }: { leader: Leader; onAnalyze: (symbol: s
     >
       <div className="min-w-0 flex-1">
         <div className="truncate text-[13.5px] font-semibold text-ink">{leader.name}</div>
-        <div className="mt-0.5 flex items-center gap-2 text-[11px]">
+        <div className="mt-0.5 flex items-center gap-2 text-[12px]">
           <span className="font-mono font-semibold text-spruce">{leader.symbol}</span>
           {!keyRequired && (
             <span
@@ -392,9 +392,9 @@ function SectorList({ data, onAnalyze }: { data: CountryLeaders; onAnalyze: (sym
 
 function SectorHeader({ sector, count }: { sector: string; count: number }) {
   return (
-    <div className="flex h-[34px] items-center justify-between border-b border-line bg-[#0a1324] px-4">
+    <div className="flex h-10 items-center justify-between border-b border-line-strong bg-canvas px-5">
       <span className="text-[10.5px] font-bold tracking-[0.22em] text-mint-ink uppercase">{sector}</span>
-      <span className="text-[10px] text-ink-3">{count}</span>
+      <span className="text-[12px] text-ink-3">{count}</span>
     </div>
   );
 }
@@ -428,7 +428,7 @@ function CountryPanel({
       animate={{ x: 0, opacity: 1 }}
       exit={reduceMotion ? { opacity: 0 } : { x: "100%", opacity: 0.6, transition: { duration: 0.22, ease: "easeIn" } }}
       transition={{ type: "spring", stiffness: 260, damping: 32 }}
-      className="absolute inset-y-0 right-0 z-20 flex w-full max-w-[460px] flex-col border-l border-line-strong bg-[#070c17]/[0.97] shadow-[-24px_0_60px_-20px_rgba(34,211,238,0.25)] backdrop-blur-xl"
+      className="absolute inset-y-0 right-0 z-20 flex w-full max-w-[460px] flex-col border-l border-line bg-panel shadow-2"
     >
       <div className="relative border-b border-line px-5 pt-5 pb-4">
         <div className="text-[10px] font-semibold tracking-[0.3em] text-spruce uppercase">Scout report · {country.continent}</div>
@@ -439,7 +439,7 @@ function CountryPanel({
           <h3 className="text-xl font-bold tracking-tight text-ink">{country.name}</h3>
         </div>
         {state.status === "success" && state.data && (
-          <p className="mt-2 text-[10.5px] text-ink-3">
+          <p className="mt-2 text-[12px] text-ink-3">
             {state.data.leaders.length.toLocaleString()} listings · ranked by live market cap · live quotes · → adds a company to the comparison
           </p>
         )}
@@ -454,12 +454,12 @@ function CountryPanel({
       </div>
       {!covered ? (
         <p className="m-4 rounded-lg border border-dashed border-line p-4 text-[13px] text-ink-3">
-          No scouted listings for {country.name} yet. Covered markets carry a cyan marker on the map.
+          No scouted listings for {country.name} yet. Covered markets carry a spruce marker on the map.
         </p>
       ) : state.status === "loading" ? (
         <ul className="space-y-px p-4" aria-busy="true">
           {country.iso === "US" && (
-            <li className="pb-2 text-[11.5px] text-ink-3">Pricing every US-listed SEC filer — the first load can take up to a minute.</li>
+            <li className="pb-2 text-[13px] text-ink-3">Pricing every US-listed SEC filer — the first load can take up to a minute.</li>
           )}
           {Array.from({ length: 8 }, (_, i) => (
             <li key={i} className="h-14 animate-pulse rounded bg-subtle" />
@@ -486,7 +486,7 @@ function CountryPanel({
               <span className="pr-1">Add to comparison →</span>
             </div>
             {shown.leaders.length === 0 ? (
-              <p className="p-4 text-[12.5px] text-ink-3">No company matches “{filter}”.</p>
+              <p className="p-4 text-[13px] text-ink-3">No company matches “{filter}”.</p>
             ) : (
               <SectorList key={filter} data={shown} onAnalyze={onAnalyze} />
             )}
@@ -579,7 +579,7 @@ export function EquityDiscovery({ onAnalyze }: { onAnalyze: (symbol: string) => 
     <section
       ref={root}
       aria-label="Equity Discovery scout map"
-      className="relative overflow-hidden rounded-2xl bg-canvas text-ink-2 shadow-[0_30px_80px_-30px_rgba(8,145,178,0.45)] ring-1 ring-line"
+      className="panel relative overflow-hidden text-ink-2"
     >
       {/* HUD backdrop: faint grid + vignette */}
       <div
@@ -587,14 +587,11 @@ export function EquityDiscovery({ onAnalyze }: { onAnalyze: (symbol: string) => 
         className="pointer-events-none absolute inset-0 opacity-[0.35]"
         style={{
           backgroundImage:
-            "linear-gradient(rgba(34,211,238,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(34,211,238,0.07) 1px, transparent 1px)",
+            "linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px)",
           backgroundSize: "36px 36px",
         }}
       />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_40%,rgba(2,4,10,0.85)_100%)]"
-      />
+      
       {(
         [
           "top-3 left-3 border-t border-l",
@@ -603,19 +600,19 @@ export function EquityDiscovery({ onAnalyze }: { onAnalyze: (symbol: string) => 
           "bottom-3 right-3 border-b border-r",
         ] as const
       ).map((c) => (
-        <span key={c} aria-hidden className={`pointer-events-none absolute size-5 border-spruce/50 ${c}`} />
+        <span key={c} aria-hidden className={`pointer-events-none absolute size-5 border-line-strong ${c}`} />
       ))}
 
       {/* Header */}
       <div className="relative flex flex-wrap items-end justify-between gap-4 px-6 pt-6">
         <div>
-          <div className="text-[10px] font-semibold tracking-[0.35em] text-spruce uppercase">Scout network · global markets</div>
-          <h2 className="mt-1 text-2xl font-black tracking-tight text-ink uppercase italic">Equity Discovery</h2>
-          <nav aria-label="Map location" className="mt-1 flex items-center gap-2 text-[11px] text-ink-3">
+          <div className="eyebrow !text-spruce">Scout network · global markets</div>
+          <h2 className="type-section mt-1 text-ink max-sm:!text-[24px] max-sm:!leading-[30px]">Equity discovery</h2>
+          <nav aria-label="Map location" className="mt-1 flex items-center gap-2 text-[13px] font-semibold text-ink-3">
             <button
               type="button"
               onClick={goWorld}
-              className={zoomed ? "text-spruce hover:text-mint-ink" : "text-ink-2"}
+              className={zoomed ? "text-spruce hover:underline" : "text-ink-2"}
               disabled={!zoomed}
             >
               WORLD
@@ -634,13 +631,13 @@ export function EquityDiscovery({ onAnalyze }: { onAnalyze: (symbol: string) => 
             )}
           </nav>
         </div>
-        <div className="flex gap-6 text-[11px] text-ink-3">
+        <div className="flex gap-6 text-[13px] text-ink-3">
           <div>
-            <div className="text-xl font-bold text-mint-ink tabular-nums">{Object.keys(covered).length}</div>
+            <div className="type-big-figure text-spruce">{Object.keys(covered).length}</div>
             markets scouted
           </div>
           <div>
-            <div className="text-xl font-bold text-mint-ink tabular-nums">{Object.values(covered).reduce((a, b) => a + b, 0)}</div>
+            <div className="type-big-figure text-spruce">{Object.values(covered).reduce((a, b) => a + b, 0)}</div>
             listings tracked
           </div>
         </div>
@@ -657,10 +654,8 @@ export function EquityDiscovery({ onAnalyze }: { onAnalyze: (symbol: string) => 
               setRegion(r.key);
             }}
             aria-pressed={region === r.key}
-            className={`rounded-md px-3 py-1.5 text-[11px] font-semibold tracking-wider uppercase ring-1 transition ${
-              region === r.key
-                ? "bg-spruce text-ink ring-spruce shadow-[0_0_18px_rgba(34,211,238,0.5)]"
-                : "text-ink-2 ring-line hover:bg-subtle hover:ring-spruce/50"
+            className={`rounded-full border px-3.5 py-1.5 text-[13px] font-semibold transition-colors duration-[var(--dur-2)] ${
+              region === r.key ? "border-transparent bg-spruce text-on-spruce" : "border-line-strong bg-panel text-ink-2 hover:border-spruce hover:text-spruce"
             }`}
           >
             {r.label}
@@ -681,12 +676,9 @@ export function EquityDiscovery({ onAnalyze }: { onAnalyze: (symbol: string) => 
             onClick={(e) => e.target === e.currentTarget && zoomed && !selected && goWorld()}
           >
             <defs>
-              <filter id="ed-glow" x="-50%" y="-50%" width="200%" height="200%">
-                <feGaussianBlur stdDeviation="2.4" result="b" />
-                <feMerge>
-                  <feMergeNode in="b" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
+              {/* Kept for id stability; no glow (identity filter). */}
+              <filter id="ed-glow">
+                <feOffset dx="0" dy="0" />
               </filter>
             </defs>
             <g ref={group}>
@@ -697,27 +689,30 @@ export function EquityDiscovery({ onAnalyze }: { onAnalyze: (symbol: string) => 
                 const isHover = !!region && hovered?.iso === p.iso && inRegion;
                 const isSelected = selected?.iso === p.iso;
                 const isCovered = !!covered[p.iso];
+                // Land in ledger tokens: scouted markets tinted spruce, the hovered one stronger, the selected one solid.
                 const fill = isSelected
-                  ? "#00f0ff"
+                  ? "var(--spruce)"
                   : isHover
-                    ? "#0e7490"
+                    ? "color-mix(in srgb, var(--spruce) 55%, var(--panel))"
                     : hoverContinent
-                      ? "#164e63"
+                      ? "color-mix(in srgb, var(--spruce) 32%, var(--panel))"
                       : !inRegion
-                        ? "#0b111c"
+                        ? "var(--subtle)"
                         : isCovered
-                          ? "#12304a"
-                          : "#0f1b2b";
+                          ? "color-mix(in srgb, var(--spruce) 24%, var(--line-strong))"
+                          : "var(--line-strong)";
                 return (
                   <path
                     key={p.iso + p.name}
                     d={d}
-                    fill={fill}
-                    stroke={isSelected || isHover ? "#00f0ff" : region && inRegion ? "#1e3a52" : "#0a1422"}
+                    style={{
+                      fill,
+                      stroke: isSelected || isHover ? "var(--spruce-strong)" : "var(--panel)",
+                      transition: "fill var(--dur-2) var(--ease-flow)",
+                    }}
                     strokeWidth={isSelected || isHover ? 1.4 : 0.6}
                     vectorEffect="non-scaling-stroke"
-                    filter={isSelected ? "url(#ed-glow)" : undefined}
-                    style={{ transition: "fill 0.3s var(--mp-ease)" }}
+                    
                     className={inRegion ? "cursor-pointer" : "pointer-events-none"}
                     onMouseEnter={() => setHovered(p)}
                     onMouseLeave={() => setHovered((h) => (h?.iso === p.iso ? null : h))}
@@ -732,12 +727,12 @@ export function EquityDiscovery({ onAnalyze }: { onAnalyze: (symbol: string) => 
               })}
 
               {/* Hover highlight, drawn above every country: the hovered country (region view) or continent
-                  (world view) pops to 1.02× with a macropulse-cyan glow. Glow radius ÷ zoom keeps it constant on screen. */}
+                  (world view) eases in with a spruce tint. */}
               {hovered && (
                 <g
                   key={region ? `hc-${hovered.iso}` : `hr-${hovered.continent}`}
                   className="mp-country-hover pointer-events-none"
-                  style={{ filter: `drop-shadow(0 0 ${6 / k}px rgba(0, 240, 255, 0.8))` }}
+                  
                 >
                   {world.countries
                     .filter(({ f }) =>
@@ -749,8 +744,7 @@ export function EquityDiscovery({ onAnalyze }: { onAnalyze: (symbol: string) => 
                       <path
                         key={f.properties.iso}
                         d={d}
-                        fill={region ? "rgba(0, 240, 255, 0.22)" : "rgba(0, 240, 255, 0.10)"}
-                        stroke="#00f0ff"
+                        style={{ fill: region ? "color-mix(in srgb, var(--spruce) 30%, transparent)" : "color-mix(in srgb, var(--spruce) 16%, transparent)", stroke: "var(--spruce)" }}
                         strokeWidth={region ? 1.6 : 0.8}
                         vectorEffect="non-scaling-stroke"
                       />
@@ -768,9 +762,9 @@ export function EquityDiscovery({ onAnalyze }: { onAnalyze: (symbol: string) => 
                   return (
                     <g key={`m-${f.properties.iso}`} transform={`translate(${xy[0]} ${xy[1]})`} className="pointer-events-none">
                       {zoomed && !reduceMotion && (
-                        <circle r={r} fill="none" stroke="#00f0ff" strokeWidth={1} vectorEffect="non-scaling-stroke" className="ed-pulse" />
+                        <circle r={r} fill="none" stroke="var(--spruce)" strokeWidth={1} vectorEffect="non-scaling-stroke" className="ed-pulse" />
                       )}
-                      <circle r={r} fill="#00f0ff" filter="url(#ed-glow)" />
+                      <circle r={r} fill="var(--spruce)" stroke="var(--panel)" strokeWidth={1.5 / k} />
                     </g>
                   );
                 })}
@@ -794,8 +788,8 @@ export function EquityDiscovery({ onAnalyze }: { onAnalyze: (symbol: string) => 
                     textAnchor="middle"
                     fontSize={size}
                     letterSpacing={0.08 / k}
-                    fill={isCovered ? "#e0f2fe" : "#64748b"}
-                    stroke="#05080f"
+                    fill={isCovered ? "var(--ink)" : "var(--ink-3)"}
+                    stroke="var(--panel)"
                     strokeWidth={3 / k}
                     paintOrder="stroke"
                     className="pointer-events-none font-sans font-semibold uppercase"
@@ -817,11 +811,11 @@ export function EquityDiscovery({ onAnalyze }: { onAnalyze: (symbol: string) => 
                       textAnchor="middle"
                       fontSize={13}
                       letterSpacing={3}
-                      fill={hovered?.continent === r.key ? "#cffafe" : "#94a3b8"}
-                      stroke="#05080f"
+                      fill={hovered?.continent === r.key ? "var(--spruce-strong)" : "var(--ink-2)"}
+                      stroke="var(--panel)"
                       strokeWidth={3}
                       paintOrder="stroke"
-                      className="pointer-events-none font-sans font-black uppercase italic transition-[fill]"
+                      className="pointer-events-none font-sans font-extrabold uppercase transition-[fill]"
                     >
                       {r.label}
                     </text>
@@ -832,14 +826,14 @@ export function EquityDiscovery({ onAnalyze }: { onAnalyze: (symbol: string) => 
         )}
 
         {/* Hover HUD */}
-        <div className="pointer-events-none absolute bottom-6 left-6 min-w-44 rounded-md border border-line bg-[#070c17]/85 px-3 py-2 backdrop-blur">
+        <div className="pointer-events-none absolute bottom-6 left-6 min-w-44 rounded-md border border-line bg-panel px-3 py-2 shadow-2">
           {hovered ? (
             <>
               <div className="text-[9.5px] tracking-[0.25em] text-spruce uppercase">{region ? hovered.continent : "Region"}</div>
               <div className="text-[13px] font-semibold text-ink">
                 {region ? `${flag(hovered.iso)} ${hovered.name}` : hovered.continent}
               </div>
-              <div className="text-[10.5px] text-ink-3">
+              <div className="text-[12px] text-ink-3">
                 {region
                   ? covered[hovered.iso]
                     ? `${covered[hovered.iso]} listings scouted — click to open`
@@ -848,7 +842,7 @@ export function EquityDiscovery({ onAnalyze }: { onAnalyze: (symbol: string) => 
               </div>
             </>
           ) : (
-            <div className="text-[10.5px] text-ink-3">
+            <div className="text-[12px] text-ink-3">
               {region ? "Hover a country · click to scout" : "Hover a region · click to zoom"}
             </div>
           )}
@@ -872,7 +866,7 @@ export function EquityDiscovery({ onAnalyze }: { onAnalyze: (symbol: string) => 
                 type="button"
                 onClick={() => setSelected(p)}
                 aria-pressed={selected?.iso === p.iso}
-                className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11.5px] ring-1 transition ${
+                className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[13px] ring-1 transition ${
                   selected?.iso === p.iso
                     ? "bg-mint text-mint-ink ring-spruce"
                     : "text-ink-2 ring-line hover:bg-subtle hover:ring-spruce/50"
@@ -880,7 +874,7 @@ export function EquityDiscovery({ onAnalyze }: { onAnalyze: (symbol: string) => 
               >
                 <span aria-hidden>{flag(p.iso)}</span>
                 {p.name}
-                <span className="text-[10px] text-spruce">{covered[p.iso]}</span>
+                <span className="text-[12px] text-spruce">{covered[p.iso]}</span>
               </button>
             ))}
           </motion.div>

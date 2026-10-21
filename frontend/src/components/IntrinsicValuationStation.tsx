@@ -3,6 +3,7 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ReactNode, useMemo, useState } from "react";
 
+import { flow } from "@/lib/motion";
 import { FinancialPeriod, MacroFactors, Rate, ValuationInputs, fetchValuationInputs, syncMacroFactors } from "@/lib/api";
 import { currencySymbol } from "@/lib/format";
 import {
@@ -34,7 +35,7 @@ function SafetyBadge({ mos, reason }: { mos: number | null; reason?: string }) {
   const reduceMotion = useReducedMotion();
   if (mos == null) {
     return (
-      <span className="rounded-full px-2 py-0.5 text-[10.5px] text-ink-3 ring-1 ring-line-strong ring-inset" title={reason}>
+      <span className="rounded-full bg-subtle px-2.5 py-0.5 text-[12px] font-medium text-ink-2" title={reason}>
         n/a
       </span>
     );
@@ -47,13 +48,11 @@ function SafetyBadge({ mos, reason }: { mos: number | null; reason?: string }) {
       layout
       // Re-keyed on the sign so crossing zero (sliders, a rate sync) visibly flips the badge.
       key={safe ? "safe" : "unsafe"}
-      initial={reduceMotion ? false : { scale: 0.7, opacity: 0 }}
+      initial={reduceMotion ? false : { opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
-      transition={{ type: "spring", stiffness: 500, damping: 24 }}
-      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold tabular-nums ${
-        safe
-          ? "bg-gain text-on-spruce"
-          : "bg-loss text-on-drop-4"
+      transition={flow(2)}
+      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[12px] font-semibold tabular-nums ${
+        safe ? "bg-gain-bg text-gain" : "bg-loss-bg text-loss"
       }`}
       title={`Margin of safety: (intrinsic − price) ÷ intrinsic = ${pctLabel}${mos < -1 ? ` — price is ${(1 - mos).toFixed(1)}× intrinsic value` : ""}`}
     >
@@ -74,14 +73,14 @@ function Inline({ label, value, sub, flash }: { label: string; value: string; su
       <div className="eyebrow">{label}</div>
       <motion.div
         key={value}
-        initial={flash ? { backgroundColor: "rgba(16,185,129,0.28)" } : false}
-        animate={{ backgroundColor: "rgba(16,185,129,0)" }}
+        initial={flash ? { backgroundColor: "var(--mint)" } : false}
+          animate={{ backgroundColor: "rgba(0,0,0,0)" }}
         transition={{ duration: 1.4 }}
-        className="-mx-1 mt-0.5 rounded px-1 text-[15px] font-semibold text-ink tabular-nums"
+        className="-mx-1 mt-0.5 rounded-xs px-1 text-[16px] font-semibold text-ink tabular-nums"
       >
         {value}
       </motion.div>
-      {sub && <div className="truncate text-[10.5px] text-ink-3">{sub}</div>}
+      {sub && <div className="truncate text-[12px] text-ink-3">{sub}</div>}
     </div>
   );
 }
@@ -107,20 +106,20 @@ function TargetRow({
     <li className="py-3">
       <div className="flex items-baseline justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-[13px] font-medium text-ink">{name}</div>
-          <div className="truncate text-[10.5px] text-ink-4" title={formula}>
+          <div className="text-[15px] font-semibold text-ink">{name}</div>
+          <div className="truncate text-[12px] text-ink-3" title={formula}>
             {formula}
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <span className={`text-[15px] font-semibold tabular-nums ${result.ok ? "text-ink" : "text-ink-4"}`}>
+          <span className={`text-[18px] font-bold tabular-nums ${result.ok ? "text-ink" : "text-ink-3"}`}>
             {result.ok ? money(result.value, currency) : "—"}
           </span>
           {result.ok && <SafetyBadge mos={mos} reason={reason} />}
         </div>
       </div>
-      <p className="mt-1 text-[11px] leading-snug text-ink-3">{result.ok ? result.detail : result.reason}</p>
-      {result.ok && extra && <div className="mt-1 text-[11px] leading-snug text-ink-3">{extra}</div>}
+      <p className="mt-1 text-[12px] leading-snug text-ink-3">{result.ok ? result.detail : result.reason}</p>
+      {result.ok && extra && <div className="mt-1 text-[12px] leading-snug text-ink-3">{extra}</div>}
     </li>
   );
 }
@@ -181,46 +180,41 @@ export function IntrinsicValuationStation({
 
   return (
     <section className="panel overflow-hidden" aria-labelledby="ivs-title">
-      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3">
-        <h2 id="ivs-title" className="eyebrow">
-          Intrinsic Valuation Station
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-6 pt-5 pb-4 max-sm:px-4">
+        <h2 id="ivs-title" className="type-card text-ink">
+          Intrinsic valuation station
         </h2>
         <motion.button
           type="button"
           onClick={onSync}
           disabled={sync.status === "syncing"}
-          whileTap={{ scale: 0.96 }}
-          className="inline-flex items-center gap-1.5 rounded-md bg-inverse px-2.5 py-1.5 text-[11px] font-medium whitespace-nowrap text-on-inverse transition-opacity hover:opacity-85 disabled:opacity-60"
+          className="btn-primary btn-sm"
           title="Fetch the latest 10-year Treasury yield (U.S. Treasury / FRED) and overwrite the risk-free rate"
         >
-          <motion.span
-            aria-hidden
-            animate={sync.status === "syncing" ? { rotate: [0, -12, 12, 0] } : { rotate: 0 }}
-            transition={sync.status === "syncing" ? { repeat: Infinity, duration: 0.5 } : undefined}
-          >
-            ⚡
-          </motion.span>
-          {sync.status === "syncing" ? "Syncing…" : "Sync Live Market Factors"}
+          <svg aria-hidden viewBox="0 0 16 16" className={`size-4 ${sync.status === "syncing" ? "animate-spin" : ""}`} fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+            <path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v2.6h-2.6" />
+          </svg>
+          {sync.status === "syncing" ? "Syncing…" : "Sync live market factors"}
         </motion.button>
       </header>
 
-      <div className="space-y-4 p-4">
+      <div className="space-y-5 p-6 max-sm:p-4">
         {/* Current price — the anchor the target prices are measured against. */}
         <div className="flex items-baseline justify-between gap-3">
           <div>
             <div className="eyebrow">{symbol} · current price</div>
-            <div className="mt-0.5 text-2xl font-semibold tracking-tight text-ink tabular-nums">
+            <div className="type-big-figure mt-0.5 text-ink">
               {quote ? money(quote.price, quote.currency) : "—"}
             </div>
           </div>
-          <div className="text-right text-[10.5px] text-ink-3">
+          <div className="text-right text-[12px] text-ink-3">
             {quote ? quote.source : inputs.status === "loading" ? "Loading…" : "No price"}
-            {quote && !quote.comparable && <div className="max-w-40 text-ink-4">{loaded?.price_note}</div>}
+            {quote && !quote.comparable && <div className="max-w-40 text-ink-3">{loaded?.price_note}</div>}
           </div>
         </div>
 
         {/* CAPM */}
-        <div className="rounded-lg bg-subtle p-3">
+        <div className="rounded-md border border-line bg-canvas p-4">
           <div className="grid grid-cols-3 gap-2">
             <Inline
               label="Risk-free"
@@ -233,18 +227,18 @@ export function IntrinsicValuationStation({
           </div>
           <div className="mt-3 flex items-baseline justify-between border-t border-line pt-2.5">
             <span className="text-[12px] text-ink-2">
-              CAPM cost of equity <span className="text-ink-4">= r_f + β × ERP</span>
+              CAPM cost of equity <span className="text-ink-3">= r_f + β × ERP</span>
             </span>
-            <span className="text-[17px] font-semibold text-ink tabular-nums">{ke != null ? pct(ke) : "—"}</span>
+            <span className="text-[20px] font-bold text-spruce tabular-nums">{ke != null ? pct(ke) : "—"}</span>
           </div>
-          <p className="mt-0.5 text-[10.5px] text-ink-3">Discount rate for the DDM below. DCF values live in the DCF Calculator beside it.</p>
+          <p className="mt-0.5 text-[12px] text-ink-3">Discount rate for the DDM below. DCF values live in the DCF Calculator beside it.</p>
           <AnimatePresence>
             {sync.status === "done" && riskFree && (
               <motion.p
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                className="mt-1.5 text-[10.5px] text-gain dark:text-gain"
+                className="mt-1.5 text-[12px] text-gain"
                 role="status"
               >
                 {Math.abs(sync.previous - riskFree.value) < 1e-9 ? "Up to date" : `Synced: ${pct(sync.previous)} → ${pct(riskFree.value)}`} —{" "}
@@ -252,7 +246,7 @@ export function IntrinsicValuationStation({
               </motion.p>
             )}
             {sync.status === "error" && (
-              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-1.5 text-[10.5px] text-loss dark:text-loss" role="alert">
+              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-1.5 text-[12px] text-loss" role="alert">
                 {sync.message}
               </motion.p>
             )}
@@ -263,7 +257,7 @@ export function IntrinsicValuationStation({
         <div>
           <div className="flex items-baseline justify-between">
             <h3 className="eyebrow">Intrinsic value per share</h3>
-            <span className="text-[10.5px] text-ink-4">margin of safety</span>
+            <span className="text-[12px] text-ink-3">margin of safety</span>
           </div>
           <ul className="divide-y divide-line">
             <TargetRow name="Gordon Growth DDM" formula="D₀(1+g)/(kₑ − g)" result={ddm} price={price} currency={currency} />
@@ -274,7 +268,7 @@ export function IntrinsicValuationStation({
               price={price}
               currency={currency}
               extra={
-                <span className="text-ink-4">
+                <span className="text-ink-3">
                   g = {statements.epsCagr != null ? `${statements.epsCagrYears}-yr EPS growth ${(statements.epsCagr * 100).toFixed(1)}%` : "no EPS history"}
                   {statements.epsCagr != null && statements.epsCagr * 100 > GRAHAM_GROWTH_CAP_PCT && `, held to ${GRAHAM_GROWTH_CAP_PCT}%`}
                   {(statements.epsCagr == null || statements.epsCagr < 0) && ", taken as 0%"} · Y ={" "}
@@ -286,7 +280,7 @@ export function IntrinsicValuationStation({
         </div>
 
         {/* Inputs that drive the models */}
-        <div className="space-y-2 border-t border-line pt-3 text-[11px] text-ink-3">
+        <div className="space-y-2 border-t border-line pt-3 text-[12px] text-ink-3">
           <div className="flex justify-between gap-2">
             <span>Graham g · Y</span>
             <span className="text-ink-2">
@@ -312,17 +306,17 @@ export function IntrinsicValuationStation({
                 step={0.0025}
                 value={gd}
                 onChange={(e) => setDividendGrowth(Number(e.target.value))}
-                className="mt-1 w-full cursor-pointer accent-spruce dark:accent-spruce"
+                className="range mt-1 w-full cursor-pointer"
                 aria-label="Dividend growth rate"
               />
-              <span className={gdCeiling != null && gd > gdCeiling + 1e-9 ? "text-caution dark:text-caution" : "text-ink-4"}>
+              <span className={gdCeiling != null && gd > gdCeiling + 1e-9 ? "text-caution" : "text-ink-3"}>
                 {gdCeiling != null && gd > gdCeiling + 1e-9
                   ? `Above the ${(gdCeiling * 100).toFixed(1)}% sustainable ceiling — a forever growth rate this high inflates the value.`
                   : `Starts at the company's ${statements.dividendCagr != null ? `${(statements.dividendCagr * 100).toFixed(1)}%` : "—"} dividend-per-share growth, capped at ${gdCeiling != null ? (gdCeiling * 100).toFixed(1) : "—"}% (the lower of r_f and kₑ − 2pp).`}
               </span>
             </label>
           )}
-          <p className="leading-snug text-ink-4">
+          <p className="leading-snug text-ink-3">
             Values are per diluted share in {currency}. Graham uses the risk-free rate where his original formula used the AAA corporate
             yield.
           </p>
