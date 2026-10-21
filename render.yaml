@@ -41,7 +41,7 @@ services:
         value: "24"
 
   # The original link (macropulse-z27l.onrender.com). It serves the same static build so shared links keep
-  # working; set REDIRECT_TO to send visitors to the fast static site instead.
+  # working, and forwards visitors to the fast static site.
   - type: web
     name: macropulse
     runtime: node
@@ -50,6 +50,9 @@ services:
     buildCommand: npm ci && npm run build
     startCommand: node scripts/serve-static.mjs
     envVars:
+      # Forward visitors to the fast static site (the path and query carry over).
+      - key: REDIRECT_TO
+        value: https://macropulse-web.onrender.com
       - key: NEXT_PUBLIC_API_URL
         value: https://macropulse-api-7cq2.onrender.com
       - key: NODE_VERSION
