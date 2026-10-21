@@ -4,13 +4,14 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ReactNode, useEffect, useRef, useState } from "react";
 
 import { TagMapping } from "@/components/TagMapping";
+import { flow } from "@/lib/motion";
 import { CompanyEntry, symbolOf } from "@/lib/comparisonStore";
 
 type DrawerKey = "lineage" | "filings";
 
-const DRAWERS: Record<DrawerKey, { icon: string; label: string; short: string; width: string }> = {
-  lineage: { icon: "📋", label: "View Data Lineage", short: "Lineage", width: "w-[min(64rem,calc(100vw-2rem))]" },
-  filings: { icon: "📅", label: "SEC Filings History", short: "Filings", width: "w-[min(36rem,calc(100vw-2rem))]" },
+const DRAWERS: Record<DrawerKey, { icon: ReactNode; label: string; short: string; width: string }> = {
+  lineage: { icon: <svg viewBox="0 0 16 16" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden><circle cx="4" cy="4" r="1.75" /><circle cx="4" cy="12" r="1.75" /><circle cx="12" cy="8" r="1.75" /><path d="M5.75 4h1.5a2 2 0 0 1 2 2v0a2 2 0 0 0 1 1.73M5.75 12h1.5a2 2 0 0 0 2-2v0a2 2 0 0 1 1-1.73" /></svg>, label: "View data lineage", short: "Lineage", width: "w-[min(64rem,calc(100vw-2rem))]" },
+  filings: { icon: <svg viewBox="0 0 16 16" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M4 1.75h5.25L12.5 5v9.25H4z" /><path d="M9 1.75V5.25h3.5M6.25 8.25h4M6.25 11h4" /></svg>, label: "SEC filings history", short: "Filings", width: "w-[min(36rem,calc(100vw-2rem))]" },
 };
 
 function LineageBody({ entry }: { entry: CompanyEntry }) {
@@ -37,7 +38,7 @@ function FilingsBody({ entry }: { entry: CompanyEntry }) {
     );
   }
   return (
-    <table className="w-full text-[13px]">
+    <table className="w-full text-[14px]">
       <thead>
         <tr className="eyebrow text-left">
           <th className="pb-2 font-medium">Form</th>
@@ -50,7 +51,7 @@ function FilingsBody({ entry }: { entry: CompanyEntry }) {
       </thead>
       <tbody className="divide-y divide-line">
         {filings.map((f) => (
-          <tr key={f.accession_number} className="hover:bg-subtle">
+          <tr key={f.accession_number} className="transition-colors duration-[var(--dur-1)] hover:bg-subtle">
             <td className="py-2 pr-4 font-mono text-ink">{f.form}</td>
             <td className="py-2 pr-4 font-mono text-ink-3">{f.filing_date}</td>
             <td className="py-2 pr-4 font-mono text-ink-3">{f.report_date ?? "—"}</td>
@@ -116,16 +117,14 @@ export function DataDrawers({ entry }: { entry: CompanyEntry | null }) {
             aria-controls={`drawer-${key}`}
             whileTap={reduceMotion ? undefined : { scale: 0.97 }}
             title={ready ? `${d.label} — ${entry && symbolOf(entry)}` : "Load a company first"}
-            className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[12px] whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
-              isOpen ? "border-ink bg-inverse text-on-inverse" : "border-line-strong text-ink-2 hover:border-ink hover:text-ink"
-            }`}
+            className="btn-secondary btn-sm"
           >
-            <span aria-hidden>{d.icon}</span>
+            {d.icon}
             <span className="hidden 2xl:inline">{d.label}</span>
-            <span className="2xl:hidden">{d.short}</span>
-            <motion.span aria-hidden animate={{ rotate: isOpen ? 180 : 0 }} className="text-[9px] opacity-70">
-              ▼
-            </motion.span>
+            <span className="max-sm:sr-only 2xl:hidden">{d.short}</span>
+            <motion.svg aria-hidden viewBox="0 0 12 12" className="size-3 text-ink-3" animate={{ rotate: isOpen ? 180 : 0 }} transition={flow(2)}>
+              <path d="M3 4.5 6 7.5l3-3" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+            </motion.svg>
           </motion.button>
         );
       })}
@@ -137,19 +136,17 @@ export function DataDrawers({ entry }: { entry: CompanyEntry | null }) {
             id={`drawer-${open}`}
             role="dialog"
             aria-label={`${DRAWERS[open].label} — ${symbolOf(entry!)}`}
-            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8, clipPath: "inset(0% 0% 100% 0% round 12px)" }}
-            animate={{ opacity: 1, y: 0, clipPath: "inset(0% 0% 0% 0% round 12px)" }}
-            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -6, clipPath: "inset(0% 0% 100% 0% round 12px)", transition: { duration: 0.16 } }}
-            transition={{ type: "spring", stiffness: 300, damping: 32 }}
-            className={`absolute top-[calc(100%+0.6rem)] right-0 z-40 max-h-[70vh] overflow-y-auto rounded-xl bg-panel shadow-2xl ring-1 ring-line-strong ${DRAWERS[open].width}`}
+            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, transition: flow(1) }}
+            transition={flow(3)}
+            className={`absolute top-[calc(100%+0.6rem)] right-0 z-40 max-h-[70vh] overflow-y-auto rounded-md border border-line bg-panel shadow-2 ${DRAWERS[open].width}`}
           >
             <div className="sticky top-0 flex items-center justify-between gap-4 border-b border-line bg-panel px-5 py-3">
-              <h2 className="text-[13px] font-medium text-ink">
-                <span aria-hidden className="mr-1.5">
-                  {DRAWERS[open].icon}
-                </span>
+              <h2 className="flex items-center gap-2 text-[15px] font-semibold text-ink">
+                <span className="text-spruce">{DRAWERS[open].icon}</span>
                 {DRAWERS[open].label} · <span className="font-mono">{symbolOf(entry!)}</span>
-                <span className="ml-2 text-[12px] font-normal text-ink-3">{entry!.profile?.name}</span>
+                <span className="text-[13px] font-normal text-ink-3">{entry!.profile?.name}</span>
               </h2>
               <button
                 type="button"
@@ -158,7 +155,7 @@ export function DataDrawers({ entry }: { entry: CompanyEntry | null }) {
                   setOpen(null);
                 }}
                 aria-label="Close"
-                className="rounded px-1.5 text-ink-3 hover:bg-subtle hover:text-ink"
+                className="grid size-8 place-items-center rounded-full text-[18px] text-ink-3 hover:bg-subtle hover:text-ink"
               >
                 ×
               </button>

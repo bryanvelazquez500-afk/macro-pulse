@@ -12,7 +12,7 @@ export function ThemeToggle() {
       onClick={() => setTheme(next)}
       aria-label={`Switch to ${next} theme`}
       title={`Switch to ${next} theme`}
-      className="btn-secondary grid size-10 place-items-center !p-0"
+      className="btn-secondary size-9 !p-0"
     >
       {theme === "dark" ? (
         <svg viewBox="0 0 24 24" className="size-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>

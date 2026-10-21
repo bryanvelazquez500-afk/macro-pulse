@@ -1,6 +1,8 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+
+import { flow } from "@/lib/motion";
 import { useEffect } from "react";
 
 import { Notice } from "@/lib/comparisonStore";
@@ -30,12 +32,12 @@ export function NoticeToast({ notice, onDismiss }: { notice: Notice | null; onDi
           <motion.div
             key={notice.id}
             role={warning ? "alert" : "status"}
-            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 12, scale: 0.96 }}
-            animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1, x: warning ? [0, -5, 5, -3, 3, 0] : 0 }}
-            exit={{ opacity: 0, y: reduceMotion ? 0 : 8, transition: { duration: 0.15 } }}
-            transition={{ type: "spring", stiffness: 420, damping: 32, x: { duration: 0.35, delay: 0.1 } }}
-            className={`pointer-events-auto flex max-w-md items-start gap-2.5 rounded-md border bg-panel py-2.5 pr-2.5 pl-3 text-[12.5px] shadow-lg shadow-ink/5 ${
-              warning ? "border-caution/50 text-ink" : "border-line-strong text-ink-2"
+            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, transition: flow(1) }}
+            transition={flow(3)}
+            className={`pointer-events-auto flex max-w-md items-start gap-2.5 rounded-md border py-3 pr-3 pl-4 text-[14px] shadow-2 ${
+              warning ? "border-caution/40 bg-caution-bg text-ink" : "border-line bg-panel text-ink-2"
             }`}
           >
             {warning ? (

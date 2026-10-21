@@ -32,9 +32,9 @@ function Tape({ ticker }: { ticker: string }) {
   // Rough tape length → constant speed whatever the number of headlines.
   const duration = useMemo(() => Math.max(30, items.reduce((n, h) => n + h.title.length * 7 + 180, 0) / PX_PER_SECOND), [items]);
 
-  if (state.status === "loading") return <span className="animate-pulse px-4 text-[12px] text-ink-4">Loading {ticker} headlines…</span>;
-  if (state.status === "error") return <span className="px-4 text-[12px] text-ink-4">Headlines for {ticker} are unavailable right now.</span>;
-  if (items.length === 0) return <span className="px-4 text-[12px] text-ink-4">No {ticker} headlines in the last 7 days.</span>;
+  if (state.status === "loading") return <span className="px-4 text-[13px] text-ink-3">Loading {ticker} headlines…</span>;
+  if (state.status === "error") return <span className="px-4 text-[13px] text-ink-3">Headlines for {ticker} are unavailable right now.</span>;
+  if (items.length === 0) return <span className="px-4 text-[13px] text-ink-3">No {ticker} headlines in the last 7 days.</span>;
 
   const run = (copy: number) =>
     items.map((h) => (
@@ -45,16 +45,14 @@ function Tape({ ticker }: { ticker: string }) {
           rel="noopener noreferrer"
           tabIndex={copy === 0 ? 0 : -1}
           aria-hidden={copy === 0 ? undefined : true}
-          className="group/item flex items-center gap-2 rounded px-1 py-0.5 whitespace-nowrap focus-visible:ring-2 focus-visible:ring-spruce focus-visible:outline-none"
+          className="group/item flex items-center gap-2 rounded-xs px-1 py-0.5 whitespace-nowrap"
         >
-          <span className="text-[12.5px] text-ink group-hover/item:text-spruce group-hover/item:underline">{h.title}</span>
-          <span className="text-[10.5px] text-ink-4">
+          <span className="text-[13px] font-medium text-ink-2 transition-colors duration-[var(--dur-1)] group-hover/item:text-spruce group-hover/item:underline">{h.title}</span>
+          <span className="text-[12px] text-ink-3">
             {[h.source, timeAgo(h.published_at)].filter(Boolean).join(" · ")}
           </span>
         </a>
-        <span aria-hidden className="mx-5 text-[9px] text-caution">
-          ◆
-        </span>
+        <span aria-hidden className="mx-5 size-1 rounded-full bg-line-strong" />
       </span>
     ));
 
@@ -71,20 +69,17 @@ export function NewsTicker({ ticker }: { ticker: string | null }) {
   return (
     <div
       id="tour-news"
-      className="flex h-9 items-stretch overflow-hidden border-t border-line bg-canvas"
+      className="flex h-10 items-stretch overflow-hidden rounded-full border border-line bg-panel"
       role="region"
       aria-label={ticker ? `Latest ${ticker} headlines` : "Headlines"}
     >
-      <div className="z-10 flex shrink-0 items-center gap-2 border-r border-line bg-canvas px-3 sm:px-4">
-        <span aria-hidden className="relative flex size-2">
-          <span className="absolute inline-flex size-full animate-ping rounded-full bg-brass opacity-60 motion-reduce:animate-none" />
-          <span className="relative inline-flex size-2 rounded-full bg-brass" />
-        </span>
-        <span className="text-[10.5px] font-bold tracking-[0.16em] text-caution uppercase">News</span>
-        {ticker && <span className="font-mono text-[11px] font-semibold text-ink">{ticker}</span>}
+      <div className="z-10 flex shrink-0 items-center gap-2 border-r border-line bg-panel pr-3 pl-4">
+        <span aria-hidden className="mp-live-dot size-2 rounded-full bg-brass" />
+        <span className="eyebrow !text-ink-2">News</span>
+        {ticker && <span className="font-mono text-[12px] font-semibold text-ink">{ticker}</span>}
       </div>
       <div className="mp-tape-viewport relative flex min-w-0 flex-1 items-center overflow-hidden">
-        {ticker ? <Tape key={ticker} ticker={ticker} /> : <span className="px-4 text-[12px] text-ink-4">Add a company to see its headlines.</span>}
+        {ticker ? <Tape key={ticker} ticker={ticker} /> : <span className="px-4 text-[13px] text-ink-3">Add a company to see its headlines.</span>}
       </div>
     </div>
   );

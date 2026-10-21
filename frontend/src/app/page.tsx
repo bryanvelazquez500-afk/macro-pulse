@@ -1,6 +1,6 @@
 "use client";
 
-import { LayoutGroup } from "framer-motion";
+import { LayoutGroup, motion } from "framer-motion";
 import {
   FormEvent,
   ReactNode,
@@ -27,6 +27,7 @@ import { PulseBotTour } from "@/components/PulseBotTour";
 import { TickerSuggestions } from "@/lib/useTickerSuggestions";
 import { ServerWakeNotice } from "@/components/ServerWakeNotice";
 import { ValuationPanel } from "@/components/ValuationPanel";
+import { Segmented } from "@/components/Segmented";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { WatchlistMenu } from "@/components/WatchlistMenu";
 import { ViewPanel, ViewTab, ViewTabs } from "@/components/ViewTabs";
@@ -36,6 +37,7 @@ import {
   symbolOf,
   useComparison,
 } from "@/lib/comparisonStore";
+import { flow } from "@/lib/motion";
 import { normalizeTicker } from "@/lib/portfolioStore";
 import { ValuationAssumptionsProvider } from "@/lib/valuationAssumptions";
 
@@ -53,13 +55,11 @@ function Section({
   return (
     <section>
       <div className="mb-3 flex items-baseline justify-between gap-4">
-        <h3 className="text-[13px] font-medium tracking-tight text-ink">
-          {title}
-        </h3>
-        {meta && <div className="text-[11px] text-ink-3">{meta}</div>}
+        <h3 className="type-card text-ink">{title}</h3>
+        {meta && <div className="text-[13px] text-ink-3">{meta}</div>}
       </div>
       {children}
-      {note && <p className="mt-2 text-[11px] text-ink-3">{note}</p>}
+      {note && <p className="mt-2 text-[13px] text-ink-3">{note}</p>}
     </section>
   );
 }
@@ -195,11 +195,7 @@ function Station() {
 
   const focusBar = focusedReady?.profile && (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-      <div
-        className="flex gap-1 rounded-lg bg-canvas p-1 ring-1 ring-line ring-inset"
-        role="tablist"
-        aria-label="Focused company"
-      >
+      <div className="seg-track" role="tablist" aria-label="Focused company">
         {ready.map((e) => (
           <button
             key={e.id}
@@ -207,14 +203,21 @@ function Station() {
             role="tab"
             aria-selected={e.id === focusedId}
             onClick={() => focus(e.id)}
-            className={`mp-interactive rounded-md px-3 py-1 font-mono text-[12px] font-medium ${e.id === focusedId ? "bg-spruce text-on-spruce" : "text-ink-3 hover:text-ink"}`}
+            className="seg-item font-mono"
           >
-            {symbolOf(e)}
+            {e.id === focusedId && (
+              <motion.span
+                layoutId="focus-thumb"
+                className="seg-thumb"
+                transition={flow(2)}
+              />
+            )}
+            <span>{symbolOf(e)}</span>
           </button>
         ))}
       </div>
-      <span className="text-[12.5px] text-ink-3">
-        <span className="font-medium text-ink">
+      <span className="text-[15px] text-ink-3">
+        <span className="font-semibold text-ink">
           {focusedReady.profile.name}
         </span>
         {focusedReady.profile.sic_description &&
@@ -224,19 +227,30 @@ function Station() {
   );
 
   return (
-    // Main dashboard container: obsidian canvas; panels inside are glass sheets (.panel).
+    // Main dashboard container: the ledger canvas; cards inside are .panel sheets.
     <div className="flex min-h-full flex-1 flex-col bg-canvas">
       <header
         ref={headerRef}
-        className="sticky top-0 z-30 border-b border-line bg-panel/90 backdrop-blur-md"
+        className="sticky top-0 z-30 border-b border-line bg-panel shadow-1"
       >
-        <div className="mx-auto flex w-full max-w-[1440px] flex-wrap items-center gap-x-5 gap-y-3 px-4 py-3 sm:px-6">
-          <div className="flex items-baseline gap-2">
+        <div className="mx-auto flex w-full max-w-[1280px] flex-wrap items-center gap-x-5 gap-y-3 px-4 py-3 sm:px-6">
+          <div className="flex items-center gap-2.5">
+            {/* Logo: one flowing pulse stroke in a spruce tile. */}
             <span
-              className="size-2 translate-y-[-1px] rounded-full bg-spruce shadow-[0_0_10px_var(--color-macropulse-cyan)]"
               aria-hidden
-            />
-            <span className="text-[13px] font-semibold tracking-[0.18em] text-ink uppercase">
+              className="grid size-[26px] place-items-center rounded-[8px] bg-spruce text-on-spruce"
+            >
+              <svg viewBox="0 0 26 26" className="size-[22px]" fill="none">
+                <path
+                  d="M3 14c2.5 0 3.2-.2 4.4-2.2C8.6 9.7 9.4 6 10.6 6c1.4 0 1.7 13.5 3.3 13.5 1.3 0 1.6-7.3 3-7.3 1 0 1.3 1.8 2.6 1.8H23"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </span>
+            <span className="text-[18px] font-extrabold tracking-[-0.01em] text-ink">
               MacroPulse
             </span>
           </div>
@@ -245,7 +259,7 @@ function Station() {
             onSubmit={onSubmit}
             className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-1 sm:flex-nowrap"
           >
-            <div className="relative min-w-0 flex-1 sm:max-w-md">
+            <div className="relative min-w-0 flex-1 max-sm:min-w-[62%] sm:max-w-md">
               <input
                 ref={searchRef}
                 value={query}
@@ -258,10 +272,10 @@ function Station() {
                 aria-label="Add a ticker or CIK to the comparison"
                 list="header-ticker-suggestions"
                 maxLength={16}
-                className="field w-full pr-12 font-mono uppercase placeholder:font-sans placeholder:normal-case"
+                className="field field-pill w-full pr-14 font-mono uppercase placeholder:font-sans placeholder:normal-case"
               />
               <span
-                className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-[10.5px] text-ink-4"
+                className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-[12px] font-semibold text-ink-3"
                 aria-live="polite"
               >
                 {entries.length}/{MAX_COMPARE}
@@ -275,28 +289,21 @@ function Station() {
             >
               Add
             </button>
-            <div
-              className="flex rounded-lg bg-canvas p-0.5 ring-1 ring-line ring-inset"
+            <Segmented
+              label="Period"
               role="group"
-              aria-label="Period"
-            >
-              {(["annual", "quarterly"] as const).map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => setPeriod(p)}
-                  aria-pressed={period === p}
-                  className={`rounded-md px-3 py-1.5 text-xs capitalize transition-colors ${period === p ? "bg-inverse text-on-inverse" : "text-ink-3 hover:text-ink"}`}
-                >
-                  {p}
-                </button>
-              ))}
-            </div>
+              value={period}
+              onChange={setPeriod}
+              options={[
+                { key: "annual", label: "Annual" },
+                { key: "quarterly", label: "Quarterly" },
+              ]}
+            />
             {isLoading && (
-              <span className="text-[11px] text-ink-3">Loading…</span>
+              <span className="text-[13px] text-ink-3">Loading…</span>
             )}
           </form>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 max-sm:w-full max-sm:justify-end">
             <div id="tour-watchlist">
               <WatchlistMenu
                 activeTicker={focused ? symbolOf(focused) : null}
@@ -309,7 +316,9 @@ function Station() {
             <ThemeToggle />
           </div>
         </div>
-        <NewsTicker ticker={focusedReady ? symbolOf(focusedReady) : null} />
+        <div className="mx-auto w-full max-w-[1280px] px-4 pb-3 sm:px-6">
+          <NewsTicker ticker={focusedReady ? symbolOf(focusedReady) : null} />
+        </div>
       </header>
       <ServerWakeNotice />
       <NoticeToast notice={notice} onDismiss={dismissNotice} />
@@ -324,11 +333,11 @@ function Station() {
         }}
         aria-label="Start the guided tour"
         title="Guided tour"
-        className="fixed right-6 bottom-6 z-40 flex items-center gap-2 rounded-xl bg-brass px-4 py-3 text-[13px] font-bold text-on-spruce transition-transform hover:scale-105 hover:bg-brass focus-visible:ring-2 focus-visible:ring-spruce focus-visible:outline-none"
+        className="fixed right-[calc(24px+env(safe-area-inset-right))] bottom-[calc(24px+env(safe-area-inset-bottom))] z-40 flex items-center gap-2 rounded-full bg-brass py-2.5 pr-5 pl-2.5 text-[14px] font-bold text-on-brass shadow-float transition-transform duration-[var(--dur-1)] ease-[var(--ease-flow)] hover:-translate-y-0.5"
       >
         <span
           aria-hidden
-          className="grid size-5 place-items-center rounded-full bg-on-brass text-[12px] font-black text-brass"
+          className="grid size-7 place-items-center rounded-full bg-on-brass text-[14px] font-extrabold text-brass"
         >
           ?
         </span>
@@ -346,14 +355,14 @@ function Station() {
       )}
 
       {/* One full-width column: every feature gets the whole screen, and the page is the only scroll. */}
-      <main className="mx-auto w-full max-w-[1440px] flex-1 px-4 pt-7 pb-24 sm:px-6">
+      <main className="mx-auto w-full max-w-[1280px] flex-1 px-4 pt-10 pb-28 sm:px-6">
         <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
           <div className="min-w-0">
             <p className="eyebrow mb-1.5">
               Comparison ·{" "}
               {period === "annual" ? "annual reports" : "quarterly reports"}
             </p>
-            <h1 className="truncate text-3xl font-semibold tracking-tight text-ink">
+            <h1 className="type-hero truncate text-ink max-sm:!text-[34px] max-sm:!leading-[40px]">
               {entries.length
                 ? entries.map(symbolOf).join("  ·  ")
                 : "No companies selected"}
@@ -370,7 +379,7 @@ function Station() {
           )}
         </div>
 
-        <div id="tour-tabs" className="mt-6">
+        <div id="tour-tabs" className="mt-8">
           <ViewTabs
             tabs={ANALYSIS_VIEWS}
             active={view}
@@ -379,12 +388,12 @@ function Station() {
           />
         </div>
 
-        <div className="mt-6">
+        <div className="mt-8">
           <ViewPanel view="matrix" active={view === "matrix"}>
             <div className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <VarianceLegend thresholdPct={threshold} />
-                <span className="text-[11.5px] text-ink-4">
+                <span className="text-[13px] text-ink-3">
                   Click a column header to focus that company
                 </span>
               </div>
@@ -398,13 +407,13 @@ function Station() {
                   onAddClick={() => searchRef.current?.focus()}
                 />
               </div>
-              <p className="text-[11px] text-ink-4">
+              <p className="text-[13px] text-ink-3">
                 Each column shows that company&apos;s own fiscal period;
                 variances compare it with the same period a year earlier. *
                 Fallback method or not meaningful — hover any value for its
                 source tag and details.
               </p>
-              <div className="pt-6">
+              <div className="pt-10">
                 <HorizontalAnalysis
                   entries={entries}
                   periodType={period}
@@ -446,7 +455,7 @@ function Station() {
                 </div>
               </div>
             ) : (
-              <div className="panel px-5 py-10 text-center text-[13px] text-ink-3">
+              <div className="panel px-6 py-12 text-center text-[15px] text-ink-3">
                 Add a company to value it — the valuation tools follow the
                 focused company.
               </div>

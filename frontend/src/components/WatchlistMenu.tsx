@@ -4,6 +4,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 
 import { WatchlistSidebar } from "@/components/WatchlistSidebar";
+import { flow } from "@/lib/motion";
 import { usePortfolio } from "@/lib/portfolioStore";
 
 /** The watchlist as a header menu, so it's one click away without taking a column of the page. */
@@ -32,24 +33,24 @@ export function WatchlistMenu({ activeTicker, onSelect }: { activeTicker: string
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-haspopup="dialog"
-        className={`mp-interactive inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium ring-1 ring-inset transition-colors ${
-          open ? "bg-subtle text-ink ring-line-strong" : "text-ink-2 ring-line hover:text-ink"
-        }`}
+        className="btn-secondary btn-sm"
       >
-        <span aria-hidden className="text-caution">★</span>
-        Watchlist
-        <span className="rounded-full bg-subtle px-1.5 text-[10.5px] text-ink-3">{portfolio.watchlist.length}</span>
+        <svg viewBox="0 0 16 16" className="size-4 text-brass" fill="currentColor" aria-hidden>
+          <path d="M8 1.5l1.9 4 4.4.5-3.3 3 .9 4.3L8 11.2l-3.9 2.1.9-4.3-3.3-3 4.4-.5z" />
+        </svg>
+        <span className="max-sm:sr-only">Watchlist</span>
+        <span className="rounded-full bg-subtle px-1.5 text-[12px] font-semibold text-ink-3">{portfolio.watchlist.length}</span>
       </button>
       <AnimatePresence>
         {open && (
           <motion.div
             role="dialog"
             aria-label="Watchlist"
-            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -6, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, transition: { duration: 0.12 } }}
-            transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
-            className="absolute top-[calc(100%+0.6rem)] right-0 z-40 w-64 rounded-xl bg-panel p-3 shadow-2xl ring-1 ring-line-strong"
+            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, transition: flow(1) }}
+            transition={flow(2)}
+            className="absolute top-[calc(100%+0.6rem)] right-0 z-40 w-64 rounded-md border border-line bg-panel p-3 shadow-2"
           >
             <WatchlistSidebar
               activeTicker={activeTicker}
