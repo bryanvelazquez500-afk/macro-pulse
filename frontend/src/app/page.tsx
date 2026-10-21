@@ -258,10 +258,10 @@ function Station() {
                 aria-label="Add a ticker or CIK to the comparison"
                 list="header-ticker-suggestions"
                 maxLength={16}
-                className="field w-full pr-12 font-mono uppercase"
+                className="field w-full pr-12 font-mono uppercase placeholder:font-sans placeholder:normal-case"
               />
               <span
-                className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 font-mono text-[10.5px] text-ink-4"
+                className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-[10.5px] text-ink-4"
                 aria-live="polite"
               >
                 {entries.length}/{MAX_COMPARE}

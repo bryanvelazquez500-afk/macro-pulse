@@ -116,7 +116,7 @@ function Stepper({
               if (Number.isFinite(v)) onChange(clamp(v));
             }}
             aria-label={label}
-            className="h-7 w-full rounded-md bg-canvas px-1.5 pr-4 text-right font-mono text-[12.5px] text-ink tabular-nums ring-1 ring-line-strong outline-none ring-inset focus:ring-spruce [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            className="h-7 w-full rounded-md bg-canvas px-1.5 pr-4 text-right text-[12.5px] text-ink tabular-nums ring-1 ring-line-strong outline-none ring-inset focus:ring-spruce [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           />
           {suffix && <span className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2 text-[10.5px] text-ink-4">{suffix}</span>}
         </div>
@@ -167,12 +167,12 @@ function Gauge({ price, fairValue, currency }: { price: number; fairValue: numbe
           transition={spring}
         />
         <motion.div className="absolute -top-5 -translate-x-1/2 text-center" animate={{ left: at(price) }} transition={spring}>
-          <div className="font-mono text-[10px] whitespace-nowrap text-ink-2">P {money(price, currency)}</div>
+          <div className="text-[10px] whitespace-nowrap text-ink-2">P {money(price, currency)}</div>
           <div className="mx-auto mt-0.5 h-5 w-0.5 rounded bg-white" />
         </motion.div>
         <motion.div className="absolute top-[-2px] -translate-x-1/2 text-center" animate={{ left: at(Math.max(fairValue, 0)) }} transition={spring}>
           <div className="mx-auto h-3 w-3 rotate-45 rounded-[2px] bg-spruce" />
-          <div className="mt-1 font-mono text-[10px] whitespace-nowrap text-spruce">FV {money(fairValue, currency)}</div>
+          <div className="mt-1 text-[10px] whitespace-nowrap text-spruce">FV {money(fairValue, currency)}</div>
         </motion.div>
       </div>
     </div>
@@ -340,7 +340,7 @@ export function DcfCalculator({ symbol }: { symbol: string | null }) {
               </div>
               <div className="text-right">
                 <div className="eyebrow">Price (P)</div>
-                <motion.div key={price ?? "none"} initial={{ opacity: 0.4 }} animate={{ opacity: 1 }} className="font-mono text-[15px] font-semibold text-ink tabular-nums">
+                <motion.div key={price ?? "none"} initial={{ opacity: 0.4 }} animate={{ opacity: 1 }} className="text-[15px] font-semibold text-ink tabular-nums">
                   {price != null ? money(price, cur) : "—"}
                 </motion.div>
               </div>
@@ -376,7 +376,7 @@ export function DcfCalculator({ symbol }: { symbol: string | null }) {
                   placeholder="n/a"
                   onChange={(e) => set("e0", Number.isFinite(e.target.valueAsNumber) ? e.target.valueAsNumber : null)}
                   aria-label="Base per-share value (E0)"
-                  className="h-7 w-28 rounded-md bg-canvas px-2 text-right font-mono text-[12.5px] text-ink tabular-nums ring-1 ring-line-strong outline-none ring-inset focus:ring-spruce"
+                  className="h-7 w-28 rounded-md bg-canvas px-2 text-right text-[12.5px] text-ink tabular-nums ring-1 ring-line-strong outline-none ring-inset focus:ring-spruce"
                 />
               </label>
               <div className="mt-0.5 text-right text-[10px] text-ink-4">{basis?.period ?? "No data in the filings"}</div>
@@ -405,7 +405,7 @@ export function DcfCalculator({ symbol }: { symbol: string | null }) {
                 />
                 <div className="border-t border-line pt-1.5">
                   <div className="eyebrow">Growth value</div>
-                  <div className="font-mono text-[14px] font-semibold text-ink tabular-nums">{model ? money(model.result.growthValue, cur) : "—"}</div>
+                  <div className="text-[14px] font-semibold text-ink tabular-nums">{model ? money(model.result.growthValue, cur) : "—"}</div>
                 </div>
               </div>
               <div className="space-y-2 rounded-lg bg-subtle p-2.5">
@@ -414,7 +414,7 @@ export function DcfCalculator({ symbol }: { symbol: string | null }) {
                 <Stepper label="Growth (g2)" value={params.g2} onChange={(v) => set("g2", v)} suffix="%" />
                 <div className="border-t border-line pt-1.5">
                   <div className="eyebrow">Terminal value</div>
-                  <div className="font-mono text-[14px] font-semibold text-ink tabular-nums">{model ? money(model.result.terminalValue, cur) : "—"}</div>
+                  <div className="text-[14px] font-semibold text-ink tabular-nums">{model ? money(model.result.terminalValue, cur) : "—"}</div>
                 </div>
               </div>
             </div>
@@ -431,7 +431,7 @@ export function DcfCalculator({ symbol }: { symbol: string | null }) {
                 />
                 Add tangible book value to fair value
               </span>
-              <span className="font-mono text-[12px] text-ink tabular-nums" title={inputs.tbv_as_of ? `As of ${inputs.tbv_as_of}` : undefined}>
+              <span className="text-[12px] text-ink tabular-nums" title={inputs.tbv_as_of ? `As of ${inputs.tbv_as_of}` : undefined}>
                 {inputs.tbv != null ? money(inputs.tbv, cur) : "n/a"}
               </span>
             </label>
@@ -458,16 +458,16 @@ export function DcfCalculator({ symbol }: { symbol: string | null }) {
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div>
                     <div className="eyebrow">Price</div>
-                    <div className="font-mono text-[13px] font-semibold text-ink tabular-nums">{price != null ? money(price, cur) : "—"}</div>
+                    <div className="text-[13px] font-semibold text-ink tabular-nums">{price != null ? money(price, cur) : "—"}</div>
                   </div>
                   <div>
                     <div className="eyebrow">Fair value</div>
-                    <div className="font-mono text-[15px] font-bold text-spruce tabular-nums">{money(model.result.fairValue, cur)}</div>
+                    <div className="text-[15px] font-bold text-spruce tabular-nums">{money(model.result.fairValue, cur)}</div>
                   </div>
                   <div>
                     <div className="eyebrow">Margin of safety</div>
                     <div
-                      className={`font-mono text-[13px] font-semibold tabular-nums ${
+                      className={`text-[13px] font-semibold tabular-nums ${
                         model.mos == null ? "text-ink-4" : model.mos >= 0 ? "text-gain" : "text-loss"
                       }`}
                     >
@@ -502,7 +502,7 @@ export function DcfCalculator({ symbol }: { symbol: string | null }) {
                       "no growth rate between −99% and 200% reaches the price"
                     ) : (
                       <>
-                        the price implies <span className="font-mono font-semibold text-ink">{pct(model.implied * 100)}</span> growth for {model.p.n} years
+                        the price implies <span className="font-semibold text-ink">{pct(model.implied * 100)}</span> growth for {model.p.n} years
                         {basis?.h10 != null && (
                           <>
                             {" "}
@@ -546,7 +546,7 @@ export function DcfCalculator({ symbol }: { symbol: string | null }) {
                 </button>
                 {showTable && (
                   <div className="mt-2 overflow-x-auto rounded-md ring-1 ring-line ring-inset">
-                    <table className="w-full font-mono text-[10.5px] tabular-nums">
+                    <table className="w-full text-[10.5px] tabular-nums">
                       <thead className="sticky top-0 bg-panel text-ink-4">
                         <tr>
                           <th className="px-1.5 py-1 text-left font-medium">Yr</th>
@@ -609,11 +609,11 @@ export function DcfCalculator({ symbol }: { symbol: string | null }) {
                           <span className="font-mono font-semibold text-spruce">{s.ticker}</span>
                           <span className="text-ink-4">{BASIS_LABELS[s.basis]}</span>
                         </div>
-                        <div className="truncate font-mono text-[10px] text-ink-4">
+                        <div className="truncate text-[10px] text-ink-4">
                           d {s.d}% · g1 {s.g1}% · g2 {s.g2}%
                         </div>
                       </div>
-                      <div className="text-right font-mono tabular-nums">
+                      <div className="text-right tabular-nums">
                         <div className="text-ink">{money(s.fairValue, s.currency)}</div>
                         <div className={s.mos == null ? "text-ink-4" : s.mos >= 0 ? "text-gain" : "text-loss"}>
                           {s.mos == null ? "MoS n/a" : pct(s.mos * 100, 1)}

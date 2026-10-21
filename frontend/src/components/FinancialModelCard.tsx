@@ -90,13 +90,13 @@ export const FinancialModelCard: React.FC<Props> = ({ initialBusinessProfile }) 
         <h3 className="mb-3 text-[14px] font-medium text-ink">Calculated Intrinsic Valuation Summary</h3>
         <div className="mb-2 flex justify-between text-[13px] text-ink-2">
           <span>Enterprise Value:</span>
-          <strong className="font-mono text-ink tabular-nums">
+          <strong className="text-ink tabular-nums">
             ${valuation.enterpriseValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </strong>
         </div>
         <div className="mb-2 flex justify-between text-[13px] text-ink-2">
           <span>Equity Value:</span>
-          <strong className="font-mono text-ink tabular-nums">${valuation.equityValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</strong>
+          <strong className="text-ink tabular-nums">${valuation.equityValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</strong>
         </div>
         {warnings.length > 0 && (
           <div

@@ -34,7 +34,7 @@ function SafetyBadge({ mos, reason }: { mos: number | null; reason?: string }) {
   const reduceMotion = useReducedMotion();
   if (mos == null) {
     return (
-      <span className="rounded-full px-2 py-0.5 font-mono text-[10.5px] text-ink-3 ring-1 ring-line-strong ring-inset" title={reason}>
+      <span className="rounded-full px-2 py-0.5 text-[10.5px] text-ink-3 ring-1 ring-line-strong ring-inset" title={reason}>
         n/a
       </span>
     );
@@ -50,7 +50,7 @@ function SafetyBadge({ mos, reason }: { mos: number | null; reason?: string }) {
       initial={reduceMotion ? false : { scale: 0.7, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
       transition={{ type: "spring", stiffness: 500, damping: 24 }}
-      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[10.5px] font-semibold tabular-nums ${
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold tabular-nums ${
         safe
           ? "bg-gain text-on-spruce"
           : "bg-loss text-on-drop-4"
@@ -77,7 +77,7 @@ function Inline({ label, value, sub, flash }: { label: string; value: string; su
         initial={flash ? { backgroundColor: "rgba(16,185,129,0.28)" } : false}
         animate={{ backgroundColor: "rgba(16,185,129,0)" }}
         transition={{ duration: 1.4 }}
-        className="-mx-1 mt-0.5 rounded px-1 font-mono text-[15px] font-semibold text-ink tabular-nums"
+        className="-mx-1 mt-0.5 rounded px-1 text-[15px] font-semibold text-ink tabular-nums"
       >
         {value}
       </motion.div>
@@ -108,12 +108,12 @@ function TargetRow({
       <div className="flex items-baseline justify-between gap-3">
         <div className="min-w-0">
           <div className="text-[13px] font-medium text-ink">{name}</div>
-          <div className="truncate font-mono text-[10.5px] text-ink-4" title={formula}>
+          <div className="truncate text-[10.5px] text-ink-4" title={formula}>
             {formula}
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <span className={`font-mono text-[15px] font-semibold tabular-nums ${result.ok ? "text-ink" : "text-ink-4"}`}>
+          <span className={`text-[15px] font-semibold tabular-nums ${result.ok ? "text-ink" : "text-ink-4"}`}>
             {result.ok ? money(result.value, currency) : "—"}
           </span>
           {result.ok && <SafetyBadge mos={mos} reason={reason} />}
@@ -209,7 +209,7 @@ export function IntrinsicValuationStation({
         <div className="flex items-baseline justify-between gap-3">
           <div>
             <div className="eyebrow">{symbol} · current price</div>
-            <div className="mt-0.5 font-mono text-2xl font-semibold tracking-tight text-ink tabular-nums">
+            <div className="mt-0.5 text-2xl font-semibold tracking-tight text-ink tabular-nums">
               {quote ? money(quote.price, quote.currency) : "—"}
             </div>
           </div>
@@ -235,7 +235,7 @@ export function IntrinsicValuationStation({
             <span className="text-[12px] text-ink-2">
               CAPM cost of equity <span className="text-ink-4">= r_f + β × ERP</span>
             </span>
-            <span className="font-mono text-[17px] font-semibold text-ink tabular-nums">{ke != null ? pct(ke) : "—"}</span>
+            <span className="text-[17px] font-semibold text-ink tabular-nums">{ke != null ? pct(ke) : "—"}</span>
           </div>
           <p className="mt-0.5 text-[10.5px] text-ink-3">Discount rate for the DDM below. DCF values live in the DCF Calculator beside it.</p>
           <AnimatePresence>
@@ -289,13 +289,13 @@ export function IntrinsicValuationStation({
         <div className="space-y-2 border-t border-line pt-3 text-[11px] text-ink-3">
           <div className="flex justify-between gap-2">
             <span>Graham g · Y</span>
-            <span className="font-mono text-ink-2">
+            <span className="text-ink-2">
               {grahamG.toFixed(1)}% · {(grahamY * 100).toFixed(2)}%
             </span>
           </div>
           <div className="flex justify-between gap-2">
             <span>FY{statements.fiscalYear ?? "—"} diluted EPS · shares (SEC)</span>
-            <span className="font-mono text-ink-2">
+            <span className="text-ink-2">
               {statements.eps != null ? statements.eps.toFixed(2) : "—"} · {statements.shares != null ? `${(statements.shares / 1e9).toFixed(3)}B` : "—"}
             </span>
           </div>
@@ -303,7 +303,7 @@ export function IntrinsicValuationStation({
             <label className="block">
               <span className="flex justify-between gap-2">
                 <span>Dividend growth (DDM)</span>
-                <span className="font-mono text-ink-2">{(gd * 100).toFixed(1)}%</span>
+                <span className="text-ink-2">{(gd * 100).toFixed(1)}%</span>
               </span>
               <input
                 type="range"

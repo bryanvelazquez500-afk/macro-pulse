@@ -229,12 +229,12 @@ function StockRow({ leader, onAnalyze }: { leader: Leader; onAnalyze: (symbol: s
             </span>
           )}
           {leader.market_cap != null && s && (
-            <span className="shrink-0 font-mono text-ink-3 tabular-nums" title="Live market cap: price × shares outstanding (SEC)">
+            <span className="shrink-0 text-ink-3 tabular-nums" title="Live market cap: price × shares outstanding (SEC)">
               {compactMoney(leader.market_cap, s.currency)}
             </span>
           )}
           {s && (
-            <span className="truncate font-mono text-ink-3 tabular-nums">
+            <span className="truncate text-ink-3 tabular-nums">
               {money(s.price, s.currency)}
               {s.change_pct != null && (
                 <span className={s.change_pct >= 0 ? "text-gain" : "text-loss"}>
@@ -394,7 +394,7 @@ function SectorHeader({ sector, count }: { sector: string; count: number }) {
   return (
     <div className="flex h-[34px] items-center justify-between border-b border-line bg-[#0a1324] px-4">
       <span className="text-[10.5px] font-bold tracking-[0.22em] text-mint-ink uppercase">{sector}</span>
-      <span className="font-mono text-[10px] text-ink-3">{count}</span>
+      <span className="text-[10px] text-ink-3">{count}</span>
     </div>
   );
 }
@@ -439,7 +439,7 @@ function CountryPanel({
           <h3 className="text-xl font-bold tracking-tight text-ink">{country.name}</h3>
         </div>
         {state.status === "success" && state.data && (
-          <p className="mt-2 font-mono text-[10.5px] text-ink-3">
+          <p className="mt-2 text-[10.5px] text-ink-3">
             {state.data.leaders.length.toLocaleString()} listings · ranked by live market cap · live quotes · → adds a company to the comparison
           </p>
         )}
@@ -477,7 +477,7 @@ function CountryPanel({
                   onChange={(e) => setFilter(e.target.value)}
                   placeholder={`Filter ${loaded.leaders.length.toLocaleString()} companies by name or ticker`}
                   aria-label="Filter companies"
-                  className="h-8 w-full rounded-md bg-canvas px-3 font-mono text-[12px] text-ink ring-1 ring-line outline-none ring-inset placeholder:font-sans placeholder:text-ink-3 focus:ring-spruce"
+                  className="h-8 w-full rounded-md bg-canvas px-3 text-[12px] text-ink ring-1 ring-line outline-none ring-inset placeholder:font-sans placeholder:text-ink-3 focus:ring-spruce"
                 />
               </div>
             )}
@@ -611,7 +611,7 @@ export function EquityDiscovery({ onAnalyze }: { onAnalyze: (symbol: string) => 
         <div>
           <div className="text-[10px] font-semibold tracking-[0.35em] text-spruce uppercase">Scout network · global markets</div>
           <h2 className="mt-1 text-2xl font-black tracking-tight text-ink uppercase italic">Equity Discovery</h2>
-          <nav aria-label="Map location" className="mt-1 flex items-center gap-2 font-mono text-[11px] text-ink-3">
+          <nav aria-label="Map location" className="mt-1 flex items-center gap-2 text-[11px] text-ink-3">
             <button
               type="button"
               onClick={goWorld}
@@ -634,7 +634,7 @@ export function EquityDiscovery({ onAnalyze }: { onAnalyze: (symbol: string) => 
             )}
           </nav>
         </div>
-        <div className="flex gap-6 font-mono text-[11px] text-ink-3">
+        <div className="flex gap-6 text-[11px] text-ink-3">
           <div>
             <div className="text-xl font-bold text-mint-ink tabular-nums">{Object.keys(covered).length}</div>
             markets scouted
@@ -839,7 +839,7 @@ export function EquityDiscovery({ onAnalyze }: { onAnalyze: (symbol: string) => 
               <div className="text-[13px] font-semibold text-ink">
                 {region ? `${flag(hovered.iso)} ${hovered.name}` : hovered.continent}
               </div>
-              <div className="font-mono text-[10.5px] text-ink-3">
+              <div className="text-[10.5px] text-ink-3">
                 {region
                   ? covered[hovered.iso]
                     ? `${covered[hovered.iso]} listings scouted — click to open`
@@ -848,7 +848,7 @@ export function EquityDiscovery({ onAnalyze }: { onAnalyze: (symbol: string) => 
               </div>
             </>
           ) : (
-            <div className="font-mono text-[10.5px] text-ink-3">
+            <div className="text-[10.5px] text-ink-3">
               {region ? "Hover a country · click to scout" : "Hover a region · click to zoom"}
             </div>
           )}
@@ -880,7 +880,7 @@ export function EquityDiscovery({ onAnalyze }: { onAnalyze: (symbol: string) => 
               >
                 <span aria-hidden>{flag(p.iso)}</span>
                 {p.name}
-                <span className="font-mono text-[10px] text-spruce">{covered[p.iso]}</span>
+                <span className="text-[10px] text-spruce">{covered[p.iso]}</span>
               </button>
             ))}
           </motion.div>

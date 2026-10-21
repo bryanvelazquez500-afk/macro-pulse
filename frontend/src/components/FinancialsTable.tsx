@@ -32,7 +32,7 @@ function AlertIcon() {
 export function VarianceBadge({ direction, tier, pct }: { direction: "up" | "down"; tier: Tier; pct: number | null }) {
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-sm px-1.5 py-[3px] font-mono text-[10.5px] leading-none font-semibold tabular-nums ring-1 ring-inset ${badgeClass(direction, tier)}`}
+      className={`inline-flex items-center gap-1 rounded-sm px-1.5 py-[3px] text-[10.5px] leading-none font-semibold tabular-nums ring-1 ring-inset ${badgeClass(direction, tier)}`}
       aria-label={`${TIER_LABELS[tier].name} ${direction === "up" ? "increase" : "decrease"} ${pct == null ? "from zero" : formatChange(pct)}`}
     >
       {tier === 4 && <AlertIcon />}
@@ -55,7 +55,7 @@ export function VarianceLegend({ thresholdPct }: { thresholdPct: number }) {
             <span
               key={t}
               title={`${TIER_LABELS[t].name}: ${TIER_LABELS[t].range}`}
-              className={`inline-flex items-center gap-1 rounded-sm px-1.5 py-[3px] font-mono text-[10px] leading-none ring-1 ring-inset ${badgeClass(direction, t)}`}
+              className={`inline-flex items-center gap-1 rounded-sm px-1.5 py-[3px] text-[10px] leading-none ring-1 ring-inset ${badgeClass(direction, t)}`}
             >
               {t === 4 && <AlertIcon />}
               {TIER_LABELS[t].range}
@@ -139,7 +139,7 @@ function SourceTag({ financials }: { financials: CompanyEntry["financials"] }) {
       ? "Financial Modeling Prep standardized statements (company not registered with the SEC)"
       : `SEC EDGAR ${accounting_standard} filings, reported in ${currency}`;
   return (
-    <span className="font-mono text-[10px] tracking-wide whitespace-nowrap text-ink-3" title={detail}>
+    <span className="text-[10px] tracking-wide whitespace-nowrap text-ink-3" title={detail}>
       {label}
     </span>
   );
@@ -161,7 +161,7 @@ function Cell({ row, period, currency }: { row: Row; period: FinancialPeriod | u
       const fmt = row.unit === "shares" ? formatShares : (v: number | null | undefined) => formatMoney(v, currency);
       if (!item)
         return (
-          <span className="font-mono text-ink-4" title="Not reported">
+          <span className="text-ink-4" title="Not reported">
             —
           </span>
         );
@@ -172,7 +172,7 @@ function Cell({ row, period, currency }: { row: Row; period: FinancialPeriod | u
           className="text-right"
           title={[qualifiedTag(item.source_tag), variancesTitle(variance, item.value, fmt)].filter(Boolean).join("\n")}
         >
-          <div className={`font-mono tabular-nums ${item.value < 0 ? "text-loss dark:text-loss" : "text-ink"}`}>
+          <div className={`tabular-nums ${item.value < 0 ? "text-loss dark:text-loss" : "text-ink"}`}>
             {fmt(item.value)}
           </div>
           {/* Badge slot is always reserved so values line up across columns whether or not they're flagged. */}
@@ -188,13 +188,13 @@ function Cell({ row, period, currency }: { row: Row; period: FinancialPeriod | u
       const ratio = period.ratios[row.key];
       if (!ratio)
         return (
-          <span className="font-mono text-ink-4" title="Inputs not reported">
+          <span className="text-ink-4" title="Inputs not reported">
             —
           </span>
         );
       return (
         <span
-          className={`font-mono tabular-nums ${ratio.value == null ? "text-ink-4" : "text-ink"}`}
+          className={`tabular-nums ${ratio.value == null ? "text-ink-4" : "text-ink"}`}
           title={[ratio.formula, ratio.note].filter(Boolean).join("\n")}
         >
           {ratio.value == null ? "n/m" : formatRatio(ratio.value, row.unit)}
@@ -221,7 +221,7 @@ function Cell({ row, period, currency }: { row: Row; period: FinancialPeriod | u
       const zone = f.score >= 7 ? "strong" : f.score <= 3 ? "weak" : "neutral";
       return (
         <div className="text-right" title={detail}>
-          <div className="font-mono text-ink tabular-nums">
+          <div className="text-ink tabular-nums">
             {f.score}
             <span className="text-ink-4">/9</span>
           </div>
@@ -243,7 +243,7 @@ function Cell({ row, period, currency }: { row: Row; period: FinancialPeriod | u
       if (s.value == null) return <span className="text-[11px] text-ink-4">{s.note ?? "n/a"}</span>;
       return (
         <div className="text-right">
-          <div className="font-mono text-ink tabular-nums">{row.kind === "altman" ? s.value.toFixed(2) : formatChange(s.value)}</div>
+          <div className="text-ink tabular-nums">{row.kind === "altman" ? s.value.toFixed(2) : formatChange(s.value)}</div>
           <div className="mt-1 h-4 leading-4">
             {s.zone && <Zone zone={s.zone} label={row.kind === "sloan" && s.zone === "high" ? "high accruals" : undefined} />}
           </div>
@@ -555,7 +555,7 @@ export function FinancialsTable({
                   type="button"
                   onClick={() => setOffset(o)}
                   aria-pressed={offset === o}
-                  className={`rounded-sm px-1.5 py-1 font-mono text-[10.5px] transition-colors ${offset === o ? "bg-inverse text-on-inverse" : "text-ink-3 hover:bg-subtle hover:text-ink"}`}
+                  className={`rounded-sm px-1.5 py-1 text-[10.5px] transition-colors ${offset === o ? "bg-inverse text-on-inverse" : "text-ink-3 hover:bg-subtle hover:text-ink"}`}
                 >
                   {o === 0 ? "Latest" : `−${o}${unit}`}
                 </button>
@@ -583,7 +583,7 @@ export function FinancialsTable({
                   <dl className="space-y-1.5 text-[11px] leading-snug">
                     <div>
                       <dt className="eyebrow">Formula</dt>
-                      <dd className="font-mono text-[10.5px] text-ink-2">{RATIO_LESSONS[row.key].formula}</dd>
+                      <dd className="text-[10.5px] text-ink-2">{RATIO_LESSONS[row.key].formula}</dd>
                     </div>
                     <div>
                       <dt className="eyebrow">Where to find it</dt>
@@ -654,7 +654,7 @@ export function FinancialsTable({
                 {/* Top-aligned (not centered in a column ~2,000px tall) so the prompt is visible without scrolling. */}
                 <span className="grid size-9 place-items-center rounded-full text-xl leading-none text-spruce ring-1 ring-spruce/50">+</span>
                 <span className="text-[12px]">Compare a company</span>
-                <span className="font-mono text-[10.5px] text-ink-4">
+                <span className="text-[10.5px] text-ink-4">
                   {MAX_COMPARE - entries.length} slot{MAX_COMPARE - entries.length === 1 ? "" : "s"} left
                 </span>
               </motion.button>

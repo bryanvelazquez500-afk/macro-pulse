@@ -38,7 +38,7 @@ export function WatchlistMenu({ activeTicker, onSelect }: { activeTicker: string
       >
         <span aria-hidden className="text-caution">★</span>
         Watchlist
-        <span className="rounded-full bg-subtle px-1.5 font-mono text-[10.5px] text-ink-3">{portfolio.watchlist.length}</span>
+        <span className="rounded-full bg-subtle px-1.5 text-[10.5px] text-ink-3">{portfolio.watchlist.length}</span>
       </button>
       <AnimatePresence>
         {open && (

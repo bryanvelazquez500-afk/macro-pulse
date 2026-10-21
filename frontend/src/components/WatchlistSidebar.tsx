@@ -79,7 +79,7 @@ export function WatchlistSidebar({ activeTicker, onSelect }: { activeTicker: str
           {totalCost > 0 && (
             <div className="mt-2 flex justify-between border-t border-line px-2 pt-2 text-[11px] text-ink-3">
               <span>Total cost basis</span>
-              <span className="font-mono">{formatUsd(totalCost)}</span>
+              <span className="">{formatUsd(totalCost)}</span>
             </div>
           )}
         </section>

@@ -71,9 +71,9 @@ function ChartTooltip({ active, payload, currency }: { active?: boolean; payload
       </div>
       <div className="grid grid-cols-[auto_auto] gap-x-4 gap-y-0.5 text-ink-2">
         <span>Earnings</span>
-        <span className="text-right font-mono tabular-nums">{formatMoney(earnings, currency)}</span>
+        <span className="text-right tabular-nums">{formatMoney(earnings, currency)}</span>
         <span>Free cash flow</span>
-        <span className="text-right font-mono tabular-nums">{formatMoney(fcf, currency)}</span>
+        <span className="text-right tabular-nums">{formatMoney(fcf, currency)}</span>
       </div>
     </div>
   );

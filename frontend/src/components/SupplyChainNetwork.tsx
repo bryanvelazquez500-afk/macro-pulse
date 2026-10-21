@@ -195,7 +195,7 @@ function Partner({
         {e && (
           <div className="truncate text-[10.5px] text-ink-4" title={e.evidence ?? e.source_note ?? undefined}>
             {e.origin === "filing" && (
-              <span className="mr-1 rounded bg-mint px-1 font-mono text-[9.5px] text-spruce">filing</span>
+              <span className="mr-1 rounded bg-mint px-1 text-[9.5px] text-spruce">filing</span>
             )}
             {e.product ?? (e.origin === "filing" ? e.source_note : null)}
             {e.revenue_pct != null ? ` · ${e.revenue_pct}% of revenue` : e.major ? " · ≥10% customer" : ""}
@@ -256,7 +256,7 @@ function SideNotes({ side, partner, partnerNames }: { side: RelationshipSide; pa
             <div className="flex flex-wrap items-center gap-1 pt-0.5">
               <span className="text-[10px] tracking-wide text-ink-4 uppercase">Disclosed figures</span>
               {n.figures.map((f) => (
-                <span key={f} className="rounded bg-gain-bg px-1.5 py-0.5 font-mono text-[10.5px] font-semibold text-gain">
+                <span key={f} className="rounded bg-gain-bg px-1.5 py-0.5 text-[10.5px] font-semibold text-gain">
                   {f}
                 </span>
               ))}
@@ -342,7 +342,7 @@ function RelationshipCard({
             <p className="text-[12.5px] leading-snug text-ink">{r.summary}</p>
             {(r.revenue_pct != null || r.source_note) && (
               <p className="rounded-md bg-subtle px-2.5 py-1.5 text-[11px] text-ink-2 ring-1 ring-line ring-inset">
-                {r.revenue_pct != null && <span className="mr-1 font-mono font-semibold text-gain">{r.revenue_pct}%</span>}
+                {r.revenue_pct != null && <span className="mr-1 font-semibold text-gain">{r.revenue_pct}%</span>}
                 {r.source_note}
               </p>
             )}

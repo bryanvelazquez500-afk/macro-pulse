@@ -289,7 +289,7 @@ export function PulseBotTour({ onClose, onView }: { onClose: () => void; onView?
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-[10px] font-semibold tracking-[0.16em] text-caution uppercase">Pulse-Bot</span>
-                  <span className="font-mono text-[10.5px] text-ink-4">
+                  <span className="text-[10.5px] text-ink-4">
                     {index + 1}/{steps.length}
                   </span>
                 </div>

@@ -41,7 +41,7 @@ function Slider({
         <label htmlFor={id} className="text-[13px] text-ink">
           {label}
         </label>
-        <output htmlFor={id} className="font-mono text-[13px] text-ink tabular-nums">
+        <output htmlFor={id} className="text-[13px] text-ink tabular-nums">
           {value > 0 && range.min < 0 ? "+" : ""}
           {value.toFixed(range.step < 0.5 ? 2 : 1)}%
         </output>
@@ -69,7 +69,7 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
   return (
     <div className="border-l border-line py-0.5 pl-3">
       <div className="eyebrow">{label}</div>
-      <div className="mt-1 font-mono text-xl tracking-tight text-ink tabular-nums">{value}</div>
+      <div className="mt-1 text-xl tracking-tight text-ink tabular-nums">{value}</div>
       {sub && <div className="text-[11px] text-ink-3">{sub}</div>}
     </div>
   );
@@ -191,15 +191,15 @@ export function ValuationPanel({
           <dl className="space-y-1 border-t border-line pt-4 text-[11px] text-ink-3">
             <div className="flex justify-between">
               <dt>Earnings ÷ operating income</dt>
-              <dd className="font-mono">{(baseline.earningsConversion * 100).toFixed(0)}%</dd>
+              <dd className="">{(baseline.earningsConversion * 100).toFixed(0)}%</dd>
             </div>
             <div className="flex justify-between">
               <dt>FCF ÷ earnings</dt>
-              <dd className="font-mono">{(baseline.fcfConversion * 100).toFixed(0)}%</dd>
+              <dd className="">{(baseline.fcfConversion * 100).toFixed(0)}%</dd>
             </div>
             <div className="flex justify-between">
               <dt>Terminal growth</dt>
-              <dd className="font-mono">{TERMINAL_GROWTH_PCT}%</dd>
+              <dd className="">{TERMINAL_GROWTH_PCT}%</dd>
             </div>
             <p className="pt-1 text-[11px] leading-snug text-ink-4">
               Conversion rates are this company&apos;s 3-year GAAP averages. Free cash flow (operating cash flow − capex) is after interest, so
@@ -262,7 +262,7 @@ export function ValuationPanel({
       <details className="border-t border-line px-5 py-3 text-[13px]">
         <summary className="eyebrow cursor-pointer">Projection table</summary>
         <div className="mt-3 overflow-x-auto">
-          <table className="w-full text-right font-mono text-xs tabular-nums">
+          <table className="w-full text-right text-xs tabular-nums">
             <thead className="text-ink-3">
               <tr>
                 <th className="py-1 text-left font-sans font-medium">Fiscal year</th>

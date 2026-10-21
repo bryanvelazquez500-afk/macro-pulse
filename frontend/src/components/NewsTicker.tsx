@@ -48,7 +48,7 @@ function Tape({ ticker }: { ticker: string }) {
           className="group/item flex items-center gap-2 rounded px-1 py-0.5 whitespace-nowrap focus-visible:ring-2 focus-visible:ring-spruce focus-visible:outline-none"
         >
           <span className="text-[12.5px] text-ink group-hover/item:text-spruce group-hover/item:underline">{h.title}</span>
-          <span className="font-mono text-[10.5px] text-ink-4">
+          <span className="text-[10.5px] text-ink-4">
             {[h.source, timeAgo(h.published_at)].filter(Boolean).join(" · ")}
           </span>
         </a>

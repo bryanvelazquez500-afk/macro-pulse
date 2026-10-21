@@ -95,15 +95,18 @@
   --radius-xs: var(--radius-xs); --radius-sm: var(--radius-sm); --radius-md: var(--radius-md); --radius-lg: var(--radius-lg);
   --shadow-1: var(--shadow-1); --shadow-2: var(--shadow-2); --shadow-float: var(--shadow-float);
   --ease-flow: var(--ease-flow);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
 }
 
 body {
   background: var(--canvas);
   color: var(--ink);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
-  font-feature-settings: "ss01", "cv11";
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 24px;
+  /* Every figure lines up in columns. */
+  font-variant-numeric: tabular-nums;
 }
 
 ::selection {
@@ -121,6 +124,28 @@ body {
   }
 }
 
+/* Type scale: hero 44/48 · section 30/36 · card 18/26 · body 15/24 · small 13/20 · label 11/16 · figure 14/20 · big figure 26/32. */
+@layer components {
+  .type-hero {
+    font-size: 44px; line-height: 48px; font-weight: 700; letter-spacing: -0.02em;
+  }
+  .type-section {
+    font-size: 30px; line-height: 36px; font-weight: 700; letter-spacing: -0.015em;
+  }
+  .type-card {
+    font-size: 18px; line-height: 26px; font-weight: 600;
+  }
+  .type-small {
+    font-size: 13px; line-height: 20px;
+  }
+  .type-figure {
+    font-size: 14px; line-height: 20px; font-weight: 500; font-variant-numeric: tabular-nums;
+  }
+  .type-big-figure {
+    font-size: 26px; line-height: 32px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.01em;
+  }
+}
+
 /* Shared primitives — kept here so every panel and label reads identically. */
 @layer components {
   /* Glass card sheet: thin translucent edge, frosted MacroPulse panel. */
@@ -128,7 +153,7 @@ body {
     @apply rounded-md border border-white/5 bg-macropulse-panel backdrop-blur-md;
   }
   .eyebrow {
-    @apply text-[10px] font-medium tracking-[0.14em] text-ink-3 uppercase;
+    @apply text-[11px] leading-4 font-bold tracking-[0.09em] text-ink-3 uppercase;
   }
   .field {
     @apply rounded-md border border-line-strong bg-panel px-3 py-2 text-sm text-ink outline-none placeholder:text-ink-4 focus:border-ink focus:ring-0;

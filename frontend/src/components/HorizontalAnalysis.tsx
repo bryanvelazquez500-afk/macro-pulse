@@ -242,7 +242,7 @@ function TrendChart({
         {ticks.map((t) => (
           <g key={t}>
             <line x1={pad.l} x2={width - pad.r} y1={sy(t)} y2={sy(t)} stroke="rgba(255,255,255,0.06)" />
-            <text x={pad.l - 8} y={sy(t) + 3.5} textAnchor="end" className="fill-ink-3 font-mono text-[10px]">
+            <text x={pad.l - 8} y={sy(t) + 3.5} textAnchor="end" className="fill-ink-3 text-[10px]">
               {yLabel(t)}
             </text>
           </g>
@@ -252,7 +252,7 @@ function TrendChart({
         )}
         {cells.map((c, i) =>
           i % step === 0 || i === cells.length - 1 ? (
-            <text key={c.period.end} x={sx(i)} y={H - 8} textAnchor="middle" className="fill-ink-3 font-mono text-[10px]">
+            <text key={c.period.end} x={sx(i)} y={H - 8} textAnchor="middle" className="fill-ink-3 text-[10px]">
               {periodLabel(c.period).replace("FY", "")}
             </text>
           ) : null,
@@ -283,15 +283,15 @@ function TrendChart({
           <div className="text-ink-4">ended {hovered.period.end}</div>
           <div className="mt-1 flex justify-between gap-2">
             <span className="text-ink-3">Value</span>
-            <span className="font-mono text-ink">{fmt(hovered.value, unit, currency)}</span>
+            <span className="text-ink">{fmt(hovered.value, unit, currency)}</span>
           </div>
           <div className="flex justify-between gap-2">
             <span className="text-ink-3">Change</span>
-            <span className="font-mono text-ink">{hovered.change == null ? "—" : `${hovered.change >= 0 ? "▲" : "▼"} ${formatChange(hovered.change)}`}</span>
+            <span className="text-ink">{hovered.change == null ? "—" : `${hovered.change >= 0 ? "▲" : "▼"} ${formatChange(hovered.change)}`}</span>
           </div>
           <div className="flex justify-between gap-2">
             <span className="text-ink-3">Index</span>
-            <span className="font-mono text-ink">{hovered.index == null ? "—" : hovered.index.toFixed(1)}</span>
+            <span className="text-ink">{hovered.index == null ? "—" : hovered.index.toFixed(1)}</span>
           </div>
         </div>
       )}
@@ -385,7 +385,7 @@ function VerticalChart({
         {ticks.map((t) => (
           <g key={t}>
             <line x1={pad.l} x2={width - pad.r} y1={sy(t)} y2={sy(t)} stroke="rgba(255,255,255,0.06)" />
-            <text x={pad.l - 8} y={sy(t) + 3.5} textAnchor="end" className="fill-ink-3 font-mono text-[10px]">
+            <text x={pad.l - 8} y={sy(t) + 3.5} textAnchor="end" className="fill-ink-3 text-[10px]">
               {t.toFixed(0)}%
             </text>
           </g>
@@ -393,7 +393,7 @@ function VerticalChart({
         {y0 < 0 && y1 > 0 && <line x1={pad.l} x2={width - pad.r} y1={sy(0)} y2={sy(0)} stroke="rgba(255,255,255,0.25)" />}
         {periods.map((p, i) =>
           i % step === 0 || i === periods.length - 1 ? (
-            <text key={p.end} x={sx(i)} y={H - 8} textAnchor="middle" className="fill-ink-3 font-mono text-[10px]">
+            <text key={p.end} x={sx(i)} y={H - 8} textAnchor="middle" className="fill-ink-3 text-[10px]">
               {periodLabel(p).replace("FY", "")}
             </text>
           ) : null,
@@ -447,7 +447,7 @@ function VerticalChart({
                   <span className="h-0.5 w-3 shrink-0 rounded" style={{ background: s.color }} />
                   <span className="truncate">{s.label}</span>
                 </span>
-                <span className="font-mono text-ink">{s.values[hover] == null ? "—" : `${s.values[hover]!.toFixed(1)}%`}</span>
+                <span className="text-ink">{s.values[hover] == null ? "—" : `${s.values[hover]!.toFixed(1)}%`}</span>
               </div>
             ))}
         </div>
@@ -666,11 +666,11 @@ function VerticalView({ periods, currency, periodType }: { periods: FinancialPer
                         style={{ backgroundColor: v == null ? undefined : `rgba(0,240,255,${Math.min(Math.abs(v), 100) / 100 * 0.22})` }}
                         title={`${periodLabel(periods[i])}: ${fmt(r.key === "sum" ? null : (rowByKey.get(r.key)?.get(periods[i]) ?? null), "money", currency)} of ${fmt(baseRow.get(periods[i]), "money", currency)}`}
                       >
-                        <span className="font-mono text-ink tabular-nums">{v == null ? "—" : `${v.toFixed(1)}%`}</span>
+                        <span className="text-ink tabular-nums">{v == null ? "—" : `${v.toFixed(1)}%`}</span>
                       </td>
                     ))}
-                    <td className="border-t border-line px-3 py-1.5 text-right font-mono text-ink tabular-nums">{a == null ? "—" : `${a.toFixed(1)}%`}</td>
-                    <td className="border-t border-line px-3 py-1.5 text-right font-mono tabular-nums">
+                    <td className="border-t border-line px-3 py-1.5 text-right text-ink tabular-nums">{a == null ? "—" : `${a.toFixed(1)}%`}</td>
+                    <td className="border-t border-line px-3 py-1.5 text-right tabular-nums">
                       {d == null ? <span className="text-ink-4">—</span> : (
                         <span className="text-ink">
                           {d >= 0 ? "▲" : "▼"} {d >= 0 ? "+" : "−"}
@@ -722,7 +722,7 @@ function Stat({ label, value }: { label: string; value: number | null }) {
   return (
     <div className="rounded-md bg-subtle px-2.5 py-1.5 ring-1 ring-line ring-inset">
       <div className="text-[10px] tracking-wide text-ink-4 uppercase">{label}</div>
-      <div className={`font-mono text-[13px] font-semibold tabular-nums ${value == null ? "text-ink-4" : "text-ink"}`}>
+      <div className={`text-[13px] font-semibold tabular-nums ${value == null ? "text-ink-4" : "text-ink"}`}>
         {value == null ? "n/m" : (
           <>
             <span aria-hidden className={value >= 0 ? "text-gain" : "text-loss"}>
@@ -961,12 +961,12 @@ function CompanyCard({ entry, periodType, defaultOpen }: { entry: CompanyEntry; 
                                   className="border-t border-line px-2.5 py-1.5 text-right whitespace-nowrap"
                                   title={`${periodLabel(c.period)}: ${fmt(c.value, row.unit, currency)}${c.change == null ? "" : ` · ${formatChange(c.change)} vs prior`}${c.index == null ? "" : ` · index ${c.index.toFixed(1)}`}`}
                                 >
-                                  <div className="font-mono text-ink tabular-nums">{main}</div>
-                                  {mode !== "value" && <div className="font-mono text-[10px] text-ink-4 tabular-nums">{fmt(c.value, row.unit, currency)}</div>}
+                                  <div className="text-ink tabular-nums">{main}</div>
+                                  {mode !== "value" && <div className="text-[10px] text-ink-4 tabular-nums">{fmt(c.value, row.unit, currency)}</div>}
                                 </motion.td>
                               );
                             })}
-                            <td className="border-t border-line px-3 py-1.5 text-right font-mono whitespace-nowrap text-ink tabular-nums">
+                            <td className="border-t border-line px-3 py-1.5 text-right whitespace-nowrap text-ink tabular-nums">
                               {growth == null ? <span className="text-ink-4">n/m</span> : formatChange(growth)}
                             </td>
                           </tr>
