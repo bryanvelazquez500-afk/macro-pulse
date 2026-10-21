@@ -14,14 +14,10 @@ services:
       # SEC EDGAR requires a contact on every request: "YourName your@email.com".
       - key: IS_SEC_USER_AGENT
         sync: false
-      # Websites allowed to call the API: the original link, plus the static site's host from Render.
+      # Websites allowed to call the API: the fast static site and the original link. Pinned as values:
+      # a fromService host reference didn't reach the running service.
       - key: IS_CORS_ORIGINS
-        value: https://macropulse-z27l.onrender.com
-      - key: IS_WEB_HOST
-        fromService:
-          type: web
-          name: macropulse-web
-          property: host
+        value: https://macropulse-web.onrender.com,https://macropulse-z27l.onrender.com
       - key: WEB_CONCURRENCY
         value: "1"
 
