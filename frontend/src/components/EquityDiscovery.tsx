@@ -178,14 +178,14 @@ function placeLabels(
 // ---------------------------------------------------------------- overlay panel
 
 const COVERAGE: Record<Coverage, { label: string; className: string; title: string }> = {
-  sec: { label: "SEC", className: "text-emerald-300 ring-emerald-400/40", title: "Full statements from SEC filings — free" },
-  fmp: { label: "FMP", className: "text-sky-300 ring-sky-400/40", title: "Statements from Financial Modeling Prep" },
+  sec: { label: "SEC", className: "text-gain ring-gain/40", title: "Full statements from SEC filings — free" },
+  fmp: { label: "FMP", className: "text-spruce ring-spruce/50", title: "Statements from Financial Modeling Prep" },
   fmp_key_required: {
     label: "FMP key",
-    className: "text-amber-300 ring-amber-400/40",
+    className: "text-caution ring-caution/40",
     title: "Not an SEC registrant: full statements need a paid Financial Modeling Prep key",
   },
-  unavailable: { label: "No data", className: "text-slate-400 ring-slate-500/40", title: "Not found in either data pipeline" },
+  unavailable: { label: "No data", className: "text-ink-3 ring-line-strong", title: "Not found in either data pipeline" },
 };
 
 /** 5.16T / 412B / 980M — for market caps. */
@@ -213,13 +213,13 @@ function StockRow({ leader, onAnalyze }: { leader: Leader; onAnalyze: (symbol: s
   const [explaining, setExplaining] = useState(false);
   return (
     <div
-      className={`mp-interactive group relative flex h-full items-center gap-3 rounded-md border-b border-white/[0.06] px-3 ${keyRequired ? "cursor-pointer" : ""}`}
+      className={`mp-interactive group relative flex h-full items-center gap-3 rounded-md border-b border-line px-3 ${keyRequired ? "cursor-pointer" : ""}`}
       onClick={keyRequired ? () => setExplaining((o) => !o) : undefined}
     >
       <div className="min-w-0 flex-1">
-        <div className="truncate text-[13.5px] font-semibold text-white">{leader.name}</div>
+        <div className="truncate text-[13.5px] font-semibold text-ink">{leader.name}</div>
         <div className="mt-0.5 flex items-center gap-2 text-[11px]">
-          <span className="font-mono font-semibold text-cyan-300">{leader.symbol}</span>
+          <span className="font-mono font-semibold text-spruce">{leader.symbol}</span>
           {!keyRequired && (
             <span
               className={`rounded px-1 text-[9px] font-semibold tracking-wider uppercase ring-1 ring-inset ${cov.className}`}
@@ -229,15 +229,15 @@ function StockRow({ leader, onAnalyze }: { leader: Leader; onAnalyze: (symbol: s
             </span>
           )}
           {leader.market_cap != null && s && (
-            <span className="shrink-0 font-mono text-slate-500 tabular-nums" title="Live market cap: price × shares outstanding (SEC)">
+            <span className="shrink-0 font-mono text-ink-3 tabular-nums" title="Live market cap: price × shares outstanding (SEC)">
               {compactMoney(leader.market_cap, s.currency)}
             </span>
           )}
           {s && (
-            <span className="truncate font-mono text-slate-400 tabular-nums">
+            <span className="truncate font-mono text-ink-3 tabular-nums">
               {money(s.price, s.currency)}
               {s.change_pct != null && (
-                <span className={s.change_pct >= 0 ? "text-emerald-300" : "text-rose-300"}>
+                <span className={s.change_pct >= 0 ? "text-gain" : "text-loss"}>
                   {" "}
                   {s.change_pct >= 0 ? "+" : "−"}
                   {Math.abs(s.change_pct).toFixed(1)}%
@@ -256,7 +256,7 @@ function StockRow({ leader, onAnalyze }: { leader: Leader; onAnalyze: (symbol: s
             onClick={() => onAnalyze(leader.symbol)}
             aria-label={`Add ${leader.name} to comparison`}
             title="Add to the comparison (up to 3) and open Raw Financial Statements"
-            className="grid size-7 shrink-0 place-items-center rounded-md text-cyan-200 ring-1 ring-cyan-400/30 transition hover:bg-cyan-400/15 focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:outline-none"
+            className="grid size-7 shrink-0 place-items-center rounded-md text-mint-ink ring-1 ring-spruce/40 transition hover:bg-mint focus-visible:ring-2 focus-visible:ring-spruce focus-visible:outline-none"
           >
             →
           </button>
@@ -332,17 +332,17 @@ function SectorList({ data, onAnalyze }: { data: CountryLeaders; onAnalyze: (sym
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex flex-wrap gap-1 border-b border-white/5 px-4 py-2.5" role="group" aria-label="Jump to sector">
+      <div className="flex flex-wrap gap-1 border-b border-line px-4 py-2.5" role="group" aria-label="Jump to sector">
         {sectors.map((s) => (
           <button
             key={s}
             type="button"
             onClick={() => scroller.current?.scrollTo({ top: offsets[headerIndex.get(s)!], behavior: "smooth" })}
             className={`rounded px-1.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase ring-1 transition ${
-              current === s ? "bg-cyan-400/20 text-cyan-100 ring-cyan-300/50" : "text-slate-400 ring-white/10 hover:text-slate-200"
+              current === s ? "bg-mint text-mint-ink ring-spruce/50" : "text-ink-3 ring-line hover:text-ink-2"
             }`}
           >
-            {s} <span className="text-cyan-300/70">{(items[headerIndex.get(s)!] as Extract<Item, { kind: "header" }>).count}</span>
+            {s} <span className="text-spruce">{(items[headerIndex.get(s)!] as Extract<Item, { kind: "header" }>).count}</span>
           </button>
         ))}
       </div>
@@ -392,9 +392,9 @@ function SectorList({ data, onAnalyze }: { data: CountryLeaders; onAnalyze: (sym
 
 function SectorHeader({ sector, count }: { sector: string; count: number }) {
   return (
-    <div className="flex h-[34px] items-center justify-between border-b border-cyan-400/15 bg-[#0a1324] px-4">
-      <span className="text-[10.5px] font-bold tracking-[0.22em] text-cyan-200 uppercase">{sector}</span>
-      <span className="font-mono text-[10px] text-slate-500">{count}</span>
+    <div className="flex h-[34px] items-center justify-between border-b border-line bg-[#0a1324] px-4">
+      <span className="text-[10.5px] font-bold tracking-[0.22em] text-mint-ink uppercase">{sector}</span>
+      <span className="font-mono text-[10px] text-ink-3">{count}</span>
     </div>
   );
 }
@@ -428,18 +428,18 @@ function CountryPanel({
       animate={{ x: 0, opacity: 1 }}
       exit={reduceMotion ? { opacity: 0 } : { x: "100%", opacity: 0.6, transition: { duration: 0.22, ease: "easeIn" } }}
       transition={{ type: "spring", stiffness: 260, damping: 32 }}
-      className="absolute inset-y-0 right-0 z-20 flex w-full max-w-[460px] flex-col border-l border-cyan-400/25 bg-[#070c17]/[0.97] shadow-[-24px_0_60px_-20px_rgba(34,211,238,0.25)] backdrop-blur-xl"
+      className="absolute inset-y-0 right-0 z-20 flex w-full max-w-[460px] flex-col border-l border-line-strong bg-[#070c17]/[0.97] shadow-[-24px_0_60px_-20px_rgba(34,211,238,0.25)] backdrop-blur-xl"
     >
-      <div className="relative border-b border-white/5 px-5 pt-5 pb-4">
-        <div className="text-[10px] font-semibold tracking-[0.3em] text-cyan-300/80 uppercase">Scout report · {country.continent}</div>
+      <div className="relative border-b border-line px-5 pt-5 pb-4">
+        <div className="text-[10px] font-semibold tracking-[0.3em] text-spruce uppercase">Scout report · {country.continent}</div>
         <div className="mt-1 flex items-center gap-3">
           <span className="text-3xl leading-none" aria-hidden>
             {flag(country.iso)}
           </span>
-          <h3 className="text-xl font-bold tracking-tight text-white">{country.name}</h3>
+          <h3 className="text-xl font-bold tracking-tight text-ink">{country.name}</h3>
         </div>
         {state.status === "success" && state.data && (
-          <p className="mt-2 font-mono text-[10.5px] text-slate-500">
+          <p className="mt-2 font-mono text-[10.5px] text-ink-3">
             {state.data.leaders.length.toLocaleString()} listings · ranked by live market cap · live quotes · → adds a company to the comparison
           </p>
         )}
@@ -447,46 +447,46 @@ function CountryPanel({
           type="button"
           onClick={onClose}
           aria-label="Close scout report"
-          className="absolute top-4 right-4 grid size-7 place-items-center rounded-md text-slate-400 ring-1 ring-white/10 transition hover:bg-white/10 hover:text-white"
+          className="absolute top-4 right-4 grid size-7 place-items-center rounded-md text-ink-3 ring-1 ring-line transition hover:bg-subtle hover:text-ink"
         >
           ×
         </button>
       </div>
       {!covered ? (
-        <p className="m-4 rounded-lg border border-dashed border-white/10 p-4 text-[13px] text-slate-400">
+        <p className="m-4 rounded-lg border border-dashed border-line p-4 text-[13px] text-ink-3">
           No scouted listings for {country.name} yet. Covered markets carry a cyan marker on the map.
         </p>
       ) : state.status === "loading" ? (
         <ul className="space-y-px p-4" aria-busy="true">
           {country.iso === "US" && (
-            <li className="pb-2 text-[11.5px] text-slate-400">Pricing every US-listed SEC filer — the first load can take up to a minute.</li>
+            <li className="pb-2 text-[11.5px] text-ink-3">Pricing every US-listed SEC filer — the first load can take up to a minute.</li>
           )}
           {Array.from({ length: 8 }, (_, i) => (
-            <li key={i} className="h-14 animate-pulse rounded bg-white/[0.04]" />
+            <li key={i} className="h-14 animate-pulse rounded bg-subtle" />
           ))}
         </ul>
       ) : state.status === "error" ? (
-        <p className="m-4 text-[13px] text-rose-300">{state.error}</p>
+        <p className="m-4 text-[13px] text-loss">{state.error}</p>
       ) : (
         shown && (
           <>
             {loaded && loaded.leaders.length > 60 && (
-              <div className="border-b border-white/5 px-4 py-2">
+              <div className="border-b border-line px-4 py-2">
                 <input
                   value={filter}
                   onChange={(e) => setFilter(e.target.value)}
                   placeholder={`Filter ${loaded.leaders.length.toLocaleString()} companies by name or ticker`}
                   aria-label="Filter companies"
-                  className="h-8 w-full rounded-md bg-black/40 px-3 font-mono text-[12px] text-white ring-1 ring-white/10 outline-none ring-inset placeholder:font-sans placeholder:text-slate-500 focus:ring-cyan-400/60"
+                  className="h-8 w-full rounded-md bg-canvas px-3 font-mono text-[12px] text-ink ring-1 ring-line outline-none ring-inset placeholder:font-sans placeholder:text-ink-3 focus:ring-spruce"
                 />
               </div>
             )}
-            <div className="flex items-center justify-between border-b border-white/5 px-4 py-2 text-[9.5px] font-semibold tracking-[0.2em] text-slate-500 uppercase">
+            <div className="flex items-center justify-between border-b border-line px-4 py-2 text-[9.5px] font-semibold tracking-[0.2em] text-ink-3 uppercase">
               <span>Company · ticker · price</span>
               <span className="pr-1">Add to comparison →</span>
             </div>
             {shown.leaders.length === 0 ? (
-              <p className="p-4 text-[12.5px] text-slate-400">No company matches “{filter}”.</p>
+              <p className="p-4 text-[12.5px] text-ink-3">No company matches “{filter}”.</p>
             ) : (
               <SectorList key={filter} data={shown} onAnalyze={onAnalyze} />
             )}
@@ -579,7 +579,7 @@ export function EquityDiscovery({ onAnalyze }: { onAnalyze: (symbol: string) => 
     <section
       ref={root}
       aria-label="Equity Discovery scout map"
-      className="relative overflow-hidden rounded-2xl bg-macropulse-obsidian text-slate-200 shadow-[0_30px_80px_-30px_rgba(8,145,178,0.45)] ring-1 ring-cyan-400/15"
+      className="relative overflow-hidden rounded-2xl bg-canvas text-ink-2 shadow-[0_30px_80px_-30px_rgba(8,145,178,0.45)] ring-1 ring-line"
     >
       {/* HUD backdrop: faint grid + vignette */}
       <div
@@ -603,19 +603,19 @@ export function EquityDiscovery({ onAnalyze }: { onAnalyze: (symbol: string) => 
           "bottom-3 right-3 border-b border-r",
         ] as const
       ).map((c) => (
-        <span key={c} aria-hidden className={`pointer-events-none absolute size-5 border-cyan-300/50 ${c}`} />
+        <span key={c} aria-hidden className={`pointer-events-none absolute size-5 border-spruce/50 ${c}`} />
       ))}
 
       {/* Header */}
       <div className="relative flex flex-wrap items-end justify-between gap-4 px-6 pt-6">
         <div>
-          <div className="text-[10px] font-semibold tracking-[0.35em] text-cyan-300/80 uppercase">Scout network · global markets</div>
-          <h2 className="mt-1 text-2xl font-black tracking-tight text-white uppercase italic">Equity Discovery</h2>
-          <nav aria-label="Map location" className="mt-1 flex items-center gap-2 font-mono text-[11px] text-slate-400">
+          <div className="text-[10px] font-semibold tracking-[0.35em] text-spruce uppercase">Scout network · global markets</div>
+          <h2 className="mt-1 text-2xl font-black tracking-tight text-ink uppercase italic">Equity Discovery</h2>
+          <nav aria-label="Map location" className="mt-1 flex items-center gap-2 font-mono text-[11px] text-ink-3">
             <button
               type="button"
               onClick={goWorld}
-              className={zoomed ? "text-cyan-300 hover:text-cyan-100" : "text-slate-300"}
+              className={zoomed ? "text-spruce hover:text-mint-ink" : "text-ink-2"}
               disabled={!zoomed}
             >
               WORLD
@@ -623,24 +623,24 @@ export function EquityDiscovery({ onAnalyze }: { onAnalyze: (symbol: string) => 
             {region && (
               <>
                 <span aria-hidden>›</span>
-                <span className="text-slate-200 uppercase">{region}</span>
+                <span className="text-ink-2 uppercase">{region}</span>
               </>
             )}
             {selected && (
               <>
                 <span aria-hidden>›</span>
-                <span className="text-slate-200 uppercase">{selected.name}</span>
+                <span className="text-ink-2 uppercase">{selected.name}</span>
               </>
             )}
           </nav>
         </div>
-        <div className="flex gap-6 font-mono text-[11px] text-slate-400">
+        <div className="flex gap-6 font-mono text-[11px] text-ink-3">
           <div>
-            <div className="text-xl font-bold text-cyan-200 tabular-nums">{Object.keys(covered).length}</div>
+            <div className="text-xl font-bold text-mint-ink tabular-nums">{Object.keys(covered).length}</div>
             markets scouted
           </div>
           <div>
-            <div className="text-xl font-bold text-cyan-200 tabular-nums">{Object.values(covered).reduce((a, b) => a + b, 0)}</div>
+            <div className="text-xl font-bold text-mint-ink tabular-nums">{Object.values(covered).reduce((a, b) => a + b, 0)}</div>
             listings tracked
           </div>
         </div>
@@ -659,8 +659,8 @@ export function EquityDiscovery({ onAnalyze }: { onAnalyze: (symbol: string) => 
             aria-pressed={region === r.key}
             className={`rounded-md px-3 py-1.5 text-[11px] font-semibold tracking-wider uppercase ring-1 transition ${
               region === r.key
-                ? "bg-cyan-400 text-slate-950 ring-cyan-300 shadow-[0_0_18px_rgba(34,211,238,0.5)]"
-                : "text-slate-300 ring-white/10 hover:bg-white/5 hover:ring-cyan-400/40"
+                ? "bg-spruce text-ink ring-spruce shadow-[0_0_18px_rgba(34,211,238,0.5)]"
+                : "text-ink-2 ring-line hover:bg-subtle hover:ring-spruce/50"
             }`}
           >
             {r.label}
@@ -670,8 +670,8 @@ export function EquityDiscovery({ onAnalyze }: { onAnalyze: (symbol: string) => 
 
       {/* Map */}
       <div className="relative mt-3 px-3 pb-3">
-        {world.status === "loading" && <div className="aspect-[96/50] animate-pulse rounded-xl bg-white/[0.03]" />}
-        {world.status === "error" && <p className="p-6 text-[13px] text-rose-300">{world.error}</p>}
+        {world.status === "loading" && <div className="aspect-[96/50] animate-pulse rounded-xl bg-subtle" />}
+        {world.status === "error" && <p className="p-6 text-[13px] text-loss">{world.error}</p>}
         {world.status === "success" && (
           <svg
             viewBox={`0 0 ${W} ${H}`}
@@ -832,14 +832,14 @@ export function EquityDiscovery({ onAnalyze }: { onAnalyze: (symbol: string) => 
         )}
 
         {/* Hover HUD */}
-        <div className="pointer-events-none absolute bottom-6 left-6 min-w-44 rounded-md border border-cyan-400/20 bg-[#070c17]/85 px-3 py-2 backdrop-blur">
+        <div className="pointer-events-none absolute bottom-6 left-6 min-w-44 rounded-md border border-line bg-[#070c17]/85 px-3 py-2 backdrop-blur">
           {hovered ? (
             <>
-              <div className="text-[9.5px] tracking-[0.25em] text-cyan-300/80 uppercase">{region ? hovered.continent : "Region"}</div>
-              <div className="text-[13px] font-semibold text-white">
+              <div className="text-[9.5px] tracking-[0.25em] text-spruce uppercase">{region ? hovered.continent : "Region"}</div>
+              <div className="text-[13px] font-semibold text-ink">
                 {region ? `${flag(hovered.iso)} ${hovered.name}` : hovered.continent}
               </div>
-              <div className="font-mono text-[10.5px] text-slate-400">
+              <div className="font-mono text-[10.5px] text-ink-3">
                 {region
                   ? covered[hovered.iso]
                     ? `${covered[hovered.iso]} listings scouted — click to open`
@@ -848,7 +848,7 @@ export function EquityDiscovery({ onAnalyze }: { onAnalyze: (symbol: string) => 
               </div>
             </>
           ) : (
-            <div className="font-mono text-[10.5px] text-slate-400">
+            <div className="font-mono text-[10.5px] text-ink-3">
               {region ? "Hover a country · click to scout" : "Hover a region · click to zoom"}
             </div>
           )}
@@ -862,7 +862,7 @@ export function EquityDiscovery({ onAnalyze }: { onAnalyze: (symbol: string) => 
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="relative flex flex-wrap gap-1.5 border-t border-white/5 px-6 py-4"
+            className="relative flex flex-wrap gap-1.5 border-t border-line px-6 py-4"
             role="group"
             aria-label={`Scouted markets in ${region}`}
           >
@@ -874,13 +874,13 @@ export function EquityDiscovery({ onAnalyze }: { onAnalyze: (symbol: string) => 
                 aria-pressed={selected?.iso === p.iso}
                 className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11.5px] ring-1 transition ${
                   selected?.iso === p.iso
-                    ? "bg-cyan-400/20 text-cyan-100 ring-cyan-300/60"
-                    : "text-slate-300 ring-white/10 hover:bg-white/5 hover:ring-cyan-400/40"
+                    ? "bg-mint text-mint-ink ring-spruce"
+                    : "text-ink-2 ring-line hover:bg-subtle hover:ring-spruce/50"
                 }`}
               >
                 <span aria-hidden>{flag(p.iso)}</span>
                 {p.name}
-                <span className="font-mono text-[10px] text-cyan-300/80">{covered[p.iso]}</span>
+                <span className="font-mono text-[10px] text-spruce">{covered[p.iso]}</span>
               </button>
             ))}
           </motion.div>

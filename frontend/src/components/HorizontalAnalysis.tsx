@@ -242,7 +242,7 @@ function TrendChart({
         {ticks.map((t) => (
           <g key={t}>
             <line x1={pad.l} x2={width - pad.r} y1={sy(t)} y2={sy(t)} stroke="rgba(255,255,255,0.06)" />
-            <text x={pad.l - 8} y={sy(t) + 3.5} textAnchor="end" className="fill-[#7d8590] font-mono text-[10px]">
+            <text x={pad.l - 8} y={sy(t) + 3.5} textAnchor="end" className="fill-ink-3 font-mono text-[10px]">
               {yLabel(t)}
             </text>
           </g>
@@ -252,7 +252,7 @@ function TrendChart({
         )}
         {cells.map((c, i) =>
           i % step === 0 || i === cells.length - 1 ? (
-            <text key={c.period.end} x={sx(i)} y={H - 8} textAnchor="middle" className="fill-[#7d8590] font-mono text-[10px]">
+            <text key={c.period.end} x={sx(i)} y={H - 8} textAnchor="middle" className="fill-ink-3 font-mono text-[10px]">
               {periodLabel(c.period).replace("FY", "")}
             </text>
           ) : null,
@@ -276,7 +276,7 @@ function TrendChart({
       </svg>
       {hovered && (
         <div
-          className="pointer-events-none absolute top-1 z-10 w-44 rounded-md border border-white/10 bg-[#121418]/95 px-2.5 py-2 text-[11px] shadow-xl"
+          className="pointer-events-none absolute top-1 z-10 w-44 rounded-md border border-line bg-panel px-2.5 py-2 text-[11px] shadow-xl"
           style={{ left: Math.min(Math.max(sx(hover!) - 88, 0), width - 176) }}
         >
           <div className="font-semibold text-ink">{periodLabel(hovered.period)}</div>
@@ -385,7 +385,7 @@ function VerticalChart({
         {ticks.map((t) => (
           <g key={t}>
             <line x1={pad.l} x2={width - pad.r} y1={sy(t)} y2={sy(t)} stroke="rgba(255,255,255,0.06)" />
-            <text x={pad.l - 8} y={sy(t) + 3.5} textAnchor="end" className="fill-[#7d8590] font-mono text-[10px]">
+            <text x={pad.l - 8} y={sy(t) + 3.5} textAnchor="end" className="fill-ink-3 font-mono text-[10px]">
               {t.toFixed(0)}%
             </text>
           </g>
@@ -393,7 +393,7 @@ function VerticalChart({
         {y0 < 0 && y1 > 0 && <line x1={pad.l} x2={width - pad.r} y1={sy(0)} y2={sy(0)} stroke="rgba(255,255,255,0.25)" />}
         {periods.map((p, i) =>
           i % step === 0 || i === periods.length - 1 ? (
-            <text key={p.end} x={sx(i)} y={H - 8} textAnchor="middle" className="fill-[#7d8590] font-mono text-[10px]">
+            <text key={p.end} x={sx(i)} y={H - 8} textAnchor="middle" className="fill-ink-3 font-mono text-[10px]">
               {periodLabel(p).replace("FY", "")}
             </text>
           ) : null,
@@ -426,7 +426,7 @@ function VerticalChart({
             const lastIdx = s.values.map((v, i) => (v == null ? -1 : i)).filter((i) => i >= 0).pop();
             if (lastIdx == null) return null;
             return (
-              <text key={`lbl-${s.key}`} x={sx(lastIdx) + 8} y={sy(s.values[lastIdx]!) + 3.5} className="fill-[#c9d1d9] text-[10.5px]">
+              <text key={`lbl-${s.key}`} x={sx(lastIdx) + 8} y={sy(s.values[lastIdx]!) + 3.5} className="fill-ink-2 text-[10.5px]">
                 {s.label.length > 16 ? `${s.label.slice(0, 15)}…` : s.label}
               </text>
             );
@@ -435,7 +435,7 @@ function VerticalChart({
       </svg>
       {hover != null && (
         <div
-          className="pointer-events-none absolute top-1 z-10 w-56 rounded-md border border-white/10 bg-[#121418]/95 px-2.5 py-2 text-[11px] shadow-xl"
+          className="pointer-events-none absolute top-1 z-10 w-56 rounded-md border border-line bg-panel px-2.5 py-2 text-[11px] shadow-xl"
           style={{ left: Math.min(Math.max(sx(hover) - 112, 0), width - 224) }}
         >
           <div className="mb-1 font-semibold text-ink">{periodLabel(periods[hover])}</div>
@@ -532,7 +532,7 @@ function VerticalView({ periods, currency, periodType }: { periods: FinancialPer
             aria-pressed={preset === pr.key}
             title={pr.hint}
             className={`rounded-full px-2.5 py-1 text-[11px] font-medium ring-1 ring-inset transition ${
-              preset === pr.key ? "bg-macropulse-cyan/15 text-macropulse-cyan ring-macropulse-cyan/40" : "text-ink-3 ring-white/10 hover:text-ink"
+              preset === pr.key ? "bg-mint text-spruce ring-spruce/50" : "text-ink-3 ring-line hover:text-ink"
             }`}
           >
             {pr.label}
@@ -546,7 +546,7 @@ function VerticalView({ periods, currency, periodType }: { periods: FinancialPer
               setBase(e.target.value);
               setPreset(null);
             }}
-            className="h-8 rounded-md bg-black/40 px-2 text-[12px] text-ink ring-1 ring-white/10 outline-none ring-inset focus:ring-macropulse-cyan"
+            className="h-8 rounded-md bg-canvas px-2 text-[12px] text-ink ring-1 ring-line outline-none ring-inset focus:ring-spruce"
           >
             {SECTIONS.map((sec) => (
               <optgroup key={sec.key} label={sec.label}>
@@ -564,7 +564,7 @@ function VerticalView({ periods, currency, periodType }: { periods: FinancialPer
       </div>
 
       {/* Line-item picker */}
-      <div className="space-y-2 rounded-lg border border-white/5 bg-black/20 p-3">
+      <div className="space-y-2 rounded-lg border border-line bg-canvas p-3">
         <div className="flex items-baseline justify-between gap-2">
           <span className="text-[11.5px] font-medium text-ink-2">Line items as % of {baseRow.label}</span>
           <span className="flex items-center gap-3 text-[10.5px] text-ink-4">
@@ -574,7 +574,7 @@ function VerticalView({ periods, currency, periodType }: { periods: FinancialPer
                 checked={showSum}
                 disabled={shownPicks.length < 2}
                 onChange={(e) => setShowSum(e.target.checked)}
-                className="size-3.5 accent-cyan-400"
+                className="size-3.5 accent-spruce"
               />
               Show Σ of selected
             </label>
@@ -600,7 +600,7 @@ function VerticalView({ periods, currency, periodType }: { periods: FinancialPer
                     aria-pressed={!!pick}
                     title={isBase ? "This is the base (100%)" : full ? `Up to ${MAX_PICKS} line items` : undefined}
                     className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] ring-1 ring-inset transition disabled:cursor-not-allowed disabled:opacity-40 ${
-                      pick ? "bg-white/[0.06] text-ink ring-white/20" : "text-ink-3 ring-white/10 hover:text-ink"
+                      pick ? "bg-subtle text-ink ring-line-strong" : "text-ink-3 ring-line hover:text-ink"
                     }`}
                   >
                     {pick && <span aria-hidden className="size-2 rounded-full" style={{ background: SERIES_COLORS[pick.slot] }} />}
@@ -615,7 +615,7 @@ function VerticalView({ periods, currency, periodType }: { periods: FinancialPer
       </div>
 
       {/* Chart */}
-      <div className="rounded-lg border border-white/5 bg-black/25 p-3">
+      <div className="rounded-lg border border-line bg-canvas p-3">
         <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1">
           {series.map((s) => (
             <span key={s.key} className="flex items-center gap-1.5 text-[11px] text-ink-2">
@@ -630,18 +630,18 @@ function VerticalView({ periods, currency, periodType }: { periods: FinancialPer
 
       {/* Table */}
       {tableRows.length > 0 && (
-        <div className="overflow-x-auto rounded-lg ring-1 ring-white/5 ring-inset">
+        <div className="overflow-x-auto rounded-lg ring-1 ring-line ring-inset">
           <table className="w-full border-separate border-spacing-0 text-[11.5px]">
             <thead>
               <tr className="text-ink-4">
-                <th className="sticky left-0 z-10 bg-[#0f1114] px-3 py-2 text-left font-medium">% of {baseRow.label}</th>
+                <th className="sticky left-0 z-10 bg-panel px-3 py-2 text-left font-medium">% of {baseRow.label}</th>
                 {periods.map((p) => (
-                  <th key={p.end} className="bg-[#0f1114] px-2.5 py-2 text-right font-mono font-medium whitespace-nowrap">
+                  <th key={p.end} className="bg-panel px-2.5 py-2 text-right font-mono font-medium whitespace-nowrap">
                     {periodLabel(p)}
                   </th>
                 ))}
-                <th className="bg-[#0f1114] px-3 py-2 text-right font-medium whitespace-nowrap">Average</th>
-                <th className="bg-[#0f1114] px-3 py-2 text-right font-medium whitespace-nowrap" title="Change from the first to the last period, in percentage points">
+                <th className="bg-panel px-3 py-2 text-right font-medium whitespace-nowrap">Average</th>
+                <th className="bg-panel px-3 py-2 text-right font-medium whitespace-nowrap" title="Change from the first to the last period, in percentage points">
                   Shift (pp)
                 </th>
               </tr>
@@ -652,7 +652,7 @@ function VerticalView({ periods, currency, periodType }: { periods: FinancialPer
                 const d = shift(r.values);
                 return (
                   <tr key={r.key} className={r.key === "sum" ? "font-semibold" : ""}>
-                    <th scope="row" className="sticky left-0 z-10 border-t border-white/5 bg-[#0f1114] px-3 py-1.5 text-left font-medium whitespace-nowrap text-ink-2">
+                    <th scope="row" className="sticky left-0 z-10 border-t border-line bg-panel px-3 py-1.5 text-left font-medium whitespace-nowrap text-ink-2">
                       <span className="flex items-center gap-1.5">
                         <span aria-hidden className="h-0.5 w-3 rounded" style={{ background: r.color }} />
                         {r.label}
@@ -661,7 +661,7 @@ function VerticalView({ periods, currency, periodType }: { periods: FinancialPer
                     {r.values.map((v, i) => (
                       <td
                         key={periods[i].end}
-                        className="border-t border-white/5 px-2.5 py-1.5 text-right whitespace-nowrap"
+                        className="border-t border-line px-2.5 py-1.5 text-right whitespace-nowrap"
                         // Sequential (one hue) intensity by magnitude: how big a share of the base it is.
                         style={{ backgroundColor: v == null ? undefined : `rgba(0,240,255,${Math.min(Math.abs(v), 100) / 100 * 0.22})` }}
                         title={`${periodLabel(periods[i])}: ${fmt(r.key === "sum" ? null : (rowByKey.get(r.key)?.get(periods[i]) ?? null), "money", currency)} of ${fmt(baseRow.get(periods[i]), "money", currency)}`}
@@ -669,8 +669,8 @@ function VerticalView({ periods, currency, periodType }: { periods: FinancialPer
                         <span className="font-mono text-ink tabular-nums">{v == null ? "—" : `${v.toFixed(1)}%`}</span>
                       </td>
                     ))}
-                    <td className="border-t border-white/5 px-3 py-1.5 text-right font-mono text-ink tabular-nums">{a == null ? "—" : `${a.toFixed(1)}%`}</td>
-                    <td className="border-t border-white/5 px-3 py-1.5 text-right font-mono tabular-nums">
+                    <td className="border-t border-line px-3 py-1.5 text-right font-mono text-ink tabular-nums">{a == null ? "—" : `${a.toFixed(1)}%`}</td>
+                    <td className="border-t border-line px-3 py-1.5 text-right font-mono tabular-nums">
                       {d == null ? <span className="text-ink-4">—</span> : (
                         <span className="text-ink">
                           {d >= 0 ? "▲" : "▼"} {d >= 0 ? "+" : "−"}
@@ -698,7 +698,7 @@ function VerticalView({ periods, currency, periodType }: { periods: FinancialPer
 
 function Segmented<T extends string>({ value, options, onChange, label }: { value: T; options: { key: T; label: string; title?: string }[]; onChange: (v: T) => void; label: string }) {
   return (
-    <div role="radiogroup" aria-label={label} className="inline-flex rounded-lg bg-black/30 p-0.5 ring-1 ring-line ring-inset">
+    <div role="radiogroup" aria-label={label} className="inline-flex rounded-lg bg-canvas p-0.5 ring-1 ring-line ring-inset">
       {options.map((o) => (
         <button
           key={o.key}
@@ -708,7 +708,7 @@ function Segmented<T extends string>({ value, options, onChange, label }: { valu
           title={o.title}
           onClick={() => onChange(o.key)}
           className={`rounded-md px-2.5 py-1 text-[11.5px] font-medium transition ${
-            value === o.key ? "bg-macropulse-cyan/15 text-macropulse-cyan ring-1 ring-macropulse-cyan/40 ring-inset" : "text-ink-3 hover:text-ink"
+            value === o.key ? "bg-mint text-spruce ring-1 ring-spruce/50 ring-inset" : "text-ink-3 hover:text-ink"
           }`}
         >
           {o.label}
@@ -720,12 +720,12 @@ function Segmented<T extends string>({ value, options, onChange, label }: { valu
 
 function Stat({ label, value }: { label: string; value: number | null }) {
   return (
-    <div className="rounded-md bg-white/[0.03] px-2.5 py-1.5 ring-1 ring-white/5 ring-inset">
+    <div className="rounded-md bg-subtle px-2.5 py-1.5 ring-1 ring-line ring-inset">
       <div className="text-[10px] tracking-wide text-ink-4 uppercase">{label}</div>
       <div className={`font-mono text-[13px] font-semibold tabular-nums ${value == null ? "text-ink-4" : "text-ink"}`}>
         {value == null ? "n/m" : (
           <>
-            <span aria-hidden className={value >= 0 ? "text-macropulse-neon-green" : "text-rose-400"}>
+            <span aria-hidden className={value >= 0 ? "text-gain" : "text-loss"}>
               {value >= 0 ? "▲" : "▼"}
             </span>{" "}
             {formatChange(value)}
@@ -781,7 +781,7 @@ function CompanyCard({ entry, periodType, defaultOpen }: { entry: CompanyEntry; 
   const rowCount = sections.reduce((n, sec) => n + sec.rows.length, 0);
 
   return (
-    <div className={`overflow-hidden rounded-xl border bg-macropulse-panel backdrop-blur-md transition-colors ${open ? "border-macropulse-cyan/30" : "border-white/5 hover:border-white/15"}`}>
+    <div className={`overflow-hidden rounded-xl border bg-panel backdrop-blur-md transition-colors ${open ? "border-spruce/40" : "border-line hover:border-line-strong"}`}>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -790,11 +790,11 @@ function CompanyCard({ entry, periodType, defaultOpen }: { entry: CompanyEntry; 
         className="flex w-full flex-wrap items-center gap-x-5 gap-y-3 px-4 py-3.5 text-left"
       >
         <div className="flex min-w-36 items-center gap-3">
-          <span aria-hidden className={`grid size-7 place-items-center rounded-md text-[13px] text-macropulse-cyan ring-1 ring-macropulse-cyan/40 transition-transform ${open ? "rotate-90" : ""}`}>
+          <span aria-hidden className={`grid size-7 place-items-center rounded-md text-[13px] text-spruce ring-1 ring-spruce/50 transition-transform ${open ? "rotate-90" : ""}`}>
             ›
           </span>
           <div className="min-w-0">
-            <div className="font-mono text-[15px] font-bold text-white">{symbolOf(entry)}</div>
+            <div className="font-mono text-[15px] font-bold text-ink">{symbolOf(entry)}</div>
             <div className="max-w-48 truncate text-[11px] text-ink-3">{entry.profile?.name}</div>
           </div>
         </div>
@@ -819,11 +819,11 @@ function CompanyCard({ entry, periodType, defaultOpen }: { entry: CompanyEntry; 
             animate={{ height: "auto", opacity: 1 }}
             exit={reduceMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
             transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-            className="overflow-hidden border-t border-white/5"
+            className="overflow-hidden border-t border-line"
           >
             <div className="space-y-4 p-4">
               <div className="flex flex-wrap items-center gap-3">
-                <div role="radiogroup" aria-label="Analysis method" className="inline-flex rounded-xl bg-black/40 p-1 ring-1 ring-macropulse-cyan/25 ring-inset">
+                <div role="radiogroup" aria-label="Analysis method" className="inline-flex rounded-xl bg-canvas p-1 ring-1 ring-spruce/40 ring-inset">
                   {(
                     [
                       ["horizontal", "Horizontal", "trend over time"],
@@ -836,17 +836,17 @@ function CompanyCard({ entry, periodType, defaultOpen }: { entry: CompanyEntry; 
                       role="radio"
                       aria-checked={analysis === key}
                       onClick={() => setAnalysis(key)}
-                      className={`relative rounded-lg px-3.5 py-1.5 text-left transition ${analysis === key ? "text-black" : "text-ink-3 hover:text-ink"}`}
+                      className={`relative rounded-lg px-3.5 py-1.5 text-left transition ${analysis === key ? "text-on-spruce" : "text-ink-3 hover:text-ink"}`}
                     >
                       {analysis === key && (
                         <motion.span
                           layoutId={`ha-method-${entry.id}`}
-                          className="absolute inset-0 rounded-lg bg-macropulse-cyan shadow-[0_0_14px_rgba(0,240,255,0.45)]"
+                          className="absolute inset-0 rounded-lg bg-spruce"
                           transition={{ type: "spring", stiffness: 420, damping: 34 }}
                         />
                       )}
                       <span className="relative block text-[12px] font-semibold">{label}</span>
-                      <span className={`relative block text-[10px] ${analysis === key ? "text-black/70" : "text-ink-4"}`}>{sub}</span>
+                      <span className={`relative block text-[10px] ${analysis === key ? "text-on-spruce/80" : "text-ink-4"}`}>{sub}</span>
                     </button>
                   ))}
                 </div>
@@ -868,7 +868,7 @@ function CompanyCard({ entry, periodType, defaultOpen }: { entry: CompanyEntry; 
                 )}
               </div>
               {short && (
-                <p className="rounded-md bg-macropulse-neon-amber/10 px-3 py-1.5 text-[11.5px] text-amber-200 ring-1 ring-macropulse-neon-amber/25 ring-inset">
+                <p className="rounded-md bg-caution-bg px-3 py-1.5 text-[11.5px] text-caution ring-1 ring-caution/30 ring-inset">
                   {entry.profile?.name ?? symbolOf(entry)} has {all.length} {periodType === "annual" ? "annual" : "quarterly"} reports ({forms}) on file so far —
                   showing all of them.
                 </p>
@@ -884,7 +884,7 @@ function CompanyCard({ entry, periodType, defaultOpen }: { entry: CompanyEntry; 
                     transition={{ duration: 0.2 }}
                     className="space-y-4"
                   >
-              <div className="rounded-lg border border-white/5 bg-black/25 p-3">
+              <div className="rounded-lg border border-line bg-canvas p-3">
                 <div className="mb-1 flex items-baseline justify-between gap-2">
                   <h4 className="text-[13px] font-semibold text-ink">
                     {sel.label}
@@ -895,17 +895,17 @@ function CompanyCard({ entry, periodType, defaultOpen }: { entry: CompanyEntry; 
                 <TrendChart cells={selCells} label={sel.label} mode={mode} unit={sel.unit} currency={currency} />
               </div>
 
-              <div className="overflow-x-auto rounded-lg ring-1 ring-white/5 ring-inset">
+              <div className="overflow-x-auto rounded-lg ring-1 ring-line ring-inset">
                 <table className="w-full border-separate border-spacing-0 text-[11.5px]">
                   <thead className="sticky top-0 z-20">
                     <tr className="text-ink-4">
-                      <th className="sticky left-0 z-30 bg-[#0f1114] px-3 py-2 text-left font-medium">Line item</th>
+                      <th className="sticky left-0 z-30 bg-panel px-3 py-2 text-left font-medium">Line item</th>
                       {periods.map((p) => (
-                        <th key={p.end} className="bg-[#0f1114] px-2.5 py-2 text-right font-mono font-medium whitespace-nowrap" title={`Period ended ${p.end}`}>
+                        <th key={p.end} className="bg-panel px-2.5 py-2 text-right font-mono font-medium whitespace-nowrap" title={`Period ended ${p.end}`}>
                           {periodLabel(p)}
                         </th>
                       ))}
-                      <th className="bg-[#0f1114] px-3 py-2 text-right font-medium whitespace-nowrap">CAGR</th>
+                      <th className="bg-panel px-3 py-2 text-right font-medium whitespace-nowrap">CAGR</th>
                     </tr>
                   </thead>
                   {sections.map((sec) => (
@@ -914,7 +914,7 @@ function CompanyCard({ entry, periodType, defaultOpen }: { entry: CompanyEntry; 
                         <th
                           colSpan={periods.length + 2}
                           scope="colgroup"
-                          className="sticky left-0 border-t border-white/5 bg-[#0c0d10] px-3 py-1.5 text-left text-[10px] font-semibold tracking-[0.14em] text-macropulse-cyan/80 uppercase"
+                          className="sticky left-0 border-t border-line bg-panel px-3 py-1.5 text-left text-[10px] font-semibold tracking-[0.14em] text-spruce uppercase"
                         >
                           {sec.label}
                         </th>
@@ -927,12 +927,12 @@ function CompanyCard({ entry, periodType, defaultOpen }: { entry: CompanyEntry; 
                             key={row.key}
                             onClick={() => setSelected(row.key)}
                             aria-selected={active}
-                            className={`group cursor-pointer transition-colors ${active ? "bg-macropulse-cyan/[0.07]" : "hover:bg-white/[0.03]"}`}
+                            className={`group cursor-pointer transition-colors ${active ? "bg-mint" : "hover:bg-subtle"}`}
                           >
                             <th
                               scope="row"
-                              className={`sticky left-0 z-10 border-t border-white/5 px-3 py-1.5 text-left font-medium whitespace-nowrap transition-colors ${
-                                active ? "bg-[#0f1a1d] text-macropulse-cyan" : "bg-[#0f1114] text-ink-2 group-hover:text-ink"
+                              className={`sticky left-0 z-10 border-t border-line px-3 py-1.5 text-left font-medium whitespace-nowrap transition-colors ${
+                                active ? "bg-mint text-spruce" : "bg-panel text-ink-2 group-hover:text-ink"
                               }`}
                             >
                               {row.label}
@@ -958,7 +958,7 @@ function CompanyCard({ entry, periodType, defaultOpen }: { entry: CompanyEntry; 
                                   animate={{ opacity: 1, y: 0 }}
                                   transition={{ delay: reduceMotion ? 0 : Math.min(i * 0.02, 0.4), duration: 0.25 }}
                                   style={{ backgroundColor: mode === "change" ? tint(c.change) : undefined }}
-                                  className="border-t border-white/5 px-2.5 py-1.5 text-right whitespace-nowrap"
+                                  className="border-t border-line px-2.5 py-1.5 text-right whitespace-nowrap"
                                   title={`${periodLabel(c.period)}: ${fmt(c.value, row.unit, currency)}${c.change == null ? "" : ` · ${formatChange(c.change)} vs prior`}${c.index == null ? "" : ` · index ${c.index.toFixed(1)}`}`}
                                 >
                                   <div className="font-mono text-ink tabular-nums">{main}</div>
@@ -966,7 +966,7 @@ function CompanyCard({ entry, periodType, defaultOpen }: { entry: CompanyEntry; 
                                 </motion.td>
                               );
                             })}
-                            <td className="border-t border-white/5 px-3 py-1.5 text-right font-mono whitespace-nowrap text-ink tabular-nums">
+                            <td className="border-t border-line px-3 py-1.5 text-right font-mono whitespace-nowrap text-ink tabular-nums">
                               {growth == null ? <span className="text-ink-4">n/m</span> : formatChange(growth)}
                             </td>
                           </tr>
@@ -1001,13 +1001,13 @@ export function HorizontalAnalysis({ entries, periodType, focusedId }: { entries
   if (ready.length === 0) return null;
   const openId = ready.some((e) => e.id === focusedId) ? focusedId : ready[0].id;
   return (
-    <section id="horizontal-analysis" aria-labelledby="ha-title" className="scroll-mt-28 space-y-4 rounded-2xl border border-macropulse-cyan/15 bg-gradient-to-b from-macropulse-cyan/[0.05] to-transparent p-5">
+    <section id="horizontal-analysis" aria-labelledby="ha-title" className="scroll-mt-28 space-y-4 rounded-2xl border border-line bg-gradient-to-b from-mint/40 to-transparent p-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex items-start gap-3">
-          <span aria-hidden className="mt-1 h-9 w-1 rounded-full bg-macropulse-cyan shadow-[0_0_14px_rgba(0,240,255,0.6)]" />
+          <span aria-hidden className="mt-1 h-9 w-1 rounded-full bg-spruce" />
           <div>
-            <div className="eyebrow text-macropulse-cyan/80">Trend over time · {periodType === "annual" ? "annual reports" : "quarterly 10-Qs"}</div>
-            <h2 id="ha-title" className="mt-0.5 text-xl font-semibold tracking-tight text-white">
+            <div className="eyebrow text-spruce">Trend over time · {periodType === "annual" ? "annual reports" : "quarterly 10-Qs"}</div>
+            <h2 id="ha-title" className="mt-0.5 text-xl font-semibold tracking-tight text-ink">
               Horizontal &amp; Vertical Analysis
             </h2>
             <p className="mt-0.5 text-[12.5px] text-ink-3">
@@ -1015,7 +1015,7 @@ export function HorizontalAnalysis({ entries, periodType, focusedId }: { entries
             </p>
           </div>
         </div>
-        <span className="rounded-full bg-white/[0.04] px-3 py-1 text-[11px] text-ink-3 ring-1 ring-white/10 ring-inset">
+        <span className="rounded-full bg-subtle px-3 py-1 text-[11px] text-ink-3 ring-1 ring-line ring-inset">
           {ready.length} {ready.length === 1 ? "company" : "companies"}
         </span>
       </div>

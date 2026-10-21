@@ -46,9 +46,9 @@ export function ServerWakeNotice() {
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
-          className="fixed top-24 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2.5 rounded-full bg-panel px-4 py-2 text-[12.5px] text-ink-2 shadow-2xl ring-1 ring-macropulse-cyan/30"
+          className="fixed top-24 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2.5 rounded-full bg-panel px-4 py-2 text-[12.5px] text-ink-2 shadow-2xl ring-1 ring-spruce/40"
         >
-          <span className="size-2 animate-pulse rounded-full bg-macropulse-cyan" aria-hidden />
+          <span className="size-2 animate-pulse rounded-full bg-spruce" aria-hidden />
           Waking up the data server — this can take up to a minute after a quiet spell.
         </motion.div>
       )}

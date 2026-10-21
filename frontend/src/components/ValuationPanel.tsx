@@ -54,7 +54,7 @@ function Slider({
         step={range.step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full cursor-pointer accent-zinc-900 dark:accent-zinc-100"
+        className="w-full cursor-pointer accent-spruce dark:accent-spruce"
       />
       <div className="mt-0.5 flex justify-between text-[11px] text-ink-4">
         <span>{range.min}%</span>
@@ -244,7 +244,7 @@ export function ValuationPanel({
             <ProjectionChart data={chartData} currency={currency} />
           </div>
           {valuation.terminalShare > TERMINAL_SHARE_WARNING && (
-            <p role="alert" className="rounded-md bg-amber-400/10 px-3 py-2 text-[12px] text-amber-200 ring-1 ring-amber-400/30 ring-inset">
+            <p role="alert" className="rounded-md bg-caution-bg px-3 py-2 text-[12px] text-caution ring-1 ring-caution/30 ring-inset">
               ⚠ Terminal value is {terminalShare.toFixed(0)}% of the total (over {TERMINAL_SHARE_WARNING * 100}%): most of this value sits beyond
               year {PROJECTION_YEARS + FADE_YEARS}, so check whether the near-term growth and margin are realistic.
             </p>

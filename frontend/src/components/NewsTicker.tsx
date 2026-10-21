@@ -45,14 +45,14 @@ function Tape({ ticker }: { ticker: string }) {
           rel="noopener noreferrer"
           tabIndex={copy === 0 ? 0 : -1}
           aria-hidden={copy === 0 ? undefined : true}
-          className="group/item flex items-center gap-2 rounded px-1 py-0.5 whitespace-nowrap focus-visible:ring-2 focus-visible:ring-macropulse-cyan focus-visible:outline-none"
+          className="group/item flex items-center gap-2 rounded px-1 py-0.5 whitespace-nowrap focus-visible:ring-2 focus-visible:ring-spruce focus-visible:outline-none"
         >
-          <span className="text-[12.5px] text-ink group-hover/item:text-macropulse-cyan group-hover/item:underline">{h.title}</span>
+          <span className="text-[12.5px] text-ink group-hover/item:text-spruce group-hover/item:underline">{h.title}</span>
           <span className="font-mono text-[10.5px] text-ink-4">
             {[h.source, timeAgo(h.published_at)].filter(Boolean).join(" · ")}
           </span>
         </a>
-        <span aria-hidden className="mx-5 text-[9px] text-macropulse-neon-amber">
+        <span aria-hidden className="mx-5 text-[9px] text-caution">
           ◆
         </span>
       </span>
@@ -71,16 +71,16 @@ export function NewsTicker({ ticker }: { ticker: string | null }) {
   return (
     <div
       id="tour-news"
-      className="flex h-9 items-stretch overflow-hidden border-t border-white/5 bg-black/40"
+      className="flex h-9 items-stretch overflow-hidden border-t border-line bg-canvas"
       role="region"
       aria-label={ticker ? `Latest ${ticker} headlines` : "Headlines"}
     >
-      <div className="z-10 flex shrink-0 items-center gap-2 border-r border-white/10 bg-macropulse-obsidian px-3 sm:px-4">
+      <div className="z-10 flex shrink-0 items-center gap-2 border-r border-line bg-canvas px-3 sm:px-4">
         <span aria-hidden className="relative flex size-2">
-          <span className="absolute inline-flex size-full animate-ping rounded-full bg-macropulse-neon-amber opacity-60 motion-reduce:animate-none" />
-          <span className="relative inline-flex size-2 rounded-full bg-macropulse-neon-amber" />
+          <span className="absolute inline-flex size-full animate-ping rounded-full bg-brass opacity-60 motion-reduce:animate-none" />
+          <span className="relative inline-flex size-2 rounded-full bg-brass" />
         </span>
-        <span className="text-[10.5px] font-bold tracking-[0.16em] text-macropulse-neon-amber uppercase">News</span>
+        <span className="text-[10.5px] font-bold tracking-[0.16em] text-caution uppercase">News</span>
         {ticker && <span className="font-mono text-[11px] font-semibold text-ink">{ticker}</span>}
       </div>
       <div className="mp-tape-viewport relative flex min-w-0 flex-1 items-center overflow-hidden">

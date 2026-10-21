@@ -52,7 +52,7 @@ export const FinancialModelCard: React.FC<Props> = ({ initialBusinessProfile }) 
               step="0.01"
               value={profile.metrics.churnRate || 0.1}
               onChange={(e) => setProfile({ ...profile, metrics: { ...profile.metrics, churnRate: parseFloat(e.target.value) } })}
-              className="align-middle accent-zinc-900 dark:accent-zinc-100"
+              className="align-middle accent-spruce dark:accent-spruce"
             />
             <span> {((profile.metrics.churnRate || 0.1) * 100).toFixed(0)}% Churn Rate</span>
           </div>
@@ -67,7 +67,7 @@ export const FinancialModelCard: React.FC<Props> = ({ initialBusinessProfile }) 
             step="0.005"
             value={discountRate}
             onChange={(e) => setDiscountRate(parseFloat(e.target.value))}
-            className="align-middle accent-zinc-900 dark:accent-zinc-100"
+            className="align-middle accent-spruce dark:accent-spruce"
           />
           <span> {(discountRate * 100).toFixed(1)}%</span>
         </div>
@@ -81,7 +81,7 @@ export const FinancialModelCard: React.FC<Props> = ({ initialBusinessProfile }) 
             step="0.001"
             value={terminalGrowth}
             onChange={(e) => setTerminalGrowth(parseFloat(e.target.value))}
-            className="align-middle accent-zinc-900 dark:accent-zinc-100"
+            className="align-middle accent-spruce dark:accent-spruce"
           />
           <span> {(terminalGrowth * 100).toFixed(1)}%</span>
         </div>
@@ -101,7 +101,7 @@ export const FinancialModelCard: React.FC<Props> = ({ initialBusinessProfile }) 
         {warnings.length > 0 && (
           <div
             role="status"
-            className="mt-4 rounded bg-amber-50 p-3 text-[13px] text-amber-900 ring-1 ring-amber-200 ring-inset dark:bg-amber-950/40 dark:text-amber-200 dark:ring-amber-800"
+            className="mt-4 rounded bg-caution-bg p-3 text-[13px] text-caution ring-1 ring-caution/30 ring-inset dark:bg-caution-bg dark:text-caution dark:ring-caution"
           >
             <strong>Valuation Framework Warnings:</strong>
             <ul className="mt-1 list-disc pl-5">

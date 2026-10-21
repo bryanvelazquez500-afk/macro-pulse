@@ -239,7 +239,7 @@ export function PulseBotTour({ onClose, onView }: { onClose: () => void; onView?
     <div className="fixed inset-0 z-[90]" role="presentation">
       {/* Mask: blurred, dark, with a hole over the active feature. Clicking it does nothing (no accidental exit). */}
       <motion.div
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        className="absolute inset-0 bg-ink/40 backdrop-blur-sm"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1, clipPath: rect ? maskPath(rect) : "none" }}
         exit={{ opacity: 0 }}
@@ -249,7 +249,7 @@ export function PulseBotTour({ onClose, onView }: { onClose: () => void; onView?
       {rect && (
         <motion.div
           aria-hidden
-          className="pointer-events-none absolute rounded-xl ring-2 ring-macropulse-neon-amber shadow-[0_0_0_1px_rgba(255,183,0,0.3),0_0_28px_rgba(255,183,0,0.45)]"
+          className="pointer-events-none absolute rounded-xl ring-2 ring-brass shadow-[0_0_0_1px_rgba(255,183,0,0.3),0_0_28px_rgba(255,183,0,0.45)]"
           initial={false}
           animate={{ top: rect.top, left: rect.left, width: rect.width, height: rect.height }}
           transition={glide}
@@ -273,7 +273,7 @@ export function PulseBotTour({ onClose, onView }: { onClose: () => void; onView?
           {/* Pointer toward the feature */}
           <span
             aria-hidden
-            className={`absolute size-3.5 rotate-45 border-macropulse-neon-amber/60 bg-[#14161b] ${
+            className={`absolute size-3.5 rotate-45 border-caution/60 bg-panel ${
               bot.side === "left"
                 ? "top-12 -left-[7px] border-b border-l"
                 : bot.side === "right"
@@ -283,12 +283,12 @@ export function PulseBotTour({ onClose, onView }: { onClose: () => void; onView?
                     : "-bottom-[7px] left-1/2 border-r border-b"
             }`}
           />
-          <div className="rounded-2xl border border-macropulse-neon-amber/40 bg-[#14161b]/85 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.6)] backdrop-blur-xl">
+          <div className="rounded-2xl border border-caution/40 bg-panel p-4 shadow-2 backdrop-blur-xl">
             <div className="flex gap-3">
               <Robot />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[10px] font-semibold tracking-[0.16em] text-macropulse-neon-amber uppercase">Pulse-Bot</span>
+                  <span className="text-[10px] font-semibold tracking-[0.16em] text-caution uppercase">Pulse-Bot</span>
                   <span className="font-mono text-[10.5px] text-ink-4">
                     {index + 1}/{steps.length}
                   </span>
@@ -302,7 +302,7 @@ export function PulseBotTour({ onClose, onView }: { onClose: () => void; onView?
                     transition={{ duration: 0.18 }}
                     aria-live="polite"
                   >
-                    <h3 className="mt-1 text-[14px] font-semibold text-white">{step.title}</h3>
+                    <h3 className="mt-1 text-[14px] font-semibold text-ink">{step.title}</h3>
                     <p className="mt-1 text-[12.5px] leading-snug text-ink-2">{step.text}</p>
                   </motion.div>
                 </AnimatePresence>
@@ -312,7 +312,7 @@ export function PulseBotTour({ onClose, onView }: { onClose: () => void; onView?
             {/* Progress */}
             <div className="mt-3 flex gap-1" aria-hidden>
               {steps.map((s, i) => (
-                <span key={s.target} className={`h-1 flex-1 rounded-full transition-colors ${i <= index ? "bg-macropulse-neon-amber" : "bg-white/10"}`} />
+                <span key={s.target} className={`h-1 flex-1 rounded-full transition-colors ${i <= index ? "bg-brass" : "bg-subtle"}`} />
               ))}
             </div>
 
@@ -331,7 +331,7 @@ export function PulseBotTour({ onClose, onView }: { onClose: () => void; onView?
                   onClick={onClose}
                   initial={reduceMotion ? false : { scale: 0.8, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  className="pulsebot-exit rounded-lg bg-macropulse-neon-green px-3.5 py-1.5 text-[12px] font-bold text-black"
+                  className="pulsebot-exit rounded-lg bg-gain px-3.5 py-1.5 text-[12px] font-bold text-on-spruce"
                 >
                   Exit tour ✓
                 </motion.button>
@@ -339,10 +339,10 @@ export function PulseBotTour({ onClose, onView }: { onClose: () => void; onView?
                 <button
                   type="button"
                   onClick={next}
-                  className="flex items-center gap-2 rounded-lg bg-macropulse-neon-amber/15 px-3 py-1.5 text-[12px] font-semibold text-macropulse-neon-amber ring-1 ring-macropulse-neon-amber/40 hover:bg-macropulse-neon-amber/25"
+                  className="flex items-center gap-2 rounded-lg bg-caution-bg px-3 py-1.5 text-[12px] font-semibold text-caution ring-1 ring-caution/40 hover:bg-caution-bg"
                 >
                   Next
-                  <kbd className="rounded border border-macropulse-neon-amber/40 px-1.5 font-mono text-[10px]">Space</kbd>
+                  <kbd className="rounded border border-caution/40 px-1.5 font-mono text-[10px]">Space</kbd>
                 </button>
               )}
             </div>

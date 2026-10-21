@@ -97,7 +97,7 @@ function Stepper({
 }) {
   const clamp = (v: number) => Math.min(max, Math.max(min, v));
   const btn =
-    "grid size-6 shrink-0 place-items-center rounded-md text-[13px] font-semibold text-ink-2 ring-1 ring-line-strong ring-inset transition hover:bg-white/10 hover:text-ink focus-visible:ring-2 focus-visible:ring-macropulse-cyan focus-visible:outline-none";
+    "grid size-6 shrink-0 place-items-center rounded-md text-[13px] font-semibold text-ink-2 ring-1 ring-line-strong ring-inset transition hover:bg-subtle hover:text-ink focus-visible:ring-2 focus-visible:ring-spruce focus-visible:outline-none";
   return (
     <div className="min-w-0">
       <div className="eyebrow mb-1">{label}</div>
@@ -116,7 +116,7 @@ function Stepper({
               if (Number.isFinite(v)) onChange(clamp(v));
             }}
             aria-label={label}
-            className="h-7 w-full rounded-md bg-black/30 px-1.5 pr-4 text-right font-mono text-[12.5px] text-ink tabular-nums ring-1 ring-line-strong outline-none ring-inset focus:ring-macropulse-cyan [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            className="h-7 w-full rounded-md bg-canvas px-1.5 pr-4 text-right font-mono text-[12.5px] text-ink tabular-nums ring-1 ring-line-strong outline-none ring-inset focus:ring-spruce [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           />
           {suffix && <span className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2 text-[10.5px] text-ink-4">{suffix}</span>}
         </div>
@@ -133,7 +133,7 @@ function Stars({ value }: { value: number | null }) {
   return (
     <span className="inline-flex items-center gap-0.5" aria-label={value == null ? "Predictability not available" : `Predictability ${value} of 5 stars`}>
       {[1, 2, 3, 4, 5].map((i) => (
-        <span key={i} aria-hidden className={value != null && i <= Math.round(value) ? "text-macropulse-neon-amber" : "text-white/15"}>
+        <span key={i} aria-hidden className={value != null && i <= Math.round(value) ? "text-caution" : "text-line-strong"}>
           ★
         </span>
       ))}
@@ -143,7 +143,7 @@ function Stars({ value }: { value: number | null }) {
 
 function Warning({ children }: { children: ReactNode }) {
   return (
-    <p role="alert" className="flex gap-1.5 rounded-md bg-amber-400/10 px-2.5 py-1.5 text-[11.5px] leading-snug text-amber-200 ring-1 ring-amber-400/30 ring-inset">
+    <p role="alert" className="flex gap-1.5 rounded-md bg-caution-bg px-2.5 py-1.5 text-[11.5px] leading-snug text-caution ring-1 ring-caution/30 ring-inset">
       <span aria-hidden>⚠</span>
       <span>{children}</span>
     </p>
@@ -160,9 +160,9 @@ function Gauge({ price, fairValue, currency }: { price: number; fairValue: numbe
   const spring = reduceMotion ? { duration: 0 } : { type: "spring" as const, stiffness: 220, damping: 28 };
   return (
     <div className="pt-5 pb-6" aria-hidden>
-      <div className="relative h-2 rounded-full bg-white/[0.07]">
+      <div className="relative h-2 rounded-full bg-subtle">
         <motion.div
-          className={`absolute inset-y-0 rounded-full ${under ? "bg-macropulse-neon-green/60" : "bg-rose-500/60"}`}
+          className={`absolute inset-y-0 rounded-full ${under ? "bg-gain" : "bg-loss"}`}
           animate={{ left: at(Math.max(lo, 0)), width: `calc(${at(hi)} - ${at(Math.max(lo, 0))})` }}
           transition={spring}
         />
@@ -171,8 +171,8 @@ function Gauge({ price, fairValue, currency }: { price: number; fairValue: numbe
           <div className="mx-auto mt-0.5 h-5 w-0.5 rounded bg-white" />
         </motion.div>
         <motion.div className="absolute top-[-2px] -translate-x-1/2 text-center" animate={{ left: at(Math.max(fairValue, 0)) }} transition={spring}>
-          <div className="mx-auto h-3 w-3 rotate-45 rounded-[2px] bg-macropulse-cyan shadow-[0_0_10px_rgba(0,240,255,0.7)]" />
-          <div className="mt-1 font-mono text-[10px] whitespace-nowrap text-macropulse-cyan">FV {money(fairValue, currency)}</div>
+          <div className="mx-auto h-3 w-3 rotate-45 rounded-[2px] bg-spruce" />
+          <div className="mt-1 font-mono text-[10px] whitespace-nowrap text-spruce">FV {money(fairValue, currency)}</div>
         </motion.div>
       </div>
     </div>
@@ -298,7 +298,7 @@ export function DcfCalculator({ symbol }: { symbol: string | null }) {
             placeholder="Ticker (AAPL, ASML.AS…)"
             aria-label="Ticker"
             list="dcf-ticker-suggestions"
-            className="h-8 min-w-0 flex-1 rounded-md bg-black/30 px-2.5 font-mono text-[12.5px] text-ink uppercase ring-1 ring-line-strong outline-none ring-inset placeholder:text-ink-4 placeholder:normal-case focus:ring-macropulse-cyan"
+            className="h-8 min-w-0 flex-1 rounded-md bg-canvas px-2.5 font-mono text-[12.5px] text-ink uppercase ring-1 ring-line-strong outline-none ring-inset placeholder:text-ink-4 placeholder:normal-case focus:ring-spruce"
           />
           <TickerSuggestions id="dcf-ticker-suggestions" query={query} />
           <button
@@ -315,8 +315,8 @@ export function DcfCalculator({ symbol }: { symbol: string | null }) {
         {load.status === "idle" && <p className="text-[12.5px] text-ink-3">Enter a ticker to value it.</p>}
         {load.status === "loading" && (
           <div className="space-y-2" aria-busy="true">
-            <div className="h-4 w-2/3 animate-pulse rounded bg-white/10" />
-            <div className="h-16 animate-pulse rounded bg-white/5" />
+            <div className="h-4 w-2/3 animate-pulse rounded bg-subtle" />
+            <div className="h-16 animate-pulse rounded bg-subtle" />
           </div>
         )}
         {load.status === "error" &&
@@ -326,7 +326,7 @@ export function DcfCalculator({ symbol }: { symbol: string | null }) {
               <UnavailableButton subject={load.symbol} />
             </div>
           ) : (
-            <p role="alert" className="rounded-md bg-rose-500/10 px-3 py-2 text-[12px] text-rose-200 ring-1 ring-rose-400/30 ring-inset">
+            <p role="alert" className="rounded-md bg-loss-bg px-3 py-2 text-[12px] text-loss ring-1 ring-loss/30 ring-inset">
               Couldn&apos;t load {load.symbol}: {load.error instanceof Error ? load.error.message : "request failed"}
             </p>
           ))}
@@ -336,7 +336,7 @@ export function DcfCalculator({ symbol }: { symbol: string | null }) {
             <div className="flex items-baseline justify-between gap-2">
               <div className="min-w-0">
                 <div className="truncate text-[13.5px] font-semibold text-ink">{inputs.name}</div>
-                <div className="font-mono text-[11px] text-macropulse-cyan">{inputs.symbol}</div>
+                <div className="font-mono text-[11px] text-spruce">{inputs.symbol}</div>
               </div>
               <div className="text-right">
                 <div className="eyebrow">Price (P)</div>
@@ -349,7 +349,7 @@ export function DcfCalculator({ symbol }: { symbol: string | null }) {
             {/* Basis */}
             <div>
               <div className="eyebrow mb-1">Basis (E0)</div>
-              <div role="radiogroup" aria-label="Valuation basis" className="grid grid-cols-3 gap-1 rounded-lg bg-black/30 p-1 ring-1 ring-line ring-inset">
+              <div role="radiogroup" aria-label="Valuation basis" className="grid grid-cols-3 gap-1 rounded-lg bg-canvas p-1 ring-1 ring-line ring-inset">
                 {(Object.keys(BASIS_LABELS) as DcfBasisKey[]).map((k) => (
                   <button
                     key={k}
@@ -358,7 +358,7 @@ export function DcfCalculator({ symbol }: { symbol: string | null }) {
                     aria-checked={params.basis === k}
                     onClick={() => switchBasis(k)}
                     className={`rounded-md px-1.5 py-1 text-[11px] font-medium transition ${
-                      params.basis === k ? "bg-macropulse-cyan/15 text-macropulse-cyan ring-1 ring-macropulse-cyan/40 ring-inset" : "text-ink-3 hover:text-ink"
+                      params.basis === k ? "bg-mint text-spruce ring-1 ring-spruce/50 ring-inset" : "text-ink-3 hover:text-ink"
                     }`}
                   >
                     {BASIS_LABELS[k]}
@@ -376,7 +376,7 @@ export function DcfCalculator({ symbol }: { symbol: string | null }) {
                   placeholder="n/a"
                   onChange={(e) => set("e0", Number.isFinite(e.target.valueAsNumber) ? e.target.valueAsNumber : null)}
                   aria-label="Base per-share value (E0)"
-                  className="h-7 w-28 rounded-md bg-black/30 px-2 text-right font-mono text-[12.5px] text-ink tabular-nums ring-1 ring-line-strong outline-none ring-inset focus:ring-macropulse-cyan"
+                  className="h-7 w-28 rounded-md bg-canvas px-2 text-right font-mono text-[12.5px] text-ink tabular-nums ring-1 ring-line-strong outline-none ring-inset focus:ring-spruce"
                 />
               </label>
               <div className="mt-0.5 text-right text-[10px] text-ink-4">{basis?.period ?? "No data in the filings"}</div>
@@ -427,7 +427,7 @@ export function DcfCalculator({ symbol }: { symbol: string | null }) {
                   checked={params.addTbv}
                   disabled={inputs.tbv == null}
                   onChange={(e) => set("addTbv", e.target.checked)}
-                  className="size-3.5 accent-cyan-400"
+                  className="size-3.5 accent-spruce"
                 />
                 Add tangible book value to fair value
               </span>
@@ -439,7 +439,7 @@ export function DcfCalculator({ symbol }: { symbol: string | null }) {
             <button
               type="button"
               onClick={() => setParams(defaults(inputs, params.basis))}
-              className="w-full rounded-md px-3 py-1.5 text-[11.5px] font-medium text-ink-2 ring-1 ring-line-strong ring-inset transition hover:bg-white/10 hover:text-ink"
+              className="w-full rounded-md px-3 py-1.5 text-[11.5px] font-medium text-ink-2 ring-1 ring-line-strong ring-inset transition hover:bg-subtle hover:text-ink"
             >
               Reset defaults
             </button>
@@ -454,7 +454,7 @@ export function DcfCalculator({ symbol }: { symbol: string | null }) {
 
             {/* Outputs */}
             {model && (
-              <div className="rounded-lg border border-white/5 bg-black/30 p-3">
+              <div className="rounded-lg border border-line bg-canvas p-3">
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div>
                     <div className="eyebrow">Price</div>
@@ -462,13 +462,13 @@ export function DcfCalculator({ symbol }: { symbol: string | null }) {
                   </div>
                   <div>
                     <div className="eyebrow">Fair value</div>
-                    <div className="font-mono text-[15px] font-bold text-macropulse-cyan tabular-nums">{money(model.result.fairValue, cur)}</div>
+                    <div className="font-mono text-[15px] font-bold text-spruce tabular-nums">{money(model.result.fairValue, cur)}</div>
                   </div>
                   <div>
                     <div className="eyebrow">Margin of safety</div>
                     <div
                       className={`font-mono text-[13px] font-semibold tabular-nums ${
-                        model.mos == null ? "text-ink-4" : model.mos >= 0 ? "text-macropulse-neon-green" : "text-rose-400"
+                        model.mos == null ? "text-ink-4" : model.mos >= 0 ? "text-gain" : "text-loss"
                       }`}
                     >
                       {model.mos == null ? "n/a" : pct(model.mos * 100)}
@@ -483,7 +483,7 @@ export function DcfCalculator({ symbol }: { symbol: string | null }) {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0 }}
                       className={`mx-auto mt-2 w-fit rounded-full px-2.5 py-0.5 text-[11px] font-bold tracking-wide uppercase ${
-                        model.mos >= 0 ? "bg-macropulse-neon-green text-black" : "bg-rose-500 text-white"
+                        model.mos >= 0 ? "bg-gain text-on-spruce" : "bg-loss text-on-drop-4"
                       }`}
                     >
                       {model.mos >= 0 ? "Undervalued" : "Overvalued"}
@@ -507,7 +507,7 @@ export function DcfCalculator({ symbol }: { symbol: string | null }) {
                           <>
                             {" "}
                             vs. {pct(basis.h10, 1)} historically —{" "}
-                            <span className={model.implied * 100 <= basis.h10 ? "text-macropulse-neon-green" : "text-amber-300"}>
+                            <span className={model.implied * 100 <= basis.h10 ? "text-gain" : "text-caution"}>
                               {model.implied * 100 <= basis.h10 ? "could be achievable" : "may be hard to achieve"}
                             </span>
                           </>
@@ -547,7 +547,7 @@ export function DcfCalculator({ symbol }: { symbol: string | null }) {
                 {showTable && (
                   <div className="mt-2 overflow-x-auto rounded-md ring-1 ring-line ring-inset">
                     <table className="w-full font-mono text-[10.5px] tabular-nums">
-                      <thead className="sticky top-0 bg-[#121418] text-ink-4">
+                      <thead className="sticky top-0 bg-panel text-ink-4">
                         <tr>
                           <th className="px-1.5 py-1 text-left font-medium">Yr</th>
                           <th className="px-1.5 py-1 text-left font-medium">Stage</th>
@@ -558,9 +558,9 @@ export function DcfCalculator({ symbol }: { symbol: string | null }) {
                       </thead>
                       <tbody>
                         {model.rows.map((r) => (
-                          <tr key={r.year} className="border-t border-white/5 text-ink-2">
+                          <tr key={r.year} className="border-t border-line text-ink-2">
                             <td className="px-1.5 py-0.5">{r.year}</td>
-                            <td className={`px-1.5 py-0.5 ${r.stage === "growth" ? "text-macropulse-cyan" : "text-ink-3"}`}>{r.stage === "growth" ? "Growth" : "Terminal"}</td>
+                            <td className={`px-1.5 py-0.5 ${r.stage === "growth" ? "text-spruce" : "text-ink-3"}`}>{r.stage === "growth" ? "Growth" : "Terminal"}</td>
                             <td className="px-1.5 py-0.5 text-right">{r.earnings.toFixed(2)}</td>
                             <td className="px-1.5 py-0.5 text-right">{r.discountFactor.toFixed(4)}</td>
                             <td className="px-1.5 py-0.5 text-right">{r.presentValue.toFixed(2)}</td>
@@ -593,7 +593,7 @@ export function DcfCalculator({ symbol }: { symbol: string | null }) {
                       currency: cur,
                     })
                   }
-                  className="rounded-md px-2 py-1 text-[11px] font-medium text-macropulse-cyan ring-1 ring-macropulse-cyan/40 ring-inset transition hover:bg-macropulse-cyan/10 disabled:opacity-40"
+                  className="rounded-md px-2 py-1 text-[11px] font-medium text-spruce ring-1 ring-spruce/50 ring-inset transition hover:bg-mint disabled:opacity-40"
                 >
                   + Save scenario
                 </button>
@@ -606,7 +606,7 @@ export function DcfCalculator({ symbol }: { symbol: string | null }) {
                     <li key={s.id} className="flex items-center gap-2 rounded-md bg-subtle px-2 py-1.5 text-[11px]">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-baseline gap-1.5">
-                          <span className="font-mono font-semibold text-macropulse-cyan">{s.ticker}</span>
+                          <span className="font-mono font-semibold text-spruce">{s.ticker}</span>
                           <span className="text-ink-4">{BASIS_LABELS[s.basis]}</span>
                         </div>
                         <div className="truncate font-mono text-[10px] text-ink-4">
@@ -615,7 +615,7 @@ export function DcfCalculator({ symbol }: { symbol: string | null }) {
                       </div>
                       <div className="text-right font-mono tabular-nums">
                         <div className="text-ink">{money(s.fairValue, s.currency)}</div>
-                        <div className={s.mos == null ? "text-ink-4" : s.mos >= 0 ? "text-macropulse-neon-green" : "text-rose-400"}>
+                        <div className={s.mos == null ? "text-ink-4" : s.mos >= 0 ? "text-gain" : "text-loss"}>
                           {s.mos == null ? "MoS n/a" : pct(s.mos * 100, 1)}
                         </div>
                       </div>
@@ -623,7 +623,7 @@ export function DcfCalculator({ symbol }: { symbol: string | null }) {
                         type="button"
                         onClick={() => remove(s.id)}
                         aria-label={`Remove saved ${s.ticker} scenario`}
-                        className="rounded px-1 text-ink-4 hover:bg-white/10 hover:text-ink"
+                        className="rounded px-1 text-ink-4 hover:bg-subtle hover:text-ink"
                       >
                         ×
                       </button>

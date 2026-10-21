@@ -19,7 +19,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0a0b0d", // macropulse-obsidian
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f3f6f4" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b1412" },
+  ], // --canvas in each theme
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -27,9 +30,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       // MacroPulse is dark-only: the `dark` class turns on every `dark:` variant (see globals.css).
-      className={`dark ${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-macropulse-obsidian">{children}</body>
+      <body className="min-h-full flex flex-col bg-canvas">{children}</body>
     </html>
   );
 }

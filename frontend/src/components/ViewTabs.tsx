@@ -40,7 +40,7 @@ export function ViewTabs<K extends string>({
   }
 
   return (
-    <div role="tablist" aria-label={label} className="inline-flex max-w-full gap-1 overflow-x-auto rounded-xl bg-black/30 p-1 ring-1 ring-line ring-inset">
+    <div role="tablist" aria-label={label} className="inline-flex max-w-full gap-1 overflow-x-auto rounded-xl bg-canvas p-1 ring-1 ring-line ring-inset">
       {tabs.map((tab, i) => {
         const selected = tab.key === active;
         return (
@@ -58,14 +58,14 @@ export function ViewTabs<K extends string>({
             onClick={() => onChange(tab.key)}
             onKeyDown={(e) => onKeyDown(e, i)}
             title={tab.hint}
-            className={`relative shrink-0 rounded-lg px-4 py-2 text-left transition-colors outline-none focus-visible:ring-2 focus-visible:ring-macropulse-cyan/60 ${
-              selected ? "text-black" : "text-ink-3 hover:text-ink"
+            className={`relative shrink-0 rounded-lg px-4 py-2 text-left transition-colors outline-none focus-visible:ring-2 focus-visible:ring-spruce ${
+              selected ? "text-on-spruce" : "text-ink-3 hover:text-ink"
             }`}
           >
             {selected && (
               <motion.span
                 layoutId={`${id}-indicator`}
-                className="absolute inset-0 rounded-lg bg-macropulse-cyan shadow-[0_0_16px_rgba(0,240,255,0.35)]"
+                className="absolute inset-0 rounded-lg bg-spruce"
                 transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 500, damping: 40 }}
               />
             )}

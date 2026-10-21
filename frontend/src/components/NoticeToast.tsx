@@ -34,12 +34,12 @@ export function NoticeToast({ notice, onDismiss }: { notice: Notice | null; onDi
             animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1, x: warning ? [0, -5, 5, -3, 3, 0] : 0 }}
             exit={{ opacity: 0, y: reduceMotion ? 0 : 8, transition: { duration: 0.15 } }}
             transition={{ type: "spring", stiffness: 420, damping: 32, x: { duration: 0.35, delay: 0.1 } }}
-            className={`pointer-events-auto flex max-w-md items-start gap-2.5 rounded-md border bg-panel py-2.5 pr-2.5 pl-3 text-[12.5px] shadow-lg shadow-black/5 ${
-              warning ? "border-amber-500/50 text-ink" : "border-line-strong text-ink-2"
+            className={`pointer-events-auto flex max-w-md items-start gap-2.5 rounded-md border bg-panel py-2.5 pr-2.5 pl-3 text-[12.5px] shadow-lg shadow-ink/5 ${
+              warning ? "border-caution/50 text-ink" : "border-line-strong text-ink-2"
             }`}
           >
             {warning ? (
-              <svg viewBox="0 0 16 16" className="mt-px size-4 shrink-0 text-amber-500" fill="currentColor" aria-hidden>
+              <svg viewBox="0 0 16 16" className="mt-px size-4 shrink-0 text-caution" fill="currentColor" aria-hidden>
                 <path d="M8.9 1.6a1 1 0 0 0-1.8 0L.6 13.4A1 1 0 0 0 1.5 15h13a1 1 0 0 0 .9-1.6L8.9 1.6ZM8 5.5a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 8 5.5Zm0 7.25a.9.9 0 1 1 0-1.8.9.9 0 0 1 0 1.8Z" />
               </svg>
             ) : (

@@ -1,51 +1,100 @@
 @import "tailwindcss";
 
 /*
- * MacroPulse — a dark, gaming-inspired terminal. The app is dark-only: semantic tokens below map onto
- * the MacroPulse palette, and Tailwind's `dark:` variant is bound to the `dark` class on <html> (always
- * present) rather than the OS setting, so every component renders its dark styles.
- * Color stays reserved for meaning (variance severity, chart series, margins of safety, errors).
+ * MacroPulse — "Daylight ledger" (light, default) and "Night ledger" (dark). Every color is a token on
+ * :root; the dark theme follows the system unless the visitor picked one (data-theme on <html>, set by the
+ * header toggle and restored before first paint by the inline script in layout.tsx).
+ * Accounting conventions do the visual work: ruled rows, subtotal and total rules, parentheses for negatives.
  */
-@custom-variant dark (&:where(.dark, .dark *));
-
-/* MacroPulse palette — use as bg-macropulse-obsidian, text-macropulse-cyan, ring-macropulse-neon-green… */
-@theme {
-  --color-macropulse-obsidian: #0a0b0d; /* deep background canvas */
-  --color-macropulse-panel: rgba(18, 20, 24, 0.65); /* glassmorphism card sheets */
-  --color-macropulse-cyan: #00f0ff; /* interactive nodes, map hover borders, primary accents */
-  --color-macropulse-neon-green: #00ff66; /* positive margins of safety, undervalued stocks */
-  --color-macropulse-neon-amber: #ffb700; /* new IPO alert pulses */
-}
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 :root {
+  --canvas: #f3f6f4; --panel: #ffffff; --subtle: #eaf0ec;
+  --line: #dce5e0; --line-strong: #c3d1ca; --control-border: #7f948a;
+  --ink: #10201b; --ink-2: #2e413a; --ink-3: #56685f; --ink-4: #7a8a82;
+  --spruce: #0e6b5c; --spruce-strong: #0a5247; --on-spruce: #ffffff;
+  --mint: #cfefe3; --mint-ink: #0a5247;
+  --brass: #e2a93b; --on-brass: #1e1405;
+  --gain: #1f7a4d; --gain-bg: #e3f3ea; --loss: #b42a3a; --loss-bg: #fbe7e9;
+  --caution: #8a5a00; --caution-bg: #fcf1da;
+  --surge-1: #e3f3ea; --surge-2: #bfe6d0; --surge-3: #7fcba3; --surge-4: #1f7a4d; --on-surge-4: #ffffff;
+  --drop-1: #fbe7e9; --drop-2: #f5c3c9; --drop-3: #e88894; --drop-4: #b42a3a; --on-drop-4: #ffffff;
+  --shadow-1: 0 1px 2px rgba(16, 32, 27, 0.06), 0 1px 1px rgba(16, 32, 27, 0.04);
+  --shadow-2: 0 8px 24px -8px rgba(16, 32, 27, 0.16), 0 2px 6px rgba(16, 32, 27, 0.06);
+  --shadow-float: 0 14px 32px -10px rgba(14, 107, 92, 0.35);
+  /* Chart series: the validated categorical palette (dataviz reference, light steps). */
+  --series-1: #2a78d6; --series-2: #eb6834; --series-3: #1baf7a; --series-4: #eda100;
+  --series-5: #e87ba4; --series-6: #008300; --series-7: #6250d6; --series-8: #e34948;
+  color-scheme: light;
+  --focus: var(--spruce);
+  /* Radius */
+  --radius-xs: 6px; --radius-sm: 10px; --radius-md: 14px; --radius-lg: 20px; --radius-pill: 999px;
+  /* Spacing */
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 24px; --space-6: 40px; --space-7: 64px;
+  /* Motion: one curve everywhere */
+  --ease-flow: cubic-bezier(0.22, 1, 0.36, 1); --dur-1: 140ms; --dur-2: 240ms; --dur-3: 420ms;
+  /* Legacy aliases */
+  --inverse: var(--spruce); --on-inverse: var(--on-spruce); --mp-ease: var(--ease-flow); --mp-glow: var(--shadow-2);
+}
+/* Night ledger: the system's dark mode unless the visitor chose light, or an explicit dark choice. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+  --canvas: #0b1412; --panel: #111d1a; --subtle: #172622;
+  --line: #22332e; --line-strong: #2f4640; --control-border: #587168;
+  --ink: #e9f1ed; --ink-2: #c5d3cc; --ink-3: #93a69d; --ink-4: #6c7f77;
+  --spruce: #3fbfa3; --spruce-strong: #63d2b8; --on-spruce: #06201a;
+  --mint: #12352d; --mint-ink: #8fe3cb; --brass: #e7b04a; --on-brass: #1e1405;
+  --gain: #4cc98a; --gain-bg: #12301f; --loss: #f07a86; --loss-bg: #3a1519;
+  --caution: #e5b04d; --caution-bg: #33270f;
+  --surge-1: #12301f; --surge-2: #1a4a31; --surge-3: #2a7a52; --surge-4: #4cc98a; --on-surge-4: #06201a;
+  --drop-1: #3a1519; --drop-2: #5a1e26; --drop-3: #8f2e3b; --drop-4: #f07a86; --on-drop-4: #2a0a0f;
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4); --shadow-2: 0 10px 28px -8px rgba(0, 0, 0, 0.6);
+  --shadow-float: 0 14px 32px -10px rgba(0, 0, 0, 0.7);
+  --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --series-4: #c98500;
+  --series-5: #d55181; --series-6: #008300; --series-7: #9085e9; --series-8: #e66767;
   color-scheme: dark;
-  --canvas: #0a0b0d; /* macropulse-obsidian */
-  /* Opaque equivalent of the glass panel over obsidian, for surfaces that must hide what's beneath
-     (sticky table columns, drawers, toasts, overlays). Cards use the translucent .panel instead. */
-  --panel: #0f1013;
-  --subtle: rgba(255, 255, 255, 0.04); /* hover, zebra, wells */
-  --line: rgba(255, 255, 255, 0.07); /* hairline rules inside tables and lists */
-  --line-strong: rgba(255, 255, 255, 0.14); /* inputs, focus-adjacent */
-  --ink: #f4f4f5;
-  --ink-2: #d4d4d8;
-  --ink-3: #94a3b8;
-  --ink-4: #64748b;
-  --inverse: #f4f4f5;
-  --on-inverse: #0a0b0d;
+  }
+}
+:root[data-theme="dark"] {
+  --canvas: #0b1412; --panel: #111d1a; --subtle: #172622;
+  --line: #22332e; --line-strong: #2f4640; --control-border: #587168;
+  --ink: #e9f1ed; --ink-2: #c5d3cc; --ink-3: #93a69d; --ink-4: #6c7f77;
+  --spruce: #3fbfa3; --spruce-strong: #63d2b8; --on-spruce: #06201a;
+  --mint: #12352d; --mint-ink: #8fe3cb; --brass: #e7b04a; --on-brass: #1e1405;
+  --gain: #4cc98a; --gain-bg: #12301f; --loss: #f07a86; --loss-bg: #3a1519;
+  --caution: #e5b04d; --caution-bg: #33270f;
+  --surge-1: #12301f; --surge-2: #1a4a31; --surge-3: #2a7a52; --surge-4: #4cc98a; --on-surge-4: #06201a;
+  --drop-1: #3a1519; --drop-2: #5a1e26; --drop-3: #8f2e3b; --drop-4: #f07a86; --on-drop-4: #2a0a0f;
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4); --shadow-2: 0 10px 28px -8px rgba(0, 0, 0, 0.6);
+  --shadow-float: 0 14px 32px -10px rgba(0, 0, 0, 0.7);
+  --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --series-4: #c98500;
+  --series-5: #d55181; --series-6: #008300; --series-7: #9085e9; --series-8: #e66767;
+  color-scheme: dark;
 }
 
+/* Tokens as Tailwind utilities: bg-panel, text-spruce, ring-line-strong, rounded-lg, shadow-2, … */
 @theme inline {
-  --color-canvas: var(--canvas);
-  --color-panel: var(--panel);
-  --color-subtle: var(--subtle);
-  --color-line: var(--line);
-  --color-line-strong: var(--line-strong);
-  --color-ink: var(--ink);
-  --color-ink-2: var(--ink-2);
-  --color-ink-3: var(--ink-3);
-  --color-ink-4: var(--ink-4);
-  --color-inverse: var(--inverse);
-  --color-on-inverse: var(--on-inverse);
+  --color-canvas: var(--canvas); --color-panel: var(--panel); --color-subtle: var(--subtle);
+  --color-line: var(--line); --color-line-strong: var(--line-strong); --color-control-border: var(--control-border);
+  --color-ink: var(--ink); --color-ink-2: var(--ink-2); --color-ink-3: var(--ink-3); --color-ink-4: var(--ink-4);
+  --color-spruce: var(--spruce); --color-spruce-strong: var(--spruce-strong); --color-on-spruce: var(--on-spruce);
+  --color-mint: var(--mint); --color-mint-ink: var(--mint-ink); --color-brass: var(--brass); --color-on-brass: var(--on-brass);
+  --color-gain: var(--gain); --color-gain-bg: var(--gain-bg); --color-loss: var(--loss); --color-loss-bg: var(--loss-bg);
+  --color-caution: var(--caution); --color-caution-bg: var(--caution-bg);
+  --color-surge-1: var(--surge-1); --color-surge-2: var(--surge-2); --color-surge-3: var(--surge-3); --color-surge-4: var(--surge-4);
+  --color-on-surge-4: var(--on-surge-4);
+  --color-drop-1: var(--drop-1); --color-drop-2: var(--drop-2); --color-drop-3: var(--drop-3); --color-drop-4: var(--drop-4);
+  --color-on-drop-4: var(--on-drop-4);
+  --color-inverse: var(--inverse); --color-on-inverse: var(--on-inverse);
+  /* Legacy palette names, re-pointed at the ledger tokens while usages migrate. */
+  --color-macropulse-obsidian: var(--canvas);
+  --color-macropulse-panel: var(--panel);
+  --color-macropulse-cyan: var(--spruce);
+  --color-macropulse-neon-green: var(--gain);
+  --color-macropulse-neon-amber: var(--brass);
+  --radius-xs: var(--radius-xs); --radius-sm: var(--radius-sm); --radius-md: var(--radius-md); --radius-lg: var(--radius-lg);
+  --shadow-1: var(--shadow-1); --shadow-2: var(--shadow-2); --shadow-float: var(--shadow-float);
+  --ease-flow: var(--ease-flow);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -58,8 +107,18 @@ body {
 }
 
 ::selection {
-  background: var(--inverse);
-  color: var(--on-inverse);
+  background: var(--mint);
+  color: var(--mint-ink);
+}
+:where(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
 }
 
 /* Shared primitives — kept here so every panel and label reads identically. */
@@ -117,10 +176,6 @@ body {
  * The background is brightened with an inset shadow layered over whatever background the element has,
  * so it transitions smoothly (gradients can't).
  */
-:root {
-  --mp-ease: cubic-bezier(0.4, 0, 0.2, 1);
-  --mp-glow: inset 0 0 0 100vmax rgb(255 255 255 / 0.05), 0 0 0 1px rgb(0 240 255 / 0.3), 0 0 18px -4px rgb(0 240 255 / 0.6);
-}
 @layer components {
   .mp-interactive {
     transition: all 0.3s var(--mp-ease);

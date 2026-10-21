@@ -52,8 +52,8 @@ function SafetyBadge({ mos, reason }: { mos: number | null; reason?: string }) {
       transition={{ type: "spring", stiffness: 500, damping: 24 }}
       className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[10.5px] font-semibold tabular-nums ${
         safe
-          ? "bg-macropulse-neon-green text-black"
-          : "bg-red-700 text-white dark:bg-red-500 dark:text-red-950"
+          ? "bg-gain text-on-spruce"
+          : "bg-loss text-on-drop-4"
       }`}
       title={`Margin of safety: (intrinsic − price) ÷ intrinsic = ${pctLabel}${mos < -1 ? ` — price is ${(1 - mos).toFixed(1)}× intrinsic value` : ""}`}
     >
@@ -244,7 +244,7 @@ export function IntrinsicValuationStation({
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                className="mt-1.5 text-[10.5px] text-emerald-700 dark:text-emerald-400"
+                className="mt-1.5 text-[10.5px] text-gain dark:text-gain"
                 role="status"
               >
                 {Math.abs(sync.previous - riskFree.value) < 1e-9 ? "Up to date" : `Synced: ${pct(sync.previous)} → ${pct(riskFree.value)}`} —{" "}
@@ -252,7 +252,7 @@ export function IntrinsicValuationStation({
               </motion.p>
             )}
             {sync.status === "error" && (
-              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-1.5 text-[10.5px] text-red-700 dark:text-red-400" role="alert">
+              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-1.5 text-[10.5px] text-loss dark:text-loss" role="alert">
                 {sync.message}
               </motion.p>
             )}
@@ -312,10 +312,10 @@ export function IntrinsicValuationStation({
                 step={0.0025}
                 value={gd}
                 onChange={(e) => setDividendGrowth(Number(e.target.value))}
-                className="mt-1 w-full cursor-pointer accent-zinc-900 dark:accent-zinc-100"
+                className="mt-1 w-full cursor-pointer accent-spruce dark:accent-spruce"
                 aria-label="Dividend growth rate"
               />
-              <span className={gdCeiling != null && gd > gdCeiling + 1e-9 ? "text-amber-700 dark:text-amber-400" : "text-ink-4"}>
+              <span className={gdCeiling != null && gd > gdCeiling + 1e-9 ? "text-caution dark:text-caution" : "text-ink-4"}>
                 {gdCeiling != null && gd > gdCeiling + 1e-9
                   ? `Above the ${(gdCeiling * 100).toFixed(1)}% sustainable ceiling — a forever growth rate this high inflates the value.`
                   : `Starts at the company's ${statements.dividendCagr != null ? `${(statements.dividendCagr * 100).toFixed(1)}%` : "—"} dividend-per-share growth, capped at ${gdCeiling != null ? (gdCeiling * 100).toFixed(1) : "—"}% (the lower of r_f and kₑ − 2pp).`}

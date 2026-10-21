@@ -103,15 +103,15 @@ const HEADER_H = "h-[92px]";
 // ── cells ───────────────────────────────────────────────────────────────────
 
 const ZONE_TEXT: Record<string, string> = {
-  safe: "text-emerald-700 dark:text-emerald-400",
-  strong: "text-emerald-700 dark:text-emerald-400",
+  safe: "text-gain dark:text-gain",
+  strong: "text-gain dark:text-gain",
   grey: "text-ink-3",
   neutral: "text-ink-3",
   normal: "text-ink-3",
   low: "text-ink-3",
-  distress: "text-red-600 dark:text-red-400",
-  weak: "text-red-600 dark:text-red-400",
-  high: "text-orange-700 dark:text-orange-400",
+  distress: "text-loss dark:text-loss",
+  weak: "text-loss dark:text-loss",
+  high: "text-caution dark:text-caution",
 };
 
 function Zone({ zone, label }: { zone: string; label?: string }) {
@@ -172,7 +172,7 @@ function Cell({ row, period, currency }: { row: Row; period: FinancialPeriod | u
           className="text-right"
           title={[qualifiedTag(item.source_tag), variancesTitle(variance, item.value, fmt)].filter(Boolean).join("\n")}
         >
-          <div className={`font-mono tabular-nums ${item.value < 0 ? "text-red-600 dark:text-red-400" : "text-ink"}`}>
+          <div className={`font-mono tabular-nums ${item.value < 0 ? "text-loss dark:text-loss" : "text-ink"}`}>
             {fmt(item.value)}
           </div>
           {/* Badge slot is always reserved so values line up across columns whether or not they're flagged. */}
@@ -468,7 +468,7 @@ function CompanyColumn({
             <UnavailableButton subject={symbolOf(entry)} />
           </div>
         ) : (
-          <div className="flex-1 px-3.5 py-4 text-[13px] text-red-600 dark:text-red-400">{entry.error}</div>
+          <div className="flex-1 px-3.5 py-4 text-[13px] text-loss dark:text-loss">{entry.error}</div>
         )
       ) : (
         ROWS.map((row) =>
@@ -652,7 +652,7 @@ export function FinancialsTable({
                 className="flex w-[180px] shrink-0 grow flex-col items-center justify-start gap-1 border-l border-dashed border-line-strong pt-10 text-ink-3 transition-colors hover:bg-subtle hover:text-ink"
               >
                 {/* Top-aligned (not centered in a column ~2,000px tall) so the prompt is visible without scrolling. */}
-                <span className="grid size-9 place-items-center rounded-full text-xl leading-none text-macropulse-cyan ring-1 ring-macropulse-cyan/40">+</span>
+                <span className="grid size-9 place-items-center rounded-full text-xl leading-none text-spruce ring-1 ring-spruce/50">+</span>
                 <span className="text-[12px]">Compare a company</span>
                 <span className="font-mono text-[10.5px] text-ink-4">
                   {MAX_COMPARE - entries.length} slot{MAX_COMPARE - entries.length === 1 ? "" : "s"} left

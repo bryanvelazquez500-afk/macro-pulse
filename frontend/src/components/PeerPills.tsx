@@ -47,7 +47,7 @@ export function PeerPills({ focusId, entries, onAdd }: { focusId: string; entrie
             whileHover={full || reduceMotion ? undefined : { scale: 1.02, transition: { duration: 0.3, ease: [0.4, 0, 0.2, 1] } }}
             whileTap={reduceMotion ? undefined : { scale: full ? 0.98 : 0.94 }}
             transition={{ type: "spring", stiffness: 380, damping: 30 }}
-            className="mp-interactive-glow group inline-flex items-center gap-1.5 rounded-full border border-line-strong bg-panel py-1 pr-3 pl-2 font-mono text-[11.5px] text-ink-2 hover:border-macropulse-cyan/50 hover:text-ink aria-disabled:cursor-not-allowed aria-disabled:hover:border-line-strong aria-disabled:hover:text-ink-2"
+            className="mp-interactive-glow group inline-flex items-center gap-1.5 rounded-full border border-line-strong bg-panel py-1 pr-3 pl-2 font-mono text-[11.5px] text-ink-2 hover:border-spruce hover:text-ink aria-disabled:cursor-not-allowed aria-disabled:hover:border-line-strong aria-disabled:hover:text-ink-2"
           >
             <span aria-hidden className="text-ink-4 transition-colors group-hover:text-ink group-aria-disabled:text-ink-4">
               +

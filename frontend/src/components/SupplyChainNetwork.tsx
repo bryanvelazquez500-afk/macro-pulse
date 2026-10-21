@@ -180,36 +180,36 @@ function Partner({
 }) {
   const e = edges[0];
   return (
-    <li className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-white/[0.04]">
+    <li className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-subtle">
       <span
         aria-hidden
-        className={`size-2.5 shrink-0 rounded-full ${node.public ? "" : "border border-dashed border-slate-500"}`}
+        className={`size-2.5 shrink-0 rounded-full ${node.public ? "" : "border border-dashed border-control-border"}`}
         style={node.public ? { backgroundColor: `rgb(${ROLE_COLOR[node.role]})`, boxShadow: `0 0 8px rgba(${ROLE_COLOR[node.role]},0.7)` } : undefined}
       />
       <button type="button" onClick={() => onOpen(node)} className="min-w-0 flex-1 text-left" title="Show the relationship">
         <div className={`truncate text-[12px] hover:underline ${node.public ? "text-ink" : "text-ink-3"}`}>
           {node.name}
-          {node.ticker && <span className="ml-1 font-mono text-[10.5px] text-macropulse-cyan">{node.ticker}</span>}
+          {node.ticker && <span className="ml-1 font-mono text-[10.5px] text-spruce">{node.ticker}</span>}
           {!node.public && <span className="ml-1 text-[10px] text-ink-4">private</span>}
         </div>
         {e && (
           <div className="truncate text-[10.5px] text-ink-4" title={e.evidence ?? e.source_note ?? undefined}>
             {e.origin === "filing" && (
-              <span className="mr-1 rounded bg-macropulse-cyan/10 px-1 font-mono text-[9.5px] text-macropulse-cyan">filing</span>
+              <span className="mr-1 rounded bg-mint px-1 font-mono text-[9.5px] text-spruce">filing</span>
             )}
             {e.product ?? (e.origin === "filing" ? e.source_note : null)}
             {e.revenue_pct != null ? ` · ${e.revenue_pct}% of revenue` : e.major ? " · ≥10% customer" : ""}
           </div>
         )}
       </button>
-      <button type="button" onClick={() => onExplore(node.id)} className="rounded px-1.5 py-0.5 text-[10.5px] text-ink-3 hover:bg-white/10 hover:text-ink" title="Centre the web on this company">
+      <button type="button" onClick={() => onExplore(node.id)} className="rounded px-1.5 py-0.5 text-[10.5px] text-ink-3 hover:bg-subtle hover:text-ink" title="Centre the web on this company">
         Explore
       </button>
       {node.public && (
         <button
           type="button"
           onClick={() => onInject(node)}
-          className="rounded px-1.5 py-0.5 text-[10.5px] font-semibold text-macropulse-neon-green ring-1 ring-macropulse-neon-green/40 ring-inset hover:bg-macropulse-neon-green/10"
+          className="rounded px-1.5 py-0.5 text-[10.5px] font-semibold text-gain ring-1 ring-gain/40 ring-inset hover:bg-gain-bg"
           aria-label={`Add ${node.ticker} to the financial comparison`}
         >
           + Compare
@@ -223,8 +223,8 @@ function Partner({
 function Quote({ text, names }: { text: string; names: string[] }) {
   const parts = names.length ? text.split(new RegExp(`(${names.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`, "g")) : [text];
   return (
-    <blockquote className="border-l-2 border-macropulse-cyan/40 pl-2.5 text-[11.5px] leading-snug text-ink-2">
-      “{parts.map((p, i) => (names.includes(p) ? <strong key={i} className="font-semibold text-white">{p}</strong> : p))}”
+    <blockquote className="border-l-2 border-spruce/50 pl-2.5 text-[11.5px] leading-snug text-ink-2">
+      “{parts.map((p, i) => (names.includes(p) ? <strong key={i} className="font-semibold text-ink">{p}</strong> : p))}”
     </blockquote>
   );
 }
@@ -235,7 +235,7 @@ function SideNotes({ side, partner, partnerNames }: { side: RelationshipSide; pa
   return (
     <div className="space-y-1.5">
       <div className="flex flex-wrap items-baseline justify-between gap-x-2 text-[11px]">
-        <a href={n.url} target="_blank" rel="noopener noreferrer" className="font-medium text-macropulse-cyan hover:underline">
+        <a href={n.url} target="_blank" rel="noopener noreferrer" className="font-medium text-spruce hover:underline">
           {side.name} · {n.form} filed {n.filed} ↗
         </a>
         <span className="text-ink-4">
@@ -247,7 +247,7 @@ function SideNotes({ side, partner, partnerNames }: { side: RelationshipSide; pa
       ) : (
         <>
           {!n.latest_names_partner && (
-            <p className="text-[10.5px] text-amber-300/90">From an earlier report — {side.name}&apos;s latest annual report no longer names {partner}.</p>
+            <p className="text-[10.5px] text-caution">From an earlier report — {side.name}&apos;s latest annual report no longer names {partner}.</p>
           )}
           {n.excerpts.map((e) => (
             <Quote key={e} text={e} names={partnerNames} />
@@ -256,7 +256,7 @@ function SideNotes({ side, partner, partnerNames }: { side: RelationshipSide; pa
             <div className="flex flex-wrap items-center gap-1 pt-0.5">
               <span className="text-[10px] tracking-wide text-ink-4 uppercase">Disclosed figures</span>
               {n.figures.map((f) => (
-                <span key={f} className="rounded bg-macropulse-neon-green/15 px-1.5 py-0.5 font-mono text-[10.5px] font-semibold text-macropulse-neon-green">
+                <span key={f} className="rounded bg-gain-bg px-1.5 py-0.5 font-mono text-[10.5px] font-semibold text-gain">
                   {f}
                 </span>
               ))}
@@ -315,16 +315,16 @@ function RelationshipCard({
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 24 }}
       transition={{ type: "spring", stiffness: 320, damping: 30 }}
-      className="absolute top-3 right-3 bottom-3 z-10 flex w-[min(400px,calc(100%-24px))] flex-col overflow-hidden rounded-xl border border-white/10 bg-[#121418]/90 shadow-2xl backdrop-blur-xl"
+      className="absolute top-3 right-3 bottom-3 z-10 flex w-[min(400px,calc(100%-24px))] flex-col overflow-hidden rounded-xl border border-line bg-panel shadow-2xl backdrop-blur-xl"
     >
-      <header className="flex items-start justify-between gap-2 border-b border-white/10 px-4 py-3">
+      <header className="flex items-start justify-between gap-2 border-b border-line px-4 py-3">
         <div className="min-w-0">
           <div className="eyebrow" style={{ color: `rgb(${ROLE_COLOR[node.role]})` }}>
             {node.role === "supplier" ? "Supplier" : node.role === "client" ? "Client" : "Supplier & client"} of {focus.name}
           </div>
-          <h3 className="truncate text-[15px] font-semibold text-white">{label(node)}</h3>
+          <h3 className="truncate text-[15px] font-semibold text-ink">{label(node)}</h3>
         </div>
-        <button type="button" onClick={onClose} aria-label="Close" className="rounded px-1.5 text-ink-3 hover:bg-white/10 hover:text-white">
+        <button type="button" onClick={onClose} aria-label="Close" className="rounded px-1.5 text-ink-3 hover:bg-subtle hover:text-ink">
           ×
         </button>
       </header>
@@ -332,21 +332,21 @@ function RelationshipCard({
         {!current && (
           <div className="space-y-2" aria-busy="true">
             <p className="text-[11.5px] text-ink-3">Reading both companies&apos; annual reports…</p>
-            <div className="h-3 w-5/6 animate-pulse rounded bg-white/10" />
-            <div className="h-3 w-2/3 animate-pulse rounded bg-white/10" />
+            <div className="h-3 w-5/6 animate-pulse rounded bg-subtle" />
+            <div className="h-3 w-2/3 animate-pulse rounded bg-subtle" />
           </div>
         )}
-        {current?.error && <p className="text-[12px] text-rose-300">Couldn&apos;t load the filings: {current.error}</p>}
+        {current?.error && <p className="text-[12px] text-loss">Couldn&apos;t load the filings: {current.error}</p>}
         {current?.items?.map((r) => (
           <section key={`${r.supplier.company}>${r.client.company}`} className="space-y-2.5">
             <p className="text-[12.5px] leading-snug text-ink">{r.summary}</p>
             {(r.revenue_pct != null || r.source_note) && (
-              <p className="rounded-md bg-white/[0.04] px-2.5 py-1.5 text-[11px] text-ink-2 ring-1 ring-white/10 ring-inset">
-                {r.revenue_pct != null && <span className="mr-1 font-mono font-semibold text-macropulse-neon-green">{r.revenue_pct}%</span>}
+              <p className="rounded-md bg-subtle px-2.5 py-1.5 text-[11px] text-ink-2 ring-1 ring-line ring-inset">
+                {r.revenue_pct != null && <span className="mr-1 font-mono font-semibold text-gain">{r.revenue_pct}%</span>}
                 {r.source_note}
               </p>
             )}
-            <div className="space-y-3 border-t border-white/5 pt-2.5">
+            <div className="space-y-3 border-t border-line pt-2.5">
               <div className="eyebrow">What the filings say</div>
               <SideNotes side={r.supplier} partner={r.client.name} partnerNames={names(r.client.company)} />
               <SideNotes side={r.client} partner={r.supplier.name} partnerNames={names(r.supplier.company)} />
@@ -360,17 +360,17 @@ function RelationshipCard({
           </p>
         )}
       </div>
-      <footer className="flex gap-2 border-t border-white/10 px-4 py-3">
+      <footer className="flex gap-2 border-t border-line px-4 py-3">
         {node.public && (
           <button
             type="button"
             onClick={() => onInject(node)}
-            className="flex-1 rounded-md bg-macropulse-neon-green px-3 py-1.5 text-[12px] font-bold text-black hover:brightness-110"
+            className="flex-1 rounded-md bg-gain px-3 py-1.5 text-[12px] font-bold text-on-spruce hover:brightness-110"
           >
             + Add {node.ticker} to comparison
           </button>
         )}
-        <button type="button" onClick={() => onExplore(node.id)} className="rounded-md px-3 py-1.5 text-[12px] text-ink-2 ring-1 ring-white/15 ring-inset hover:bg-white/10">
+        <button type="button" onClick={() => onExplore(node.id)} className="rounded-md px-3 py-1.5 text-[12px] text-ink-2 ring-1 ring-line-strong ring-inset hover:bg-subtle">
           Explore its web →
         </button>
       </footer>
@@ -417,7 +417,7 @@ export function SupplyChainNetwork({ focusTicker, onInject }: { focusTicker: str
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <div className="eyebrow">Suppliers → company → clients</div>
-          <h2 className="mt-0.5 text-xl font-semibold tracking-tight text-white">
+          <h2 className="mt-0.5 text-xl font-semibold tracking-tight text-ink">
             {focusNode ? label(focusNode) : target} <span className="text-ink-3">supply chain</span>
           </h2>
         </div>
@@ -429,7 +429,7 @@ export function SupplyChainNetwork({ focusTicker, onInject }: { focusTicker: str
             <span className="h-0.5 w-6 rounded bg-gradient-to-r from-transparent to-[#00ff66]" /> company → client
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="size-2.5 rounded-full border border-dashed border-slate-500" /> private
+            <span className="size-2.5 rounded-full border border-dashed border-control-border" /> private
           </span>
         </div>
       </div>
@@ -455,15 +455,15 @@ export function SupplyChainNetwork({ focusTicker, onInject }: { focusTicker: str
             placeholder="Any ticker — NVDA, ASML, CRWV…"
             aria-label="Ticker to explore"
             maxLength={16}
-            className="h-9 w-full rounded-lg bg-black/30 pr-3 pl-8 font-mono text-[12.5px] text-ink uppercase ring-1 ring-white/10 outline-none ring-inset placeholder:text-ink-4 placeholder:normal-case focus:ring-macropulse-cyan"
+            className="h-9 w-full rounded-lg bg-canvas pr-3 pl-8 font-mono text-[12.5px] text-ink uppercase ring-1 ring-line outline-none ring-inset placeholder:text-ink-4 placeholder:normal-case focus:ring-spruce"
           />
           <TickerSuggestions id="supply-chain-tickers" query={query} />
         </div>
-        <button type="submit" disabled={!query.trim()} className="h-9 rounded-lg bg-macropulse-cyan/15 px-4 text-[12px] font-semibold text-macropulse-cyan ring-1 ring-macropulse-cyan/40 ring-inset hover:bg-macropulse-cyan/25 disabled:opacity-40">
+        <button type="submit" disabled={!query.trim()} className="h-9 rounded-lg bg-mint px-4 text-[12px] font-semibold text-spruce ring-1 ring-spruce/50 ring-inset hover:bg-mint disabled:opacity-40">
           Map it
         </button>
         {explore && (
-          <button type="button" onClick={() => setExplore(null)} className="text-[11.5px] text-macropulse-cyan hover:underline">
+          <button type="button" onClick={() => setExplore(null)} className="text-[11.5px] text-spruce hover:underline">
             ↺ back to {focusTicker ?? "focused company"}
           </button>
         )}
@@ -475,13 +475,13 @@ export function SupplyChainNetwork({ focusTicker, onInject }: { focusTicker: str
       </form>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
-        <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-[radial-gradient(ellipse_at_center,rgba(0,240,255,0.06),transparent_65%)]" style={{ minHeight: HEIGHT }}>
+        <div className="relative overflow-hidden rounded-2xl border border-line bg-[radial-gradient(ellipse_at_center,rgba(0,240,255,0.06),transparent_65%)]" style={{ minHeight: HEIGHT }}>
           {!current && (
             <div className="absolute inset-0 grid place-items-center px-6 text-center text-[12px] text-ink-3">
               Mapping {target}&apos;s supply chain… the first look at a company reads its latest annual report, which can take a few seconds.
             </div>
           )}
-          {current?.error && <div className="absolute inset-0 grid place-items-center text-[12px] text-rose-300">Couldn&apos;t load the supply chain: {current.error}</div>}
+          {current?.error && <div className="absolute inset-0 grid place-items-center text-[12px] text-loss">Couldn&apos;t load the supply chain: {current.error}</div>}
           {data && data.edges.length === 0 && (
             <div className="absolute inset-0 grid place-items-center px-6 text-center text-[12.5px] leading-relaxed text-ink-3">
               <div>
@@ -564,7 +564,7 @@ export function InjectBanner({ message, onDone }: { message: string | null; onDo
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -16 }}
           transition={{ type: "spring", stiffness: 380, damping: 26 }}
-          className="fixed inset-x-0 top-24 z-[80] mx-auto w-fit rounded-xl bg-macropulse-neon-green px-5 py-2.5 text-[13px] font-bold text-black shadow-[0_0_30px_rgba(0,255,102,0.55)]"
+          className="fixed inset-x-0 top-24 z-[80] mx-auto w-fit rounded-xl bg-gain px-5 py-2.5 text-[13px] font-bold text-on-spruce shadow-[0_0_30px_rgba(0,255,102,0.55)]"
         >
           ✓ {message}
         </motion.div>

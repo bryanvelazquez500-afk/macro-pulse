@@ -195,7 +195,7 @@ function Station() {
   const focusBar = focusedReady?.profile && (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
       <div
-        className="flex gap-1 rounded-lg bg-black/30 p-1 ring-1 ring-line ring-inset"
+        className="flex gap-1 rounded-lg bg-canvas p-1 ring-1 ring-line ring-inset"
         role="tablist"
         aria-label="Focused company"
       >
@@ -206,7 +206,7 @@ function Station() {
             role="tab"
             aria-selected={e.id === focusedId}
             onClick={() => focus(e.id)}
-            className={`mp-interactive rounded-md px-3 py-1 font-mono text-[12px] font-medium ${e.id === focusedId ? "bg-macropulse-cyan text-black" : "text-ink-3 hover:text-ink"}`}
+            className={`mp-interactive rounded-md px-3 py-1 font-mono text-[12px] font-medium ${e.id === focusedId ? "bg-spruce text-on-spruce" : "text-ink-3 hover:text-ink"}`}
           >
             {symbolOf(e)}
           </button>
@@ -224,15 +224,15 @@ function Station() {
 
   return (
     // Main dashboard container: obsidian canvas; panels inside are glass sheets (.panel).
-    <div className="flex min-h-full flex-1 flex-col bg-macropulse-obsidian">
+    <div className="flex min-h-full flex-1 flex-col bg-canvas">
       <header
         ref={headerRef}
-        className="sticky top-0 z-30 border-b border-white/5 bg-macropulse-obsidian/85 backdrop-blur-md"
+        className="sticky top-0 z-30 border-b border-line bg-panel/90 backdrop-blur-md"
       >
         <div className="mx-auto flex w-full max-w-[1440px] flex-wrap items-center gap-x-5 gap-y-3 px-4 py-3 sm:px-6">
           <div className="flex items-baseline gap-2">
             <span
-              className="size-2 translate-y-[-1px] rounded-full bg-macropulse-cyan shadow-[0_0_10px_var(--color-macropulse-cyan)]"
+              className="size-2 translate-y-[-1px] rounded-full bg-spruce shadow-[0_0_10px_var(--color-macropulse-cyan)]"
               aria-hidden
             />
             <span className="text-[13px] font-semibold tracking-[0.18em] text-ink uppercase">
@@ -275,7 +275,7 @@ function Station() {
               Add
             </button>
             <div
-              className="flex rounded-lg bg-black/30 p-0.5 ring-1 ring-line ring-inset"
+              className="flex rounded-lg bg-canvas p-0.5 ring-1 ring-line ring-inset"
               role="group"
               aria-label="Period"
             >
@@ -322,11 +322,11 @@ function Station() {
         }}
         aria-label="Start the guided tour"
         title="Guided tour"
-        className="fixed right-6 bottom-6 z-40 flex items-center gap-2 rounded-xl bg-yellow-400 px-4 py-3 text-[13px] font-bold text-black transition-transform hover:scale-105 hover:bg-yellow-300 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
+        className="fixed right-6 bottom-6 z-40 flex items-center gap-2 rounded-xl bg-brass px-4 py-3 text-[13px] font-bold text-on-spruce transition-transform hover:scale-105 hover:bg-brass focus-visible:ring-2 focus-visible:ring-spruce focus-visible:outline-none"
       >
         <span
           aria-hidden
-          className="grid size-5 place-items-center rounded-full bg-black text-[12px] font-black text-yellow-400"
+          className="grid size-5 place-items-center rounded-full bg-on-brass text-[12px] font-black text-brass"
         >
           ?
         </span>

@@ -36,9 +36,9 @@ export function WatchlistMenu({ activeTicker, onSelect }: { activeTicker: string
           open ? "bg-subtle text-ink ring-line-strong" : "text-ink-2 ring-line hover:text-ink"
         }`}
       >
-        <span aria-hidden className="text-macropulse-neon-amber">★</span>
+        <span aria-hidden className="text-caution">★</span>
         Watchlist
-        <span className="rounded-full bg-white/10 px-1.5 font-mono text-[10.5px] text-ink-3">{portfolio.watchlist.length}</span>
+        <span className="rounded-full bg-subtle px-1.5 font-mono text-[10.5px] text-ink-3">{portfolio.watchlist.length}</span>
       </button>
       <AnimatePresence>
         {open && (
