@@ -1,0 +1,16 @@
+# Render's free plan puts the API to sleep after 15 idle minutes, and waking it takes up to a minute.
+# Pinging every 10 minutes keeps it awake (the API alone fits the plan's 750 free hours a month).
+name: Keep API awake
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping the API
+        run: curl --silent --show-error --fail --retry 3 --retry-delay 20 --max-time 90 https://macropulse-api-7cq2.onrender.com/api/health
