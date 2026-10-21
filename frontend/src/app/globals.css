@@ -315,6 +315,17 @@ body {
     font-size: 12px;
   }
 
+  /* Peer ticker chip: hover turns it spruce and lifts it 1px (Framer drives transform on the flight, so
+     the lift uses translate, which composes with it). */
+  .peer-chip {
+    transition: border-color var(--dur-1) var(--ease-flow), color var(--dur-1) var(--ease-flow), translate var(--dur-1) var(--ease-flow);
+  }
+  .peer-chip:not([aria-pressed="true"]):not([aria-disabled="true"]):hover {
+    border-color: var(--spruce);
+    color: var(--spruce);
+    translate: 0 -1px;
+  }
+
   /* Status pill: uppercase label with a leading dot (forensic zones, flags). */
   .pill {
     display: inline-flex;

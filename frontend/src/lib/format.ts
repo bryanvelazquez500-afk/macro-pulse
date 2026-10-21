@@ -53,3 +53,12 @@ export function periodLabel(p: { fiscal_year: number | null; fiscal_period: stri
   if (p.fiscal_year == null) return p.end;
   return p.fiscal_period && p.fiscal_period !== "FY" ? `${p.fiscal_period} FY${p.fiscal_year}` : `FY${p.fiscal_year}`;
 }
+
+/**
+ * Accounting display for money: negatives in parentheses, ($14.26B) instead of -$14.26B. Display only:
+ * the underlying number is unchanged. Percent changes keep their ▲/▼ signs instead.
+ */
+export function formatAccounting(value: number | null | undefined, currency = "USD"): string {
+  if (value == null) return "—";
+  return value < 0 ? `(${formatMoney(-value, currency)})` : formatMoney(value, currency);
+}
