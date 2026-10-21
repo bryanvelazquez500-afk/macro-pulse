@@ -545,7 +545,7 @@ export function DcfCalculator({ symbol }: { symbol: string | null }) {
                   </span>
                 </button>
                 {showTable && (
-                  <div className="mt-2 max-h-72 overflow-auto rounded-md ring-1 ring-line ring-inset">
+                  <div className="mt-2 overflow-x-auto rounded-md ring-1 ring-line ring-inset">
                     <table className="w-full font-mono text-[10.5px] tabular-nums">
                       <thead className="sticky top-0 bg-[#121418] text-ink-4">
                         <tr>

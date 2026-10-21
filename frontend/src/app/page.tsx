@@ -1,23 +1,33 @@
 "use client";
 
 import { LayoutGroup } from "framer-motion";
-import { FormEvent, ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import {
+  FormEvent,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { DataDrawers } from "@/components/DataDrawers";
 import { DcfCalculator } from "@/components/DcfCalculator";
 import { EquityDiscovery } from "@/components/EquityDiscovery";
 import { IntrinsicValuationStation } from "@/components/IntrinsicValuationStation";
-import { SidePanel } from "@/components/SidePanel";
 import { FinancialsTable, VarianceLegend } from "@/components/FinancialsTable";
 import { HorizontalAnalysis } from "@/components/HorizontalAnalysis";
 import { NoticeToast } from "@/components/NoticeToast";
 import { NewsTicker } from "@/components/NewsTicker";
 import { PeerPills } from "@/components/PeerPills";
-import { InjectBanner, SupplyChainNetwork } from "@/components/SupplyChainNetwork";
+import {
+  InjectBanner,
+  SupplyChainNetwork,
+} from "@/components/SupplyChainNetwork";
 import { PulseBotTour } from "@/components/PulseBotTour";
 import { TickerSuggestions } from "@/lib/useTickerSuggestions";
+import { ServerWakeNotice } from "@/components/ServerWakeNotice";
 import { ValuationPanel } from "@/components/ValuationPanel";
-import { WatchlistSidebar } from "@/components/WatchlistSidebar";
+import { WatchlistMenu } from "@/components/WatchlistMenu";
 import { ViewPanel, ViewTab, ViewTabs } from "@/components/ViewTabs";
 import {
   ComparisonProvider,
@@ -53,25 +63,31 @@ function Section({
   );
 }
 
-type AnalysisView = "matrix" | "discovery" | "supply";
+type AnalysisView = "matrix" | "valuation" | "discovery" | "supply";
 
 const ANALYSIS_VIEWS: ViewTab<AnalysisView>[] = [
   {
     key: "matrix",
-    label: "Raw Financial Statements Matrix",
-    short: "Statements",
-    hint: "Side-by-side statements, ratios and forensic scores",
+    label: "Compare",
+    short: "Compare",
+    hint: "Financial statements side by side, plus horizontal and vertical analysis",
+  },
+  {
+    key: "valuation",
+    label: "Valuation",
+    short: "Value",
+    hint: "Equity DCF, the DCF calculator and the Intrinsic Valuation Station for the focused company",
   },
   {
     key: "discovery",
-    label: "Equity Discovery",
-    short: "Discovery",
+    label: "Discover",
+    short: "Discover",
     hint: "Scout world markets on an interactive map",
   },
   {
     key: "supply",
-    label: "Supply Chain Network",
-    short: "Supply Chain",
+    label: "Supply chain",
+    short: "Supply",
     hint: "Suppliers and clients as an interactive web",
   },
 ];
@@ -81,7 +97,7 @@ export default function Home() {
     <ComparisonProvider initial={["AAPL"]}>
       {/* One layout group spans header and matrix so peer pills can morph into column headers. */}
       <LayoutGroup>
-        {/* Valuation sliders are shared by the center Valuation panel and the side panel's Station. */}
+        {/* Valuation sliders are shared by the Valuation panel and the Intrinsic Valuation Station. */}
         <ValuationAssumptionsProvider>
           <Station />
         </ValuationAssumptionsProvider>
@@ -125,7 +141,7 @@ function Station() {
   const headerRef = useRef<HTMLElement>(null);
 
   // The header's height changes (peer pills appear once a company is focused, rows wrap on narrow
-  // screens). Publish it as --header-h so the sticky rails sit just below it and fit the viewport.
+  // screens). Publish it as --header-h so anchored sections scroll clear of it.
   useEffect(() => {
     const el = headerRef.current;
     if (!el) return;
@@ -144,9 +160,13 @@ function Station() {
   /** From the supply-chain web: add without leaving the tab, and confirm with a green banner. */
   function injectFromSupplyChain(ticker: string) {
     const id = normalizeTicker(ticker);
-    const present = entries.some((e) => e.id === id || (id && e.profile?.tickers.includes(id)));
-    if (id && !present && entries.length < MAX_COMPARE) setInjected(`${id} injected into Financial Comparison Tab`);
-    else if (present) setInjected(`${id} is already in the Financial Comparison Tab`);
+    const present = entries.some(
+      (e) => e.id === id || (id && e.profile?.tickers.includes(id)),
+    );
+    if (id && !present && entries.length < MAX_COMPARE)
+      setInjected(`${id} injected into Financial Comparison Tab`);
+    else if (present)
+      setInjected(`${id} is already in the Financial Comparison Tab`);
     add(ticker); // a full comparison shows the usual "matrix is full" warning instead
     // Adding focuses the new column; keep the current focus so the web you're exploring doesn't re-centre.
     if (focusedId) focus(focusedId);
@@ -172,14 +192,44 @@ function Station() {
   const threshold = ready[0]?.financials?.variance_threshold_pct ?? 10;
   const focusedReady = focused?.status === "ready" ? focused : null;
 
+  const focusBar = focusedReady?.profile && (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+      <div
+        className="flex gap-1 rounded-lg bg-black/30 p-1 ring-1 ring-line ring-inset"
+        role="tablist"
+        aria-label="Focused company"
+      >
+        {ready.map((e) => (
+          <button
+            key={e.id}
+            type="button"
+            role="tab"
+            aria-selected={e.id === focusedId}
+            onClick={() => focus(e.id)}
+            className={`mp-interactive rounded-md px-3 py-1 font-mono text-[12px] font-medium ${e.id === focusedId ? "bg-macropulse-cyan text-black" : "text-ink-3 hover:text-ink"}`}
+          >
+            {symbolOf(e)}
+          </button>
+        ))}
+      </div>
+      <span className="text-[12.5px] text-ink-3">
+        <span className="font-medium text-ink">
+          {focusedReady.profile.name}
+        </span>
+        {focusedReady.profile.sic_description &&
+          ` · ${focusedReady.profile.sic_description}`}
+      </span>
+    </div>
+  );
+
   return (
     // Main dashboard container: obsidian canvas; panels inside are glass sheets (.panel).
     <div className="flex min-h-full flex-1 flex-col bg-macropulse-obsidian">
       <header
         ref={headerRef}
-        className="sticky top-0 z-30 border-b border-white/5 bg-macropulse-obsidian/80 backdrop-blur-md"
+        className="sticky top-0 z-30 border-b border-white/5 bg-macropulse-obsidian/85 backdrop-blur-md"
       >
-        <div className="mx-auto flex w-full max-w-[1920px] flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3 sm:px-6">
+        <div className="mx-auto flex w-full max-w-[1440px] flex-wrap items-center gap-x-5 gap-y-3 px-4 py-3 sm:px-6">
           <div className="flex items-baseline gap-2">
             <span
               className="size-2 translate-y-[-1px] rounded-full bg-macropulse-cyan shadow-[0_0_10px_var(--color-macropulse-cyan)]"
@@ -192,22 +242,30 @@ function Station() {
           <form
             id="tour-search"
             onSubmit={onSubmit}
-            className="flex flex-1 flex-wrap items-center gap-2 sm:flex-nowrap"
+            className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-1 sm:flex-nowrap"
           >
-            <input
-              ref={searchRef}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={
-                entries.length >= MAX_COMPARE
-                  ? "Comparison full — remove a column"
-                  : "Add ticker or CIK to compare — MSFT, 320193"
-              }
-              aria-label="Add a ticker or CIK to the comparison"
-              list="header-ticker-suggestions"
-              maxLength={16}
-              className="field min-w-0 flex-1 font-mono uppercase sm:max-w-md"
-            />
+            <div className="relative min-w-0 flex-1 sm:max-w-md">
+              <input
+                ref={searchRef}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={
+                  entries.length >= MAX_COMPARE
+                    ? "Comparison full — remove a column"
+                    : "Add a ticker or CIK — MSFT, 320193"
+                }
+                aria-label="Add a ticker or CIK to the comparison"
+                list="header-ticker-suggestions"
+                maxLength={16}
+                className="field w-full pr-12 font-mono uppercase"
+              />
+              <span
+                className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 font-mono text-[10.5px] text-ink-4"
+                aria-live="polite"
+              >
+                {entries.length}/{MAX_COMPARE}
+              </span>
+            </div>
             <TickerSuggestions id="header-ticker-suggestions" query={query} />
             <button
               type="submit"
@@ -216,14 +274,8 @@ function Station() {
             >
               Add
             </button>
-            <span
-              className="font-mono text-[11px] text-ink-3"
-              aria-live="polite"
-            >
-              {entries.length}/{MAX_COMPARE}
-            </span>
             <div
-              className="flex rounded-md border border-line-strong p-0.5"
+              className="flex rounded-lg bg-black/30 p-0.5 ring-1 ring-line ring-inset"
               role="group"
               aria-label="Period"
             >
@@ -233,7 +285,7 @@ function Station() {
                   type="button"
                   onClick={() => setPeriod(p)}
                   aria-pressed={period === p}
-                  className={`rounded-[5px] px-3 py-1.5 text-xs capitalize transition-colors ${period === p ? "bg-inverse text-on-inverse" : "text-ink-3 hover:text-ink"}`}
+                  className={`rounded-md px-3 py-1.5 text-xs capitalize transition-colors ${period === p ? "bg-inverse text-on-inverse" : "text-ink-3 hover:text-ink"}`}
                 >
                   {p}
                 </button>
@@ -243,26 +295,21 @@ function Station() {
               <span className="text-[11px] text-ink-3">Loading…</span>
             )}
           </form>
-          <div id="tour-drawers">
-            <DataDrawers entry={focused} />
+          <div className="flex items-center gap-2">
+            <div id="tour-watchlist">
+              <WatchlistMenu
+                activeTicker={focused ? symbolOf(focused) : null}
+                onSelect={addToComparison}
+              />
+            </div>
+            <div id="tour-drawers">
+              <DataDrawers entry={focused} />
+            </div>
           </div>
-          <span className="hidden text-[11px] text-ink-4 2xl:block">
-            Source · SEC EDGAR
-          </span>
         </div>
-        {focused && (
-          <div className="mx-auto w-full max-w-[1920px] px-4 pb-3 sm:px-6">
-            {/* Keyed by company so suggestions reload when focus moves. */}
-            <PeerPills
-              key={focused.id}
-              focusId={focused.id}
-              entries={entries}
-              onAdd={addToComparison}
-            />
-          </div>
-        )}
         <NewsTicker ticker={focusedReady ? symbolOf(focusedReady) : null} />
       </header>
+      <ServerWakeNotice />
       <NoticeToast notice={notice} onDismiss={dismissNotice} />
       <InjectBanner message={injected} onDone={clearInjected} />
 
@@ -270,7 +317,7 @@ function Station() {
         id="help-tour-trigger"
         type="button"
         onClick={() => {
-          setView("matrix"); // the tour's steps live on the statements view
+          setView("matrix"); // the tour starts on the Compare view
           setTouring(true);
         }}
         aria-label="Start the guided tour"
@@ -296,143 +343,82 @@ function Station() {
         />
       )}
 
-      <div className="mx-auto grid w-full max-w-[1920px] flex-1 gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[340px_minmax(0,1fr)_320px]">
-        <SidePanel label="DCF calculator and watchlist" stickyFrom="lg">
-          <div id="tour-dcf">
-            <DcfCalculator symbol={focused ? symbolOf(focused) : null} />
-          </div>
-          <div id="tour-watchlist">
-            <WatchlistSidebar
-              activeTicker={focused ? symbolOf(focused) : null}
-              onSelect={addToComparison}
-            />
-          </div>
-        </SidePanel>
-
-        <main className="min-w-0 space-y-12">
-          <section>
-            <p className="eyebrow mb-2">
-              Cross-sectional comparison · {period}
+      {/* One full-width column: every feature gets the whole screen, and the page is the only scroll. */}
+      <main className="mx-auto w-full max-w-[1440px] flex-1 px-4 pt-7 pb-24 sm:px-6">
+        <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+          <div className="min-w-0">
+            <p className="eyebrow mb-1.5">
+              Comparison ·{" "}
+              {period === "annual" ? "annual reports" : "quarterly reports"}
             </p>
-            <h1 className="text-3xl font-semibold tracking-tight text-ink">
+            <h1 className="truncate text-3xl font-semibold tracking-tight text-ink">
               {entries.length
                 ? entries.map(symbolOf).join("  ·  ")
                 : "No companies selected"}
             </h1>
-            <p className="mt-2 text-[12px] text-ink-3">
-              Add up to {MAX_COMPARE} companies. Click a column header to focus
-              it — the Intrinsic Valuation Station, valuation, news and the
-              header&apos;s lineage and filings drawers follow the focused
-              company.
-            </p>
-            {/* The view switcher doubles as the header's bottom rule. */}
-            <div id="tour-tabs" className="mt-6">
-              <ViewTabs
-                tabs={ANALYSIS_VIEWS}
-                active={view}
-                onChange={changeView}
-                label="Analysis view"
-              />
-            </div>
+          </div>
+          {focused && (
+            // Keyed by company so suggestions reload when focus moves.
+            <PeerPills
+              key={focused.id}
+              focusId={focused.id}
+              entries={entries}
+              onAdd={addToComparison}
+            />
+          )}
+        </div>
 
-            <div className="mt-6">
-              <ViewPanel view="matrix" active={view === "matrix"}>
-                <div className="space-y-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <VarianceLegend thresholdPct={threshold} />
-                    <a
-                      href="#horizontal-analysis"
-                      className="mp-interactive inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11.5px] font-medium text-macropulse-cyan ring-1 ring-macropulse-cyan/40 ring-inset hover:bg-macropulse-cyan/10"
-                    >
-                      Horizontal & vertical analysis <span aria-hidden>↓</span>
-                    </a>
-                  </div>
-                  <div id="tour-matrix">
-                    <FinancialsTable
-                      entries={entries}
-                      focusedId={focusedId}
-                      periodType={period}
-                      onFocus={focus}
-                      onRemove={remove}
-                      onAddClick={() => searchRef.current?.focus()}
-                    />
-                  </div>
-                  <p className="text-[11px] text-ink-3">
-                    Each column shows that company&apos;s own fiscal period;
-                    variances compare it with the same period a year earlier. *
-                    Fallback method or not meaningful — hover any value for its
-                    source tag and details.
-                  </p>
-                  <HorizontalAnalysis
-                    entries={entries}
-                    periodType={period}
-                    focusedId={focusedId}
-                  />
-                </div>
-              </ViewPanel>
+        <div id="tour-tabs" className="mt-6">
+          <ViewTabs
+            tabs={ANALYSIS_VIEWS}
+            active={view}
+            onChange={changeView}
+            label="Section"
+          />
+        </div>
 
-              <ViewPanel view="discovery" active={view === "discovery"}>
-                {discoveryOpened && (
-                  <EquityDiscovery
-                    onAnalyze={(symbol) => {
-                      // The arrow adds the stock to the 3-company comparison and jumps to the raw financials.
-                      addToComparison(symbol);
-                      setView("matrix");
-                      window.scrollTo({ top: 0, behavior: "smooth" });
-                    }}
-                  />
-                )}
-              </ViewPanel>
-
-              <ViewPanel view="supply" active={view === "supply"}>
-                {supplyOpened && (
-                  <div id="tour-supply">
-                  <SupplyChainNetwork
-                    focusTicker={focused ? symbolOf(focused) : null}
-                    onInject={injectFromSupplyChain}
-                  />
-                  </div>
-                )}
-              </ViewPanel>
-            </div>
-          </section>
-
-          {focusedReady?.profile && focusedReady.financials && (
-            <>
-              <div className="flex flex-wrap items-center gap-3 border-t border-line pt-8">
-                <span className="eyebrow">Focused</span>
-                <div
-                  className="flex gap-1"
-                  role="tablist"
-                  aria-label="Focused company"
-                >
-                  {ready.map((e) => (
-                    <button
-                      key={e.id}
-                      type="button"
-                      role="tab"
-                      aria-selected={e.id === focusedId}
-                      onClick={() => focus(e.id)}
-                      className={`mp-interactive relative rounded-md px-2.5 py-1 font-mono text-xs ${e.id === focusedId ? "bg-inverse text-on-inverse" : "text-ink-3 hover:text-ink"}`}
-                    >
-                      {symbolOf(e)}
-                    </button>
-                  ))}
-                </div>
-                <span className="text-[12px] text-ink-3">
-                  {focusedReady.profile.name}
-                  {focusedReady.profile.cik
-                    ? ` · CIK ${focusedReady.profile.cik}`
-                    : ` · ${focusedReady.profile.exchanges[0] ?? focusedReady.profile.symbol}`}
-                  {focusedReady.profile.sic_description &&
-                    ` · ${focusedReady.profile.sic_description}`}
+        <div className="mt-6">
+          <ViewPanel view="matrix" active={view === "matrix"}>
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <VarianceLegend thresholdPct={threshold} />
+                <span className="text-[11.5px] text-ink-4">
+                  Click a column header to focus that company
                 </span>
               </div>
+              <div id="tour-matrix">
+                <FinancialsTable
+                  entries={entries}
+                  focusedId={focusedId}
+                  periodType={period}
+                  onFocus={focus}
+                  onRemove={remove}
+                  onAddClick={() => searchRef.current?.focus()}
+                />
+              </div>
+              <p className="text-[11px] text-ink-4">
+                Each column shows that company&apos;s own fiscal period;
+                variances compare it with the same period a year earlier. *
+                Fallback method or not meaningful — hover any value for its
+                source tag and details.
+              </p>
+              <div className="pt-6">
+                <HorizontalAnalysis
+                  entries={entries}
+                  periodType={period}
+                  focusedId={focusedId}
+                />
+              </div>
+            </div>
+          </ViewPanel>
 
-              {focusedReady.annual && (
+          <ViewPanel view="valuation" active={view === "valuation"}>
+            {focusedReady?.annual ? (
+              <div className="space-y-8">
+                {focusBar}
                 <Section
-                  title="Valuation"
-                  meta="Equity DCF at the CAPM cost of equity · drag assumptions to re-price"
+                  title="Equity DCF"
+                  meta="Free cash flow to equity at the CAPM cost of equity · drag assumptions to re-price"
                 >
                   <ValuationPanel
                     key={focusedReady.annual.cik ?? focusedReady.annual.symbol}
@@ -441,32 +427,55 @@ function Station() {
                     currency={focusedReady.annual.currency}
                   />
                 </Section>
-              )}
-            </>
-          )}
-        </main>
-
-        <div className="lg:col-start-2 xl:col-start-3 xl:row-start-1">
-          <SidePanel label="Intrinsic valuation">
-            <div id="tour-ivs">
-              {focusedReady?.annual ? (
-                // Keyed by company: market inputs refetch and sync overrides reset when focus moves.
-                <IntrinsicValuationStation
-                  key={focusedReady.id}
-                  companyId={focusedReady.id}
-                  symbol={symbolOf(focusedReady)}
-                  annualPeriods={focusedReady.annual.periods}
-                  currency={focusedReady.annual.currency}
-                />
-              ) : (
-                <div className="panel px-4 py-6 text-[13px] text-ink-3">
-                  Focus a company to run the Intrinsic Valuation Station.
+                <div className="grid items-start gap-6 lg:grid-cols-2">
+                  <div id="tour-dcf">
+                    <DcfCalculator symbol={symbolOf(focusedReady)} />
+                  </div>
+                  <div id="tour-ivs">
+                    {/* Keyed by company: market inputs refetch and sync overrides reset when focus moves. */}
+                    <IntrinsicValuationStation
+                      key={focusedReady.id}
+                      companyId={focusedReady.id}
+                      symbol={symbolOf(focusedReady)}
+                      annualPeriods={focusedReady.annual.periods}
+                      currency={focusedReady.annual.currency}
+                    />
+                  </div>
                 </div>
-              )}
-            </div>
-          </SidePanel>
+              </div>
+            ) : (
+              <div className="panel px-5 py-10 text-center text-[13px] text-ink-3">
+                Add a company to value it — the valuation tools follow the
+                focused company.
+              </div>
+            )}
+          </ViewPanel>
+
+          <ViewPanel view="discovery" active={view === "discovery"}>
+            {discoveryOpened && (
+              <EquityDiscovery
+                onAnalyze={(symbol) => {
+                  // The arrow adds the stock to the comparison and jumps to the statements.
+                  addToComparison(symbol);
+                  setView("matrix");
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+              />
+            )}
+          </ViewPanel>
+
+          <ViewPanel view="supply" active={view === "supply"}>
+            {supplyOpened && (
+              <div id="tour-supply">
+                <SupplyChainNetwork
+                  focusTicker={focused ? symbolOf(focused) : null}
+                  onInject={injectFromSupplyChain}
+                />
+              </div>
+            )}
+          </ViewPanel>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

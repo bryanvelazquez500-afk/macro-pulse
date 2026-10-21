@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Valuation slider state shared between the center Valuation panel and the side panel's
+ * Valuation slider state shared between the Valuation panel and the
  * Intrinsic Valuation Station, so moving Revenue Growth or Operating Margin re-prices both at once.
  * Kept per company: switching focus and back restores that company's slider positions.
  */

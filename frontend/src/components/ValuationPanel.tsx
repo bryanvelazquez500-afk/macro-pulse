@@ -119,7 +119,7 @@ export function ValuationPanel({
     [annualPeriods, ke, inputs.status],
   );
   const dark = useDarkMode();
-  // Shared with the side panel's Intrinsic Valuation Station, per company.
+  // Shared with the Intrinsic Valuation Station, per company.
   const [assumptions, setShared] = useAssumptions(companyId, baseline?.defaults ?? null);
 
   const valuation = useMemo(() => (baseline && assumptions ? project(baseline, assumptions) : null), [baseline, assumptions]);

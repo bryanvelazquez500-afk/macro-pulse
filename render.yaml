@@ -1,7 +1,8 @@
-# Render Blueprint — deploys both halves of MacroPulse from this repo (Dashboard → New → Blueprint).
+# Render Blueprint — deploys MacroPulse from this repo (Dashboard → New → Blueprint).
 # Values marked `sync: false` are asked for once in the Render dashboard and never stored in git.
 services:
-  # Python API (FastAPI + gunicorn), built from backend/Dockerfile.
+  # Python API (FastAPI + gunicorn), built from backend/Dockerfile. Free web services sleep after
+  # 15 idle minutes; .github/workflows/keep-api-awake.yml pings it so visitors don't wait for a wake-up.
   - type: web
     name: macropulse-api
     runtime: docker
@@ -13,22 +14,46 @@ services:
       # SEC EDGAR requires a contact on every request: "YourName your@email.com".
       - key: IS_SEC_USER_AGENT
         sync: false
-      # The website's public URL (Render added the -z27l suffix because "macropulse" was taken).
+      # Websites allowed to call the API: the original link, plus the static site's host from Render.
       - key: IS_CORS_ORIGINS
         value: https://macropulse-z27l.onrender.com
+      - key: IS_WEB_HOST
+        fromService:
+          type: web
+          name: macropulse-web
+          property: host
       - key: WEB_CONCURRENCY
         value: "1"
 
-  # Next.js website.
+  # The website as a static site: plain files on Render's CDN, free and never asleep.
+  - type: web
+    name: macropulse-web
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: out
+    headers:
+      # Build output is content-hashed, so browsers may keep it forever.
+      - path: /_next/static/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+    envVars:
+      # The API's public URL (read at build time, so changing it needs a rebuild).
+      - key: NEXT_PUBLIC_API_URL
+        value: https://macropulse-api-7cq2.onrender.com
+      - key: NODE_VERSION
+        value: "24"
+
+  # The original link (macropulse-z27l.onrender.com). It serves the same static build so shared links keep
+  # working; set REDIRECT_TO to send visitors to the fast static site instead.
   - type: web
     name: macropulse
     runtime: node
     rootDir: frontend
     plan: free
     buildCommand: npm ci && npm run build
-    startCommand: npm start
+    startCommand: node scripts/serve-static.mjs
     envVars:
-      # The API's public URL (read at build time, so changing it needs a rebuild).
       - key: NEXT_PUBLIC_API_URL
         value: https://macropulse-api-7cq2.onrender.com
       - key: NODE_VERSION

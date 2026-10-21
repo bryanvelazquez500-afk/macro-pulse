@@ -40,7 +40,7 @@ export function ViewTabs<K extends string>({
   }
 
   return (
-    <div role="tablist" aria-label={label} className="flex gap-1 border-b border-line">
+    <div role="tablist" aria-label={label} className="inline-flex max-w-full gap-1 overflow-x-auto rounded-xl bg-black/30 p-1 ring-1 ring-line ring-inset">
       {tabs.map((tab, i) => {
         const selected = tab.key === active;
         return (
@@ -58,22 +58,21 @@ export function ViewTabs<K extends string>({
             onClick={() => onChange(tab.key)}
             onKeyDown={(e) => onKeyDown(e, i)}
             title={tab.hint}
-            className={`relative -mb-px px-3 pt-2 pb-3 text-left transition-colors outline-none focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ink/30 ${
-              selected ? "text-ink" : "text-ink-3 hover:text-ink"
+            className={`relative shrink-0 rounded-lg px-4 py-2 text-left transition-colors outline-none focus-visible:ring-2 focus-visible:ring-macropulse-cyan/60 ${
+              selected ? "text-black" : "text-ink-3 hover:text-ink"
             }`}
           >
-            <span className="eyebrow mr-2 align-middle text-ink-4">{String.fromCharCode(65 + i)}</span>
-            <span className="align-middle text-[13px] font-medium tracking-tight">
-              <span className="hidden sm:inline">{tab.label}</span>
-              <span className="sm:hidden">{tab.short}</span>
-            </span>
             {selected && (
               <motion.span
                 layoutId={`${id}-indicator`}
-                className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-ink"
+                className="absolute inset-0 rounded-lg bg-macropulse-cyan shadow-[0_0_16px_rgba(0,240,255,0.35)]"
                 transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 500, damping: 40 }}
               />
             )}
+            <span className="relative text-[13px] font-semibold tracking-tight">
+              <span className="hidden sm:inline">{tab.label}</span>
+              <span className="sm:hidden">{tab.short}</span>
+            </span>
           </button>
         );
       })}

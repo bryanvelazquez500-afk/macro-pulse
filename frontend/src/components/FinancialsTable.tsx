@@ -624,7 +624,7 @@ export function FinancialsTable({
                 animate={{ opacity: 1, x: 0, scale: 1, filter: "blur(0px)" }}
                 exit={exit}
                 transition={spring}
-                className="w-[220px] shrink-0 grow border-r border-line bg-panel last:border-r-0 xl:w-auto xl:min-w-[200px] xl:basis-0"
+                className="w-[220px] shrink-0 grow border-r border-line bg-panel last:border-r-0 xl:w-auto xl:max-w-[440px] xl:min-w-[200px] xl:basis-0"
               >
                 <CompanyColumn
                   entry={entry}
@@ -649,7 +649,7 @@ export function FinancialsTable({
                 type="button"
                 onClick={onAddClick}
                 transition={spring}
-                className="flex w-[180px] shrink-0 grow-0 flex-col items-center justify-start gap-1 border-l border-dashed border-line-strong pt-10 text-ink-3 transition-colors hover:bg-subtle hover:text-ink"
+                className="flex w-[180px] shrink-0 grow flex-col items-center justify-start gap-1 border-l border-dashed border-line-strong pt-10 text-ink-3 transition-colors hover:bg-subtle hover:text-ink"
               >
                 {/* Top-aligned (not centered in a column ~2,000px tall) so the prompt is visible without scrolling. */}
                 <span className="grid size-9 place-items-center rounded-full text-xl leading-none text-macropulse-cyan ring-1 ring-macropulse-cyan/40">+</span>

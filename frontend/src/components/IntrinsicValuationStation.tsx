@@ -237,7 +237,7 @@ export function IntrinsicValuationStation({
             </span>
             <span className="font-mono text-[17px] font-semibold text-ink tabular-nums">{ke != null ? pct(ke) : "—"}</span>
           </div>
-          <p className="mt-0.5 text-[10.5px] text-ink-3">Discount rate for the DDM below. DCF values live in the DCF Calculator on the left.</p>
+          <p className="mt-0.5 text-[10.5px] text-ink-3">Discount rate for the DDM below. DCF values live in the DCF Calculator beside it.</p>
           <AnimatePresence>
             {sync.status === "done" && riskFree && (
               <motion.p

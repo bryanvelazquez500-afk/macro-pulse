@@ -19,14 +19,14 @@ export interface TourStep {
   title: string;
   text: string; // one friendly sentence
   /** Analysis tab to open for this step (its content only exists once the tab is shown). */
-  view?: "matrix" | "discovery" | "supply";
+  view?: "matrix" | "valuation" | "discovery" | "supply";
 }
 
 export const TOUR_STEPS: TourStep[] = [
   {
     target: "tour-search",
     title: "Equities Hub",
-    text: "Type any ticker or CIK here — US stocks or global listings like ASML.AS — and flip between Annual and Quarterly filings.",
+    text: "Type any ticker or CIK here — every US stock that files with the SEC, or global listings like ASML.AS — and flip between Annual and Quarterly filings.",
   },
   {
     target: "tour-matrix",
@@ -42,24 +42,26 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     target: "tour-tabs",
-    title: "Equity Discovery Map",
-    text: "Switch to the Discovery tab to scout world markets on a map, ranked by live market cap, and send any stock here with its arrow.",
+    title: "Four sections",
+    text: "Compare, Valuation, Discover and Supply chain — everything follows the companies you add. Discover scouts world markets on a map; its arrow sends a stock to Compare.",
+  },
+  {
+    target: "tour-dcf",
+    view: "valuation",
+    title: "DCF Calculator",
+    text: "This calculator values the focused company with a two-stage DCF — tweak growth, years and discount rate and the fair value updates instantly.",
+  },
+  {
+    target: "tour-ivs",
+    view: "valuation",
+    title: "Intrinsic Valuation Station",
+    text: "Cross-check with CAPM, the Dividend Discount Model and Graham's formula, and sync the live 10-year Treasury with one click.",
   },
   {
     target: "tour-supply",
     view: "supply",
     title: "Supply Chain Network",
     text: "Type any ticker to map who supplies and buys from it, straight from SEC filings — click a bubble to read what the filings say about each other.",
-  },
-  {
-    target: "tour-dcf",
-    title: "DCF Valuation Panel",
-    text: "This calculator values the focused company with a two-stage DCF — tweak growth, years and discount rate and the fair value updates instantly.",
-  },
-  {
-    target: "tour-ivs",
-    title: "Intrinsic Valuation Station",
-    text: "Cross-check with CAPM, the Dividend Discount Model and Graham's formula, and sync the live 10-year Treasury with one click.",
   },
   {
     target: "tour-news",
@@ -74,7 +76,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     target: "tour-watchlist",
     title: "Watchlist",
-    text: "Keep tickers you're tracking here and click one to drop it straight into the comparison.",
+    text: "Open your watchlist from here and click a ticker to drop it straight into the comparison.",
   },
 ];
 
@@ -148,9 +150,8 @@ function Robot() {
 
 export function PulseBotTour({ onClose, onView }: { onClose: () => void; onView?: (view: NonNullable<TourStep["view"]>) => void }) {
   const reduceMotion = useReducedMotion();
-  // Only steps whose target exists right now (e.g. horizontal analysis needs a loaded company).
-  // Steps whose target is on the page, plus tab steps (their content appears once the tab opens).
-  const [steps] = useState(() => TOUR_STEPS.filter((s) => (s.view && s.view !== "matrix") || document.getElementById(s.target)));
+  // Hidden tabs stay mounted, so Compare and Valuation targets exist once a company is loaded.
+  const [steps] = useState(() => TOUR_STEPS.filter((s) => s.view === "discovery" || s.view === "supply" || document.getElementById(s.target)));
   const [index, setIndex] = useState(0);
   const [rect, setRect] = useState<Rect | null>(null);
   const card = useRef<HTMLDivElement>(null);

@@ -70,6 +70,15 @@ class Settings(BaseSettings):
             return [o.strip().rstrip("/") for o in text.split(",") if o.strip()]
         return value
 
+    # Host of the deployed website (Render fills it in from the static site's service, see render.yaml);
+    # its https origin is allowed on top of cors_origins.
+    web_host: str | None = None
+
+    @property
+    def allowed_origins(self) -> list[str]:
+        extra = [f"https://{self.web_host.strip().removeprefix('https://').rstrip('/')}"] if self.web_host else []
+        return [*self.cors_origins, *extra]
+
 
 @lru_cache
 def get_settings() -> Settings:

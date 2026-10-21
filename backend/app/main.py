@@ -56,7 +56,7 @@ app = FastAPI(title="MacroPulse API", lifespan=lifespan)
 app.add_middleware(GZipMiddleware, minimum_size=1024)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=get_settings().cors_origins,
+    allow_origins=get_settings().allowed_origins,
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )

@@ -895,7 +895,7 @@ function CompanyCard({ entry, periodType, defaultOpen }: { entry: CompanyEntry; 
                 <TrendChart cells={selCells} label={sel.label} mode={mode} unit={sel.unit} currency={currency} />
               </div>
 
-              <div className="max-h-[560px] overflow-auto rounded-lg ring-1 ring-white/5 ring-inset">
+              <div className="overflow-x-auto rounded-lg ring-1 ring-white/5 ring-inset">
                 <table className="w-full border-separate border-spacing-0 text-[11.5px]">
                   <thead className="sticky top-0 z-20">
                     <tr className="text-ink-4">
