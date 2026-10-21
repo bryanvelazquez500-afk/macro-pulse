@@ -439,10 +439,10 @@ function Station() {
                   />
                 </Section>
                 <div className="grid items-start gap-6 lg:grid-cols-2">
-                  <div id="tour-dcf">
+                  <div id="tour-dcf" className="min-w-0">
                     <DcfCalculator symbol={symbolOf(focusedReady)} />
                   </div>
-                  <div id="tour-ivs">
+                  <div id="tour-ivs" className="min-w-0">
                     {/* Keyed by company: market inputs refetch and sync overrides reset when focus moves. */}
                     <IntrinsicValuationStation
                       key={focusedReady.id}

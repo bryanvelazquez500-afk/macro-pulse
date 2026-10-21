@@ -4,7 +4,7 @@
  * Supply Chain Network: a force-directed web of a company's suppliers and clients (force-graph, HTML5
  * canvas, loaded only when this tab opens).
  *
- *   suppliers ──cyan──▶ company ──green──▶ clients      (fading lines, arrows and flowing particles)
+ *   suppliers ──blue──▶ company ──green──▶ clients      (fading lines, arrows and flowing particles)
  *
  * Nodes are glowing glass bubbles labelled "Name · TICKER"; private companies get a dashed, dim outline.
  * Clicking a company opens its relationship card: what flows between the two, verbatim sentences from
@@ -144,7 +144,7 @@ function Graph({ data, onPick }: { data: SupplyChainGraph; onPick: (node: Supply
           ctx.arc(n.x ?? 0, n.y ?? 0, n.role === "focus" ? 15 : 10, 0, 2 * Math.PI);
           ctx.fill();
         })
-        // Fading neon lines: dim at the supplier, bright at the client.
+        // Fading lines: light at the supplier, strong at the client.
         .linkColor(() => "rgba(0,0,0,0)")
         .linkCanvasObjectMode(() => "before")
         .linkCanvasObject((l, ctx, scale) => {
@@ -582,7 +582,7 @@ export function SupplyChainNetwork({ focusTicker, onInject }: { focusTicker: str
   );
 }
 
-/** Neon-green confirmation banner for an injected ticker. */
+/** Green confirmation banner for an injected ticker. */
 export function InjectBanner({ message, onDone }: { message: string | null; onDone: () => void }) {
   useEffect(() => {
     if (!message) return;
