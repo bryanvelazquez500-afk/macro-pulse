@@ -98,9 +98,9 @@ const HEIGHT: Record<Row["kind"], string> = {
   section: "h-10",
   metric: "h-[54px]",
   ratio: "h-11",
-  piotroski: "h-[54px]",
-  altman: "h-[54px]",
-  sloan: "h-[54px]",
+  piotroski: "h-[62px]",
+  altman: "h-[62px]",
+  sloan: "h-[62px]",
 };
 const HEADER_H = "h-[112px]";
 
@@ -228,7 +228,7 @@ function Cell({ row, period, currency }: { row: Row; period: FinancialPeriod | u
             {f.score}
             <span className="text-ink-3">/9</span>
           </div>
-          <div className="mt-1 h-4 leading-4">
+          <div className="mt-1 h-5 leading-5">
             <Zone zone={zone} />
           </div>
         </div>
@@ -247,7 +247,7 @@ function Cell({ row, period, currency }: { row: Row; period: FinancialPeriod | u
       return (
         <div className="text-right">
           <div className="text-[14px] font-semibold text-ink tabular-nums">{row.kind === "altman" ? s.value.toFixed(2) : formatChange(s.value)}</div>
-          <div className="mt-1 h-4 leading-4">
+          <div className="mt-1 h-5 leading-5">
             {s.zone && <Zone zone={s.zone} label={row.kind === "sloan" && s.zone === "high" ? "warn" : undefined} />}
           </div>
         </div>

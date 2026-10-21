@@ -14,7 +14,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { FinancialPeriod, HelperMetricKey, MetricKey, PeriodType } from "@/lib/api";
 import { CompanyEntry, symbolOf } from "@/lib/comparisonStore";
-import { currencySymbol, formatChange, formatMoney, formatShares, periodLabel } from "@/lib/format";
+import { Segmented } from "@/components/Segmented";
+import { currencySymbol, formatAccounting, formatChange, formatShares, periodLabel } from "@/lib/format";
+import { GRAND_TOTALS, SUBTOTALS } from "@/lib/ledger";
+import { flow } from "@/lib/motion";
+import { Pt, smoothArea, smoothLine } from "@/lib/smoothPath";
 
 type Mode = "change" | "index" | "value";
 type Statement = "all" | "income" | "cash" | "balance";
@@ -111,6 +115,10 @@ const MODES: { key: Mode; label: string; hint: string }[] = [
   { key: "value", label: "Values", hint: "as reported" },
 ];
 
+// Ledger table cells: uppercase header labels over a strong rule, hairline-ruled rows.
+const TH = "border-b border-line-strong bg-panel px-4 py-3 text-[11px] leading-4 font-bold tracking-[0.09em] whitespace-nowrap text-ink-3 uppercase";
+const TD = "border-t border-line px-4 py-2.5";
+
 // ── data ────────────────────────────────────────────────────────────────────
 
 interface Cell {
@@ -164,18 +172,53 @@ function cagr(cells: Cell[]): number | null {
   return ((last.value! / first.value!) ** (1 / years) - 1) * 100;
 }
 
+/** Display value; money and per-share negatives in parentheses (accounting style). */
 function fmt(v: number | null, unit: Unit, currency: string): string {
   if (v == null) return "—";
   if (unit === "shares") return formatShares(v);
-  if (unit === "perShare") return `${v < 0 ? "-" : ""}${currencySymbol(currency)}${Math.abs(v).toFixed(2)}`;
-  return formatMoney(v, currency);
+  if (unit === "perShare") {
+    const abs = `${currencySymbol(currency)}${Math.abs(v).toFixed(2)}`;
+    return v < 0 ? `(${abs})` : abs;
+  }
+  return formatAccounting(v, currency);
 }
 
-// Diverging tint: emerald for growth, rose for decline, transparent at zero; saturates at ±40%.
-function tint(change: number | null): string | undefined {
-  if (change == null) return undefined;
-  const a = Math.min(Math.abs(change), 40) / 40;
-  return change >= 0 ? `rgba(52, 211, 153, ${0.06 + a * 0.3})` : `rgba(251, 113, 133, ${0.06 + a * 0.3})`;
+/** Width of the element, kept in sync as it resizes (charts draw in SVG units = CSS pixels). */
+function useWidth(initial = 720) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(initial);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setWidth(el.clientWidth));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return [ref, width] as const;
+}
+
+/** Small smooth sparkline for the CAGR tiles: spruce line over a mint area, last point emphasised. */
+function Sparkline({ values }: { values: (number | null)[] }) {
+  const [ref, width] = useWidth(160);
+  const pts = values.map((v, i) => (v == null ? null : ([i, v] as [number, number])));
+  const real = pts.filter((p): p is [number, number] => p != null);
+  const H = 36;
+  if (real.length < 2) return <div ref={ref} className="h-9" />;
+  const lo = Math.min(...real.map((p) => p[1]));
+  const hi = Math.max(...real.map((p) => p[1]));
+  const sx = (i: number) => 3 + (i / Math.max(1, values.length - 1)) * (width - 6);
+  const sy = (v: number) => 4 + (1 - (v - lo) / (hi - lo || 1)) * (H - 8);
+  const xy = pts.map((p) => (p ? ([sx(p[0]), sy(p[1])] as Pt) : null));
+  const last = real[real.length - 1];
+  return (
+    <div ref={ref} className="h-9">
+      <svg width={width} height={H} aria-hidden className="overflow-visible">
+        <path d={smoothArea(xy, H)} fill="var(--mint)" opacity={0.7} />
+        <path d={smoothLine(xy)} pathLength={1} className="chart-draw" fill="none" stroke="var(--spruce)" strokeWidth={2} strokeLinecap="round" />
+        <circle cx={sx(last[0])} cy={sy(last[1])} r={3} fill="var(--spruce)" stroke="var(--panel)" strokeWidth={2} />
+      </svg>
+    </div>
+  );
 }
 
 // ── chart ───────────────────────────────────────────────────────────────────
@@ -193,37 +236,32 @@ function TrendChart({
   unit: Unit;
   currency: string;
 }) {
-  const wrap = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(720);
+  const [wrap, width] = useWidth();
   const [hover, setHover] = useState<number | null>(null);
-  const reduceMotion = useReducedMotion();
-
-  useEffect(() => {
-    const el = wrap.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => setWidth(el.clientWidth));
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
 
   // % change plots the index (a level), so the line stays readable; the tooltip carries the change.
   const y = (c: Cell) => (mode === "value" ? c.value : c.index);
   const pts = cells.map((c, i) => ({ i, c, v: y(c) })).filter((p): p is { i: number; c: Cell; v: number } => p.v != null);
-  const H = 190;
-  const pad = { l: 64, r: 30, t: 14, b: 26 };
-  if (pts.length < 2) return <p className="py-6 text-center text-[12px] text-ink-3">Not enough history to chart {label}.</p>;
+  const H = 220;
+  const pad = { l: 72, r: 24, t: 16, b: 30 };
+  if (pts.length < 2) return <p className="py-8 text-center text-[13px] text-ink-3">Not enough history to chart {label}.</p>;
 
   const lo = Math.min(...pts.map((p) => p.v), mode === "value" ? 0 : Infinity);
   const hi = Math.max(...pts.map((p) => p.v));
   const span = hi - lo || Math.abs(hi) || 1;
-  const [y0, y1] = [lo - span * 0.08, hi + span * 0.08];
+  const [y0, y1] = [lo - span * 0.08, hi + span * 0.1];
   const sx = (i: number) => pad.l + (cells.length === 1 ? 0 : (i / (cells.length - 1)) * (width - pad.l - pad.r));
   const sy = (v: number) => pad.t + (1 - (v - y0) / (y1 - y0)) * (H - pad.t - pad.b);
-  const ticks = [0, 0.5, 1].map((f) => y0 + (y1 - y0) * f);
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => y0 + (y1 - y0) * f);
   const yLabel = (v: number) => (mode === "value" ? fmt(v, unit, currency) : v.toFixed(0));
-  const path = pts.map((p, k) => `${k ? "L" : "M"}${sx(p.i).toFixed(1)},${sy(p.v).toFixed(1)}`).join("");
+  const xy = cells.map((c) => {
+    const v = y(c);
+    return v == null ? null : ([sx(cells.indexOf(c)), sy(v)] as Pt);
+  });
+  const baseY = sy(Math.max(y0, Math.min(y1, mode === "value" ? 0 : y0)));
   const step = Math.max(1, Math.ceil(cells.length / 10));
   const hovered = hover != null ? cells[hover] : null;
+  const last = pts[pts.length - 1];
 
   return (
     <div ref={wrap} className="relative">
@@ -241,53 +279,47 @@ function TrendChart({
       >
         {ticks.map((t) => (
           <g key={t}>
-            <line x1={pad.l} x2={width - pad.r} y1={sy(t)} y2={sy(t)} stroke="rgba(255,255,255,0.06)" />
-            <text x={pad.l - 8} y={sy(t) + 3.5} textAnchor="end" className="fill-ink-3 text-[10px]">
+            <line x1={pad.l} x2={width - pad.r} y1={sy(t)} y2={sy(t)} stroke="var(--line)" />
+            <text x={pad.l - 10} y={sy(t) + 4} textAnchor="end" className="fill-ink-3 text-[11px]">
               {yLabel(t)}
             </text>
           </g>
         ))}
         {mode !== "value" && y0 < 100 && y1 > 100 && (
-          <line x1={pad.l} x2={width - pad.r} y1={sy(100)} y2={sy(100)} stroke="rgba(255,255,255,0.25)" strokeDasharray="3 3" />
+          <line x1={pad.l} x2={width - pad.r} y1={sy(100)} y2={sy(100)} stroke="var(--line-strong)" strokeDasharray="3 4" />
         )}
         {cells.map((c, i) =>
           i % step === 0 || i === cells.length - 1 ? (
-            <text key={c.period.end} x={sx(i)} y={H - 8} textAnchor="middle" className="fill-ink-3 text-[10px]">
+            <text key={c.period.end} x={sx(i)} y={H - 8} textAnchor="middle" className="fill-ink-3 text-[11px]">
               {periodLabel(c.period).replace("FY", "")}
             </text>
           ) : null,
         )}
-        <motion.path
-          d={path}
-          fill="none"
-          stroke="#00f0ff"
-          strokeWidth={2}
-          strokeLinejoin="round"
-          strokeLinecap="round"
-          initial={reduceMotion ? false : { pathLength: 0 }}
-          animate={{ pathLength: 1 }}
-          transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
-          key={`${label}-${mode}-${cells.length}`}
-        />
-        {pts.map((p) => (
-          <circle key={p.i} cx={sx(p.i)} cy={sy(p.v)} r={hover === p.i ? 5 : 3} fill="#0a0b0d" stroke="#00f0ff" strokeWidth={2} />
-        ))}
-        {hover != null && <line x1={sx(hover)} x2={sx(hover)} y1={pad.t} y2={H - pad.b} stroke="rgba(255,255,255,0.3)" />}
+        {/* Keyed so each new selection draws in again, left to right. */}
+        <g key={`${label}-${mode}-${cells.length}`}>
+          <path d={smoothArea(xy, baseY)} fill="var(--mint)" opacity={0.75} />
+          <path d={smoothLine(xy)} pathLength={1} className="chart-draw" fill="none" stroke="var(--spruce)" strokeWidth={2} strokeLinecap="round" />
+        </g>
+        {hover != null && <line x1={sx(hover)} x2={sx(hover)} y1={pad.t} y2={H - pad.b} stroke="var(--line-strong)" />}
+        {hover != null && hovered && y(hovered) != null && (
+          <circle cx={sx(hover)} cy={sy(y(hovered)!)} r={4} fill="var(--panel)" stroke="var(--spruce)" strokeWidth={2} />
+        )}
+        <circle cx={sx(last.i)} cy={sy(last.v)} r={4.5} fill="var(--spruce)" stroke="var(--panel)" strokeWidth={2} />
       </svg>
       {hovered && (
         <div
-          className="pointer-events-none absolute top-1 z-10 w-44 rounded-md border border-line bg-panel px-2.5 py-2 text-[11px] shadow-xl"
-          style={{ left: Math.min(Math.max(sx(hover!) - 88, 0), width - 176) }}
+          className="pointer-events-none absolute top-1 z-10 w-48 rounded-md border border-line bg-panel px-3 py-2.5 text-[13px] shadow-2"
+          style={{ left: Math.min(Math.max(sx(hover!) - 96, 0), width - 192) }}
         >
           <div className="font-semibold text-ink">{periodLabel(hovered.period)}</div>
-          <div className="text-ink-4">ended {hovered.period.end}</div>
-          <div className="mt-1 flex justify-between gap-2">
+          <div className="font-mono text-[12px] text-ink-3">ended {hovered.period.end}</div>
+          <div className="mt-1.5 flex justify-between gap-2">
             <span className="text-ink-3">Value</span>
-            <span className="text-ink">{fmt(hovered.value, unit, currency)}</span>
+            <span className="font-semibold text-ink">{fmt(hovered.value, unit, currency)}</span>
           </div>
           <div className="flex justify-between gap-2">
             <span className="text-ink-3">Change</span>
-            <span className="text-ink">{hovered.change == null ? "—" : `${hovered.change >= 0 ? "▲" : "▼"} ${formatChange(hovered.change)}`}</span>
+            <Delta change={hovered.change} />
           </div>
           <div className="flex justify-between gap-2">
             <span className="text-ink-3">Index</span>
@@ -299,12 +331,28 @@ function TrendChart({
   );
 }
 
+/** "calc" marks a derived line item. */
+function CalcTag() {
+  return <span className="ml-1.5 rounded-xs bg-mint px-1 py-px align-middle font-mono text-[10px] font-medium text-mint-ink">calc</span>;
+}
+
+/** A percent change with its direction: ▲ gain / ▼ loss, never color alone. */
+function Delta({ change, className = "" }: { change: number | null; className?: string }) {
+  if (change == null) return <span className={`text-ink-3 ${className}`}>—</span>;
+  const up = change >= 0;
+  return (
+    <span className={`whitespace-nowrap ${up ? "text-gain" : "text-loss"} ${className}`}>
+      <span aria-hidden>{up ? "▲" : "▼"}</span> {formatChange(change)}
+    </span>
+  );
+}
 
 // ── vertical analysis ────────────────────────────────────────────────────────
 
-// Validated categorical palette (dataviz reference, dark steps; all checks pass on #121418). A series keeps its
-// slot while other selections change — color follows the line item, never its position.
-const SERIES_COLORS = ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181", "#008300", "#9085e9", "#e66767"];
+// Validated categorical palette (dataviz reference; --series-1..8 hold the light and dark steps, both checked
+// against the panel color). A series keeps its slot while other selections change — color follows the line
+// item, never its position.
+const SERIES_COLORS = Array.from({ length: 8 }, (_, i) => `var(--series-${i + 1})`);
 const MAX_PICKS = SERIES_COLORS.length;
 const MONEY_ROWS = ALL_ROWS.filter((r) => r.unit === "money");
 const rowByKey = new Map(ALL_ROWS.map((r) => [r.key, r]));
@@ -329,23 +377,14 @@ function VerticalChart({
   periods: FinancialPeriod[];
   series: { key: string; label: string; color: string; dashed?: boolean; values: (number | null)[] }[];
 }) {
-  const wrap = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(720);
+  const [wrap, width] = useWidth();
   const [hover, setHover] = useState<number | null>(null);
-  const reduceMotion = useReducedMotion();
-  useEffect(() => {
-    const el = wrap.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => setWidth(el.clientWidth));
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
 
-  const H = 220;
-  const labelRoom = series.length <= 4 ? 120 : 16; // direct labels at line ends when there are few series
-  const pad = { l: 48, r: labelRoom, t: 12, b: 26 };
+  const H = 240;
+  const labelRoom = series.length <= 4 ? 128 : 20; // direct labels at line ends when there are few series
+  const pad = { l: 52, r: labelRoom, t: 14, b: 30 };
   const all = series.flatMap((s) => s.values.filter((v): v is number => v != null));
-  if (periods.length < 2 || all.length === 0) return <p className="py-6 text-center text-[12px] text-ink-3">Pick line items to compare.</p>;
+  if (periods.length < 2 || all.length === 0) return <p className="py-8 text-center text-[13px] text-ink-3">Pick line items to compare.</p>;
   const lo = Math.min(0, ...all);
   const hi = Math.max(...all);
   const span = hi - lo || 1;
@@ -354,19 +393,7 @@ function VerticalChart({
   const sy = (v: number) => pad.t + (1 - (v - y0) / (y1 - y0)) * (H - pad.t - pad.b);
   const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => y0 + (y1 - y0) * f);
   const step = Math.max(1, Math.ceil(periods.length / 10));
-  const path = (values: (number | null)[]) => {
-    let d = "";
-    let pen = false;
-    values.forEach((v, i) => {
-      if (v == null) {
-        pen = false;
-        return;
-      }
-      d += `${pen ? "L" : "M"}${sx(i).toFixed(1)},${sy(v).toFixed(1)}`;
-      pen = true;
-    });
-    return d;
-  };
+  const line = (values: (number | null)[]) => smoothLine(values.map((v, i) => (v == null ? null : ([sx(i), sy(v)] as Pt))));
 
   return (
     <div ref={wrap} className="relative">
@@ -384,40 +411,32 @@ function VerticalChart({
       >
         {ticks.map((t) => (
           <g key={t}>
-            <line x1={pad.l} x2={width - pad.r} y1={sy(t)} y2={sy(t)} stroke="rgba(255,255,255,0.06)" />
-            <text x={pad.l - 8} y={sy(t) + 3.5} textAnchor="end" className="fill-ink-3 text-[10px]">
+            <line x1={pad.l} x2={width - pad.r} y1={sy(t)} y2={sy(t)} stroke="var(--line)" />
+            <text x={pad.l - 10} y={sy(t) + 4} textAnchor="end" className="fill-ink-3 text-[11px]">
               {t.toFixed(0)}%
             </text>
           </g>
         ))}
-        {y0 < 0 && y1 > 0 && <line x1={pad.l} x2={width - pad.r} y1={sy(0)} y2={sy(0)} stroke="rgba(255,255,255,0.25)" />}
+        {y0 < 0 && y1 > 0 && <line x1={pad.l} x2={width - pad.r} y1={sy(0)} y2={sy(0)} stroke="var(--line-strong)" />}
         {periods.map((p, i) =>
           i % step === 0 || i === periods.length - 1 ? (
-            <text key={p.end} x={sx(i)} y={H - 8} textAnchor="middle" className="fill-ink-3 text-[10px]">
+            <text key={p.end} x={sx(i)} y={H - 8} textAnchor="middle" className="fill-ink-3 text-[11px]">
               {periodLabel(p).replace("FY", "")}
             </text>
           ) : null,
         )}
-        {series.map((s) => (
-          <motion.path
-            key={s.key}
-            d={path(s.values)}
-            fill="none"
-            stroke={s.color}
-            strokeWidth={2}
-            strokeDasharray={s.dashed ? "5 4" : undefined}
-            strokeLinejoin="round"
-            strokeLinecap="round"
-            initial={reduceMotion ? false : { pathLength: 0, opacity: 0 }}
-            animate={{ pathLength: 1, opacity: 1 }}
-            transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
-          />
-        ))}
+        {series.map((s) =>
+          s.dashed ? (
+            <path key={s.key} d={line(s.values)} fill="none" stroke={s.color} strokeWidth={2} strokeDasharray="5 4" strokeLinecap="round" />
+          ) : (
+            <path key={s.key} d={line(s.values)} pathLength={1} className="chart-draw" fill="none" stroke={s.color} strokeWidth={2} strokeLinecap="round" />
+          ),
+        )}
         {series.map((s) =>
           s.values.map((v, i) =>
             v == null ? null : (
-              // 2px surface ring keeps overlapping markers legible.
-              <circle key={`${s.key}-${i}`} cx={sx(i)} cy={sy(v)} r={hover === i ? 4.5 : 2.5} fill={s.color} stroke="#121418" strokeWidth={2} />
+              // A panel-colored ring keeps overlapping markers legible.
+              <circle key={`${s.key}-${i}`} cx={sx(i)} cy={sy(v)} r={hover === i ? 4.5 : 2.5} fill={s.color} stroke="var(--panel)" strokeWidth={2} />
             ),
           ),
         )}
@@ -426,17 +445,17 @@ function VerticalChart({
             const lastIdx = s.values.map((v, i) => (v == null ? -1 : i)).filter((i) => i >= 0).pop();
             if (lastIdx == null) return null;
             return (
-              <text key={`lbl-${s.key}`} x={sx(lastIdx) + 8} y={sy(s.values[lastIdx]!) + 3.5} className="fill-ink-2 text-[10.5px]">
+              <text key={`lbl-${s.key}`} x={sx(lastIdx) + 10} y={sy(s.values[lastIdx]!) + 4} className="fill-ink-2 text-[12px] font-medium">
                 {s.label.length > 16 ? `${s.label.slice(0, 15)}…` : s.label}
               </text>
             );
           })}
-        {hover != null && <line x1={sx(hover)} x2={sx(hover)} y1={pad.t} y2={H - pad.b} stroke="rgba(255,255,255,0.3)" />}
+        {hover != null && <line x1={sx(hover)} x2={sx(hover)} y1={pad.t} y2={H - pad.b} stroke="var(--line-strong)" />}
       </svg>
       {hover != null && (
         <div
-          className="pointer-events-none absolute top-1 z-10 w-56 rounded-md border border-line bg-panel px-2.5 py-2 text-[11px] shadow-xl"
-          style={{ left: Math.min(Math.max(sx(hover) - 112, 0), width - 224) }}
+          className="pointer-events-none absolute top-1 z-10 w-60 rounded-md border border-line bg-panel px-3 py-2.5 text-[13px] shadow-2"
+          style={{ left: Math.min(Math.max(sx(hover) - 120, 0), width - 240) }}
         >
           <div className="mb-1 font-semibold text-ink">{periodLabel(periods[hover])}</div>
           {[...series]
@@ -447,7 +466,7 @@ function VerticalChart({
                   <span className="h-0.5 w-3 shrink-0 rounded" style={{ background: s.color }} />
                   <span className="truncate">{s.label}</span>
                 </span>
-                <span className="text-ink">{s.values[hover] == null ? "—" : `${s.values[hover]!.toFixed(1)}%`}</span>
+                <span className="font-semibold text-ink">{s.values[hover] == null ? "—" : `${s.values[hover]!.toFixed(1)}%`}</span>
               </div>
             ))}
         </div>
@@ -500,9 +519,9 @@ function VerticalView({ periods, currency, periodType }: { periods: FinancialPer
   type Series = { key: string; label: string; color: string; dashed?: boolean; values: (number | null)[] };
   const series: Series[] = [
     ...rows.map((r) => ({ key: r.key, label: r.row.label, color: SERIES_COLORS[r.slot], values: r.values })),
-    ...(combined ? [{ key: "sum", label: "Σ selected", color: "#e6edf3", dashed: true, values: combined }] : []),
+    ...(combined ? [{ key: "sum", label: "Σ selected", color: "var(--ink-2)", dashed: true, values: combined }] : []),
   ];
-  const tableRows = [...rows.map((r) => ({ key: r.key, label: r.row.label, color: SERIES_COLORS[r.slot], values: r.values })), ...(combined ? [{ key: "sum", label: "Σ selected", color: "#e6edf3", values: combined }] : [])];
+  const tableRows = [...rows.map((r) => ({ key: r.key, label: r.row.label, color: SERIES_COLORS[r.slot], values: r.values })), ...(combined ? [{ key: "sum", label: "Σ selected", color: "var(--ink-2)", values: combined }] : [])];
   const avg = (vs: (number | null)[]) => {
     const xs = vs.filter((v): v is number => v != null);
     return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null;
@@ -518,12 +537,12 @@ function VerticalView({ periods, currency, periodType }: { periods: FinancialPer
       initial={reduceMotion ? false : { opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.2 }}
-      className="space-y-4"
+      transition={flow(2)}
+      className="space-y-5"
     >
       {/* Presets + base */}
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-[11px] text-ink-4">Presets</span>
+        <span className="eyebrow mr-1">Presets</span>
         {PRESETS.map((pr) => (
           <button
             key={pr.key}
@@ -531,14 +550,14 @@ function VerticalView({ periods, currency, periodType }: { periods: FinancialPer
             onClick={() => applyPreset(pr.key)}
             aria-pressed={preset === pr.key}
             title={pr.hint}
-            className={`rounded-full px-2.5 py-1 text-[11px] font-medium ring-1 ring-inset transition ${
-              preset === pr.key ? "bg-mint text-spruce ring-spruce/50" : "text-ink-3 ring-line hover:text-ink"
+            className={`rounded-full border px-3 py-1.5 text-[13px] font-semibold transition-colors duration-[var(--dur-2)] ${
+              preset === pr.key ? "border-transparent bg-mint text-mint-ink" : "border-line-strong bg-panel text-ink-2 hover:border-spruce hover:text-spruce"
             }`}
           >
             {pr.label}
           </button>
         ))}
-        <label className="ml-auto flex items-center gap-2 text-[11.5px] text-ink-3">
+        <label className="ml-auto flex items-center gap-2 text-[13px] font-semibold text-ink-2">
           Base (= 100%)
           <select
             value={base}
@@ -546,7 +565,7 @@ function VerticalView({ periods, currency, periodType }: { periods: FinancialPer
               setBase(e.target.value);
               setPreset(null);
             }}
-            className="h-8 rounded-md bg-canvas px-2 text-[12px] text-ink ring-1 ring-line outline-none ring-inset focus:ring-spruce"
+            className="field !py-1.5 font-semibold"
           >
             {SECTIONS.map((sec) => (
               <optgroup key={sec.key} label={sec.label}>
@@ -564,11 +583,11 @@ function VerticalView({ periods, currency, periodType }: { periods: FinancialPer
       </div>
 
       {/* Line-item picker */}
-      <div className="space-y-2 rounded-lg border border-line bg-canvas p-3">
-        <div className="flex items-baseline justify-between gap-2">
-          <span className="text-[11.5px] font-medium text-ink-2">Line items as % of {baseRow.label}</span>
-          <span className="flex items-center gap-3 text-[10.5px] text-ink-4">
-            <label className={`flex items-center gap-1.5 ${shownPicks.length >= 2 ? "cursor-pointer text-ink-3" : "opacity-40"}`}>
+      <div className="space-y-3 rounded-md border border-line bg-canvas p-4">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <span className="text-[14px] font-semibold text-ink">Line items as % of {baseRow.label}</span>
+          <span className="flex items-center gap-3 text-[13px] text-ink-3">
+            <label className={`flex items-center gap-1.5 ${shownPicks.length >= 2 ? "cursor-pointer text-ink-2" : "opacity-50"}`}>
               <input
                 type="checkbox"
                 checked={showSum}
@@ -586,7 +605,7 @@ function VerticalView({ periods, currency, periodType }: { periods: FinancialPer
           if (!options.length) return null;
           return (
             <div key={sec.key} className="flex flex-wrap items-center gap-1.5">
-              <span className="w-24 shrink-0 text-[10px] tracking-wide text-ink-4 uppercase">{sec.label.split(" ·")[0]}</span>
+              <span className="eyebrow w-28 shrink-0">{sec.label.split(" ·")[0]}</span>
               {options.map((r) => {
                 const pick = shownPicks.find((p) => p.key === r.key);
                 const isBase = r.key === base;
@@ -599,13 +618,13 @@ function VerticalView({ periods, currency, periodType }: { periods: FinancialPer
                     disabled={isBase || full}
                     aria-pressed={!!pick}
                     title={isBase ? "This is the base (100%)" : full ? `Up to ${MAX_PICKS} line items` : undefined}
-                    className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] ring-1 ring-inset transition disabled:cursor-not-allowed disabled:opacity-40 ${
-                      pick ? "bg-subtle text-ink ring-line-strong" : "text-ink-3 ring-line hover:text-ink"
+                    className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[13px] transition-colors duration-[var(--dur-2)] disabled:cursor-not-allowed disabled:opacity-45 ${
+                      pick ? "border-line-strong bg-panel font-semibold text-ink shadow-1" : "border-line bg-transparent text-ink-2 hover:border-spruce hover:text-spruce"
                     }`}
                   >
                     {pick && <span aria-hidden className="size-2 rounded-full" style={{ background: SERIES_COLORS[pick.slot] }} />}
                     {r.label}
-                    {isBase && <span className="text-[9.5px] text-ink-4">base</span>}
+                    {isBase && <span className="rounded-xs bg-mint px-1 font-mono text-[10px] text-mint-ink">base</span>}
                   </button>
                 );
               })}
@@ -615,33 +634,33 @@ function VerticalView({ periods, currency, periodType }: { periods: FinancialPer
       </div>
 
       {/* Chart */}
-      <div className="rounded-lg border border-line bg-canvas p-3">
-        <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+      <div className="panel p-5">
+        <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1">
           {series.map((s) => (
-            <span key={s.key} className="flex items-center gap-1.5 text-[11px] text-ink-2">
+            <span key={s.key} className="flex items-center gap-1.5 text-[13px] text-ink-2">
               <span className="h-0.5 w-4 rounded" style={{ background: s.color, opacity: s.dashed ? 0.8 : 1 }} />
               {s.label}
             </span>
           ))}
-          <span className="ml-auto text-[10.5px] text-ink-4">% of {baseRow.label} · hover for details</span>
+          <span className="ml-auto text-[13px] text-ink-3">% of {baseRow.label} · hover for details</span>
         </div>
         <VerticalChart periods={periods} series={series} />
       </div>
 
       {/* Table */}
       {tableRows.length > 0 && (
-        <div className="overflow-x-auto rounded-lg ring-1 ring-line ring-inset">
-          <table className="w-full border-separate border-spacing-0 text-[11.5px]">
+        <div className="panel overflow-x-auto">
+          <table className="w-full border-separate border-spacing-0 text-[14px]">
             <thead>
-              <tr className="text-ink-4">
-                <th className="sticky left-0 z-10 bg-panel px-3 py-2 text-left font-medium">% of {baseRow.label}</th>
+              <tr>
+                <th className={`${TH} sticky left-0 z-10 text-left`}>% of {baseRow.label}</th>
                 {periods.map((p) => (
-                  <th key={p.end} className="bg-panel px-2.5 py-2 text-right font-mono font-medium whitespace-nowrap">
+                  <th key={p.end} className={`${TH} text-right font-mono normal-case`}>
                     {periodLabel(p)}
                   </th>
                 ))}
-                <th className="bg-panel px-3 py-2 text-right font-medium whitespace-nowrap">Average</th>
-                <th className="bg-panel px-3 py-2 text-right font-medium whitespace-nowrap" title="Change from the first to the last period, in percentage points">
+                <th className={`${TH} text-right`}>Average</th>
+                <th className={`${TH} text-right`} title="Change from the first to the last period, in percentage points">
                   Shift (pp)
                 </th>
               </tr>
@@ -651,8 +670,8 @@ function VerticalView({ periods, currency, periodType }: { periods: FinancialPer
                 const a = avg(r.values);
                 const d = shift(r.values);
                 return (
-                  <tr key={r.key} className={r.key === "sum" ? "font-semibold" : ""}>
-                    <th scope="row" className="sticky left-0 z-10 border-t border-line bg-panel px-3 py-1.5 text-left font-medium whitespace-nowrap text-ink-2">
+                  <tr key={r.key} className={`group ${r.key === "sum" ? "font-bold" : ""}`}>
+                    <th scope="row" className={`${TD} sticky left-0 z-10 bg-panel text-left font-semibold whitespace-nowrap text-ink group-hover:bg-subtle ${r.key === "sum" ? "!border-t-ink-3" : ""}`}>
                       <span className="flex items-center gap-1.5">
                         <span aria-hidden className="h-0.5 w-3 rounded" style={{ background: r.color }} />
                         {r.label}
@@ -661,18 +680,18 @@ function VerticalView({ periods, currency, periodType }: { periods: FinancialPer
                     {r.values.map((v, i) => (
                       <td
                         key={periods[i].end}
-                        className="border-t border-line px-2.5 py-1.5 text-right whitespace-nowrap"
+                        className={`${TD} text-right whitespace-nowrap ${r.key === "sum" ? "!border-t-ink-3" : ""}`}
                         // Sequential (one hue) intensity by magnitude: how big a share of the base it is.
-                        style={{ backgroundColor: v == null ? undefined : `rgba(0,240,255,${Math.min(Math.abs(v), 100) / 100 * 0.22})` }}
+                        style={{ backgroundColor: v == null ? undefined : `color-mix(in srgb, var(--mint) ${Math.round(Math.min(Math.abs(v), 100))}%, transparent)` }}
                         title={`${periodLabel(periods[i])}: ${fmt(r.key === "sum" ? null : (rowByKey.get(r.key)?.get(periods[i]) ?? null), "money", currency)} of ${fmt(baseRow.get(periods[i]), "money", currency)}`}
                       >
-                        <span className="text-ink tabular-nums">{v == null ? "—" : `${v.toFixed(1)}%`}</span>
+                        <span className={`font-semibold tabular-nums ${v != null && v < 0 ? "text-loss" : "text-ink"}`}>{v == null ? "—" : v < 0 ? `(${Math.abs(v).toFixed(1)}%)` : `${v.toFixed(1)}%`}</span>
                       </td>
                     ))}
-                    <td className="border-t border-line px-3 py-1.5 text-right text-ink tabular-nums">{a == null ? "—" : `${a.toFixed(1)}%`}</td>
-                    <td className="border-t border-line px-3 py-1.5 text-right tabular-nums">
-                      {d == null ? <span className="text-ink-4">—</span> : (
-                        <span className="text-ink">
+                    <td className={`${TD} text-right font-semibold text-ink tabular-nums group-hover:bg-subtle`}>{a == null ? "—" : `${a.toFixed(1)}%`}</td>
+                    <td className={`${TD} text-right tabular-nums group-hover:bg-subtle`}>
+                      {d == null ? <span className="text-ink-3">—</span> : (
+                        <span className={d >= 0 ? "text-gain" : "text-loss"}>
                           {d >= 0 ? "▲" : "▼"} {d >= 0 ? "+" : "−"}
                           {Math.abs(d).toFixed(1)}
                         </span>
@@ -685,7 +704,7 @@ function VerticalView({ periods, currency, periodType }: { periods: FinancialPer
           </table>
         </div>
       )}
-      <p className="text-[10.5px] leading-snug text-ink-4">
+      <p className="text-[13px] leading-5 text-ink-3">
         Vertical analysis divides each selected line item by the base in the same {periodType === "annual" ? "fiscal year" : "quarter"}. Flows (income,
         cash flow) and period-end balances can be mixed — e.g. net income ÷ stockholders&apos; equity is return on equity. &ldquo;Show Σ of
         selected&rdquo; adds the picked items before dividing — useful for combinations like COGS + SG&amp;A (shown when every one is reported).
@@ -696,41 +715,22 @@ function VerticalView({ periods, currency, periodType }: { periods: FinancialPer
 
 // ── card ────────────────────────────────────────────────────────────────────
 
-function Segmented<T extends string>({ value, options, onChange, label }: { value: T; options: { key: T; label: string; title?: string }[]; onChange: (v: T) => void; label: string }) {
+/** CAGR tile: label → big figure (▲ gain / ▼ loss) → smooth sparkline of the line item. */
+function CagrTile({ label, value, values }: { label: string; value: number | null; values: (number | null)[] }) {
   return (
-    <div role="radiogroup" aria-label={label} className="inline-flex rounded-lg bg-canvas p-0.5 ring-1 ring-line ring-inset">
-      {options.map((o) => (
-        <button
-          key={o.key}
-          type="button"
-          role="radio"
-          aria-checked={value === o.key}
-          title={o.title}
-          onClick={() => onChange(o.key)}
-          className={`rounded-md px-2.5 py-1 text-[11.5px] font-medium transition ${
-            value === o.key ? "bg-mint text-spruce ring-1 ring-spruce/50 ring-inset" : "text-ink-3 hover:text-ink"
-          }`}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: number | null }) {
-  return (
-    <div className="rounded-md bg-subtle px-2.5 py-1.5 ring-1 ring-line ring-inset">
-      <div className="text-[10px] tracking-wide text-ink-4 uppercase">{label}</div>
-      <div className={`text-[13px] font-semibold tabular-nums ${value == null ? "text-ink-4" : "text-ink"}`}>
-        {value == null ? "n/m" : (
+    <div className="rounded-md border border-line bg-panel p-4">
+      <div className="eyebrow truncate">{label}</div>
+      <div className={`type-big-figure mt-1 ${value == null ? "text-ink-3" : value >= 0 ? "text-gain" : "text-loss"}`}>
+        {value == null ? (
+          "n/m"
+        ) : (
           <>
-            <span aria-hidden className={value >= 0 ? "text-gain" : "text-loss"}>
-              {value >= 0 ? "▲" : "▼"}
-            </span>{" "}
-            {formatChange(value)}
+            <span aria-hidden className="text-[16px]">{value >= 0 ? "▲" : "▼"}</span> {formatChange(value)}
           </>
         )}
+      </div>
+      <div className="mt-2">
+        <Sparkline values={values} />
       </div>
     </div>
   );
@@ -772,7 +772,13 @@ function CompanyCard({ entry, periodType, defaultOpen }: { entry: CompanyEntry; 
   const sel = ALL_ROWS.find((r) => r.key === selected) ?? ALL_ROWS[0];
   const selCells = useMemo(() => buildCells(periods, all, sel, periodType), [periods, all, sel, periodType]);
   const headline = useMemo(
-    () => ["revenue", "net_income", "eps", "free_cash_flow"].map((k) => ({ key: k, row: ALL_ROWS.find((r) => r.key === k)! })).map(({ key, row }) => ({ key, label: row.label, cagr: cagr(buildCells(periods, all, row, periodType)) })),
+    () =>
+      ["revenue", "net_income", "eps", "free_cash_flow"]
+        .map((k) => ({ key: k, row: ALL_ROWS.find((r) => r.key === k)! }))
+        .map(({ key, row }) => {
+          const cells = buildCells(periods, all, row, periodType);
+          return { key, label: row.label, cagr: cagr(cells), values: cells.map((c) => c.value) };
+        }),
     [periods, all, periodType],
   );
   const first = periods[0];
@@ -781,35 +787,40 @@ function CompanyCard({ entry, periodType, defaultOpen }: { entry: CompanyEntry; 
   const rowCount = sections.reduce((n, sec) => n + sec.rows.length, 0);
 
   return (
-    <div className={`overflow-hidden rounded-xl border bg-panel backdrop-blur-md transition-colors ${open ? "border-spruce/40" : "border-line hover:border-line-strong"}`}>
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        aria-controls={id}
-        className="flex w-full flex-wrap items-center gap-x-5 gap-y-3 px-4 py-3.5 text-left"
-      >
-        <div className="flex min-w-36 items-center gap-3">
-          <span aria-hidden className={`grid size-7 place-items-center rounded-md text-[13px] text-spruce ring-1 ring-spruce/50 transition-transform ${open ? "rotate-90" : ""}`}>
+    <div className={`panel overflow-hidden ${open ? "" : "card-lift"}`}>
+      <div className="space-y-4 p-6 max-sm:p-4">
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          aria-controls={id}
+          className="flex w-full flex-wrap items-center gap-x-5 gap-y-2 text-left"
+        >
+          <motion.span
+            aria-hidden
+            animate={{ rotate: open ? 90 : 0 }}
+            transition={flow(2)}
+            className="grid size-8 place-items-center rounded-full bg-mint text-[16px] text-mint-ink"
+          >
             ›
-          </span>
-          <div className="min-w-0">
-            <div className="font-mono text-[15px] font-bold text-ink">{symbolOf(entry)}</div>
-            <div className="max-w-48 truncate text-[11px] text-ink-3">{entry.profile?.name}</div>
+          </motion.span>
+          <div className="min-w-0 flex-1">
+            <div className="font-mono text-[20px] leading-7 font-bold text-ink">{symbolOf(entry)}</div>
+            <div className="truncate text-[13px] text-ink-3">{entry.profile?.name}</div>
           </div>
-        </div>
-        <div className="flex flex-1 flex-wrap gap-2">
+          <div className="text-right text-[13px] text-ink-3">
+            <div className="font-mono text-ink-2">{first && last ? `${periodLabel(first)} → ${periodLabel(last)}` : "No history"}</div>
+            <div>
+              {periods.length} {forms} · {open ? "click to collapse" : "click to expand"}
+            </div>
+          </div>
+        </button>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(150px,1fr))]">
           {headline.map((h) => (
-            <Stat key={h.key} label={`${h.label} CAGR`} value={h.cagr} />
+            <CagrTile key={h.key} label={`${h.label} CAGR`} value={h.cagr} values={h.values} />
           ))}
         </div>
-        <div className="text-right text-[11px] text-ink-3">
-          <div className="font-mono text-ink-2">{first && last ? `${periodLabel(first)} → ${periodLabel(last)}` : "No history"}</div>
-          <div>
-            {periods.length} {forms} · {open ? "click to collapse" : "click to expand"}
-          </div>
-        </div>
-      </button>
+      </div>
 
       <AnimatePresence initial={false}>
         {open && (
@@ -818,38 +829,20 @@ function CompanyCard({ entry, periodType, defaultOpen }: { entry: CompanyEntry; 
             initial={reduceMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={reduceMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+            transition={flow(3)}
             className="overflow-hidden border-t border-line"
           >
-            <div className="space-y-4 p-4">
+            <div className="space-y-5 p-6 max-sm:p-4">
               <div className="flex flex-wrap items-center gap-3">
-                <div role="radiogroup" aria-label="Analysis method" className="inline-flex rounded-xl bg-canvas p-1 ring-1 ring-spruce/40 ring-inset">
-                  {(
-                    [
-                      ["horizontal", "Horizontal", "trend over time"],
-                      ["vertical", "Vertical", "% of a base"],
-                    ] as const
-                  ).map(([key, label, sub]) => (
-                    <button
-                      key={key}
-                      type="button"
-                      role="radio"
-                      aria-checked={analysis === key}
-                      onClick={() => setAnalysis(key)}
-                      className={`relative rounded-lg px-3.5 py-1.5 text-left transition ${analysis === key ? "text-on-spruce" : "text-ink-3 hover:text-ink"}`}
-                    >
-                      {analysis === key && (
-                        <motion.span
-                          layoutId={`ha-method-${entry.id}`}
-                          className="absolute inset-0 rounded-lg bg-spruce"
-                          transition={{ type: "spring", stiffness: 420, damping: 34 }}
-                        />
-                      )}
-                      <span className="relative block text-[12px] font-semibold">{label}</span>
-                      <span className={`relative block text-[10px] ${analysis === key ? "text-on-spruce/80" : "text-ink-4"}`}>{sub}</span>
-                    </button>
-                  ))}
-                </div>
+                <Segmented
+                  label="Analysis method"
+                  value={analysis}
+                  onChange={setAnalysis}
+                  options={[
+                    { key: "horizontal", label: "Horizontal", title: "Trend over time" },
+                    { key: "vertical", label: "Vertical", title: "% of a base" },
+                  ]}
+                />
                 <Segmented
                   label="Time span"
                   value={String(years) as "5" | "10"}
@@ -863,12 +856,12 @@ function CompanyCard({ entry, periodType, defaultOpen }: { entry: CompanyEntry; 
                   <>
                     <Segmented label="Display" value={mode} onChange={setMode} options={MODES.map((m) => ({ key: m.key, label: m.label, title: m.hint }))} />
                     <Segmented label="Statement" value={statement} onChange={setStatement} options={STATEMENT_OPTIONS} />
-                    <span className="ml-auto text-[11px] text-ink-4">{rowCount} line items</span>
+                    <span className="ml-auto text-[13px] text-ink-3">{rowCount} line items</span>
                   </>
                 )}
               </div>
               {short && (
-                <p className="rounded-md bg-caution-bg px-3 py-1.5 text-[11.5px] text-caution ring-1 ring-caution/30 ring-inset">
+                <p className="rounded-sm bg-caution-bg px-4 py-2 text-[13px] text-caution">
                   {entry.profile?.name ?? symbolOf(entry)} has {all.length} {periodType === "annual" ? "annual" : "quarterly"} reports ({forms}) on file so far —
                   showing all of them.
                 </p>
@@ -881,31 +874,32 @@ function CompanyCard({ entry, periodType, defaultOpen }: { entry: CompanyEntry; 
                     initial={reduceMotion ? false : { opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="space-y-4"
+                    transition={flow(2)}
+                    className="space-y-5"
                   >
-              <div className="rounded-lg border border-line bg-canvas p-3">
-                <div className="mb-1 flex items-baseline justify-between gap-2">
-                  <h4 className="text-[13px] font-semibold text-ink">
+              <div className="rounded-md border border-line bg-panel p-5">
+                <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+                  <h4 className="type-card text-ink">
                     {sel.label}
-                    {sel.derived && <span className="ml-1.5 text-[10.5px] font-normal text-ink-4">derived</span>}
+                    {sel.derived && <CalcTag />}
                   </h4>
-                  <span className="text-[10.5px] text-ink-4">{mode === "value" ? `as reported, ${currency}` : "index · first period = 100 · hover for details"}</span>
+                  <span className="text-[13px] text-ink-3">{mode === "value" ? `as reported, ${currency}` : "index · first period = 100 · hover for details"}</span>
                 </div>
                 <TrendChart cells={selCells} label={sel.label} mode={mode} unit={sel.unit} currency={currency} />
               </div>
 
-              <div className="overflow-x-auto rounded-lg ring-1 ring-line ring-inset">
-                <table className="w-full border-separate border-spacing-0 text-[11.5px]">
-                  <thead className="sticky top-0 z-20">
-                    <tr className="text-ink-4">
-                      <th className="sticky left-0 z-30 bg-panel px-3 py-2 text-left font-medium">Line item</th>
+              <div className="rounded-lg border border-line bg-panel shadow-1">
+                <div className="overflow-x-auto rounded-lg">
+                <table className="w-full border-separate border-spacing-0 text-[14px]">
+                  <thead>
+                    <tr>
+                      <th className={`${TH} sticky left-0 z-20 text-left`}>Line item</th>
                       {periods.map((p) => (
-                        <th key={p.end} className="bg-panel px-2.5 py-2 text-right font-mono font-medium whitespace-nowrap" title={`Period ended ${p.end}`}>
+                        <th key={p.end} className={`${TH} text-right font-mono normal-case`} title={`Period ended ${p.end}`}>
                           {periodLabel(p)}
                         </th>
                       ))}
-                      <th className="bg-panel px-3 py-2 text-right font-medium whitespace-nowrap">CAGR</th>
+                      <th className={`${TH} text-right`}>CAGR</th>
                     </tr>
                   </thead>
                   {sections.map((sec) => (
@@ -914,7 +908,7 @@ function CompanyCard({ entry, periodType, defaultOpen }: { entry: CompanyEntry; 
                         <th
                           colSpan={periods.length + 2}
                           scope="colgroup"
-                          className="sticky left-0 border-t border-line bg-panel px-3 py-1.5 text-left text-[10px] font-semibold tracking-[0.14em] text-spruce uppercase"
+                          className="sticky left-0 border-t border-line bg-canvas px-4 py-2 text-left text-[11px] leading-4 font-bold tracking-[0.09em] text-spruce uppercase"
                         >
                           {sec.label}
                         </th>
@@ -922,52 +916,52 @@ function CompanyCard({ entry, periodType, defaultOpen }: { entry: CompanyEntry; 
                       {sec.rows.map(({ row, cells }) => {
                         const growth = cagr(cells);
                         const active = row.key === sel.key;
+                        // Accounting rules: a single rule above subtotals, a double rule under grand totals.
+                        const rule = SUBTOTALS.has(row.key)
+                          ? "!border-t-ink-3 font-semibold"
+                          : GRAND_TOTALS.has(row.key)
+                            ? "border-b-[3px] border-double border-b-spruce-strong font-bold"
+                            : "";
+                        const bg = active ? "bg-mint" : "bg-panel group-hover:bg-subtle";
                         return (
-                          <tr
-                            key={row.key}
-                            onClick={() => setSelected(row.key)}
-                            aria-selected={active}
-                            className={`group cursor-pointer transition-colors ${active ? "bg-mint" : "hover:bg-subtle"}`}
-                          >
+                          <tr key={row.key} onClick={() => setSelected(row.key)} aria-selected={active} className="group cursor-pointer">
                             <th
                               scope="row"
-                              className={`sticky left-0 z-10 border-t border-line px-3 py-1.5 text-left font-medium whitespace-nowrap transition-colors ${
-                                active ? "bg-mint text-spruce" : "bg-panel text-ink-2 group-hover:text-ink"
-                              }`}
+                              className={`${TD} ${rule} ${bg} sticky left-0 z-10 text-left whitespace-nowrap transition-colors duration-[var(--dur-1)] ${
+                                active ? "text-mint-ink" : "text-ink"
+                              } ${rule ? "" : "font-medium"}`}
                             >
                               {row.label}
-                              {row.derived && <span className="ml-1 text-[9.5px] font-normal text-ink-4">calc</span>}
+                              {row.derived && <CalcTag />}
                             </th>
                             {cells.map((c, i) => {
-                              const main =
-                                mode === "value"
-                                  ? fmt(c.value, row.unit, currency)
-                                  : mode === "index"
-                                    ? c.index == null
-                                      ? "n/m"
-                                      : c.index.toFixed(0)
-                                    : c.change == null
-                                      ? i === 0 && c.value != null
-                                        ? "base"
-                                        : "—"
-                                      : `${c.change >= 0 ? "▲" : "▼"} ${formatChange(c.change)}`;
+                              const neg = c.value != null && c.value < 0 && row.unit !== "shares";
+                              const top =
+                                mode === "index" ? (c.index == null ? "n/m" : c.index.toFixed(0)) : fmt(c.value, row.unit, currency);
                               return (
-                                <motion.td
+                                <td
                                   key={c.period.end}
-                                  initial={reduceMotion ? false : { opacity: 0, y: 4 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  transition={{ delay: reduceMotion ? 0 : Math.min(i * 0.02, 0.4), duration: 0.25 }}
-                                  style={{ backgroundColor: mode === "change" ? tint(c.change) : undefined }}
-                                  className="border-t border-line px-2.5 py-1.5 text-right whitespace-nowrap"
+                                  className={`${TD} ${rule} ${bg} text-right whitespace-nowrap transition-colors duration-[var(--dur-1)]`}
                                   title={`${periodLabel(c.period)}: ${fmt(c.value, row.unit, currency)}${c.change == null ? "" : ` · ${formatChange(c.change)} vs prior`}${c.index == null ? "" : ` · index ${c.index.toFixed(1)}`}`}
                                 >
-                                  <div className="text-ink tabular-nums">{main}</div>
-                                  {mode !== "value" && <div className="text-[10px] text-ink-4 tabular-nums">{fmt(c.value, row.unit, currency)}</div>}
-                                </motion.td>
+                                  <div
+                                    className={`tabular-nums ${rule.includes("font-bold") ? "font-bold" : "font-semibold"} ${
+                                      top === "n/m" ? "text-ink-3" : mode !== "index" && neg ? "text-loss" : "text-ink"
+                                    }`}
+                                  >
+                                    {top}
+                                  </div>
+                                  {mode === "change" && (
+                                    <div className="text-[12px] font-medium tabular-nums">
+                                      {c.change == null ? <span className="text-ink-3">{i === 0 && c.value != null ? "base" : "—"}</span> : <Delta change={c.change} />}
+                                    </div>
+                                  )}
+                                  {mode === "index" && <div className="text-[12px] text-ink-3 tabular-nums">{fmt(c.value, row.unit, currency)}</div>}
+                                </td>
                               );
                             })}
-                            <td className="border-t border-line px-3 py-1.5 text-right whitespace-nowrap text-ink tabular-nums">
-                              {growth == null ? <span className="text-ink-4">n/m</span> : formatChange(growth)}
+                            <td className={`${TD} ${rule} ${bg} text-right whitespace-nowrap tabular-nums transition-colors duration-[var(--dur-1)]`}>
+                              {growth == null ? <span className="text-ink-3">n/m</span> : <Delta change={growth} className="font-semibold" />}
                             </td>
                           </tr>
                         );
@@ -975,8 +969,9 @@ function CompanyCard({ entry, periodType, defaultOpen }: { entry: CompanyEntry; 
                     </tbody>
                   ))}
                 </table>
+                </div>
               </div>
-              <p className="text-[10.5px] leading-snug text-ink-4">
+              <p className="text-[13px] leading-5 text-ink-3">
                 {periodType === "annual"
                   ? `Each fiscal year (${form}) is compared with the one before.`
                   : "Each quarter (10-Q) is compared with the same quarter a year earlier. Q4 has no 10-Q — it's in the annual 10-K; switch to Annual to include it. Q2/Q3 cash flows are year-to-date figures minus the prior quarter's."}{" "}
@@ -1001,25 +996,22 @@ export function HorizontalAnalysis({ entries, periodType, focusedId }: { entries
   if (ready.length === 0) return null;
   const openId = ready.some((e) => e.id === focusedId) ? focusedId : ready[0].id;
   return (
-    <section id="horizontal-analysis" aria-labelledby="ha-title" className="scroll-mt-28 space-y-4 rounded-2xl border border-line bg-gradient-to-b from-mint/40 to-transparent p-5">
+    <section id="horizontal-analysis" aria-labelledby="ha-title" className="scroll-mt-28 space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="flex items-start gap-3">
-          <span aria-hidden className="mt-1 h-9 w-1 rounded-full bg-spruce" />
-          <div>
-            <div className="eyebrow text-spruce">Trend over time · {periodType === "annual" ? "annual reports" : "quarterly 10-Qs"}</div>
-            <h2 id="ha-title" className="mt-0.5 text-xl font-semibold tracking-tight text-ink">
-              Horizontal &amp; Vertical Analysis
-            </h2>
-            <p className="mt-0.5 text-[12.5px] text-ink-3">
-              Horizontal: every line item across 5–10 years. Vertical: any line items as a % of the base you choose.
-            </p>
-          </div>
+        <div>
+          <div className="eyebrow !text-spruce">Trend over time · {periodType === "annual" ? "annual reports" : "quarterly 10-Qs"}</div>
+          <h2 id="ha-title" className="type-section mt-1 text-ink max-sm:!text-[24px] max-sm:!leading-[30px]">
+            Horizontal &amp; vertical analysis
+          </h2>
+          <p className="mt-1 text-[15px] text-ink-3">
+            Horizontal: every line item across 5–10 years. Vertical: any line items as a % of the base you choose.
+          </p>
         </div>
-        <span className="rounded-full bg-subtle px-3 py-1 text-[11px] text-ink-3 ring-1 ring-line ring-inset">
+        <span className="rounded-full bg-subtle px-3 py-1 text-[13px] font-semibold text-ink-2">
           {ready.length} {ready.length === 1 ? "company" : "companies"}
         </span>
       </div>
-      <div className="space-y-2.5">
+      <div className="space-y-6">
         {ready.map((e) => (
           <CompanyCard key={`${e.id}:${periodType}`} entry={e} periodType={periodType} defaultOpen={e.id === openId} />
         ))}
