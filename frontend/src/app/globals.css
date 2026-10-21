@@ -146,26 +146,194 @@ body {
   }
 }
 
-/* Shared primitives — kept here so every panel and label reads identically. */
+/* Shared primitives — kept here so every panel, control and label reads identically. */
 @layer components {
-  /* Glass card sheet: thin translucent edge, frosted MacroPulse panel. */
+  /* Ledger card: white sheet, hairline rule, soft shadow. */
   .panel {
-    @apply rounded-md border border-white/5 bg-macropulse-panel backdrop-blur-md;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-1);
+  }
+  /* Cards that respond to the pointer lift with a deeper shadow. */
+  .card-lift {
+    transition: box-shadow var(--dur-2) var(--ease-flow), transform var(--dur-2) var(--ease-flow);
+  }
+  .card-lift:hover {
+    box-shadow: var(--shadow-2);
+    transform: translateY(-1px);
   }
   .eyebrow {
-    @apply text-[11px] leading-4 font-bold tracking-[0.09em] text-ink-3 uppercase;
+    font-size: 11px;
+    line-height: 16px;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--ink-3);
   }
   .field {
-    @apply rounded-md border border-line-strong bg-panel px-3 py-2 text-sm text-ink outline-none placeholder:text-ink-4 focus:border-ink focus:ring-0;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--control-border);
+    background: var(--canvas);
+    padding: 9px 14px;
+    font-size: 14px;
+    line-height: 20px;
+    color: var(--ink);
+    outline: none;
+    transition: border-color var(--dur-1) var(--ease-flow), box-shadow var(--dur-1) var(--ease-flow);
+  }
+  .field::placeholder {
+    color: var(--ink-4);
+  }
+  .field:focus,
+  .field:focus-visible {
+    border-color: var(--spruce);
+    box-shadow: 0 0 0 4px var(--mint);
+    outline: none;
+  }
+  .field-pill {
+    border-radius: var(--radius-pill);
+  }
+
+  /* Buttons: primary (spruce), secondary (outlined panel), ghost (spruce text). */
+  .btn-primary,
+  .btn-secondary,
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-radius: var(--radius-sm);
+    padding: 10px 16px;
+    font-size: 14px;
+    line-height: 20px;
+    font-weight: 600;
+    white-space: nowrap;
+    transition:
+      background-color var(--dur-1) var(--ease-flow),
+      border-color var(--dur-1) var(--ease-flow),
+      box-shadow var(--dur-1) var(--ease-flow),
+      color var(--dur-1) var(--ease-flow),
+      transform var(--dur-1) var(--ease-flow);
   }
   .btn-primary {
-    @apply rounded-md bg-inverse px-4 py-2 text-sm font-medium text-on-inverse transition-opacity hover:opacity-85 disabled:opacity-40;
+    background: var(--spruce);
+    color: var(--on-spruce);
+    border: 1px solid transparent;
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: var(--spruce-strong);
+    box-shadow: var(--shadow-2);
+  }
+  .btn-secondary {
+    background: var(--panel);
+    color: var(--ink-2);
+    border: 1px solid var(--control-border);
+  }
+  .btn-secondary:hover:not(:disabled),
+  .btn-secondary[aria-expanded="true"] {
+    background: var(--subtle);
+    color: var(--ink);
   }
   .btn-ghost {
-    @apply rounded-md border border-line-strong px-3 py-2 text-sm text-ink-2 transition-colors hover:bg-subtle;
+    background: transparent;
+    color: var(--spruce);
+    border: 1px solid transparent;
+  }
+  .btn-ghost:hover:not(:disabled) {
+    background: var(--mint);
+    color: var(--mint-ink);
+  }
+  .btn-sm {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+  .btn-primary:active:not(:disabled),
+  .btn-secondary:active:not(:disabled),
+  .btn-ghost:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+  .btn-primary:disabled,
+  .btn-secondary:disabled,
+  .btn-ghost:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
   }
   .link {
-    @apply text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink;
+    color: var(--spruce);
+    text-decoration: underline;
+    text-decoration-color: var(--line-strong);
+    text-underline-offset: 2px;
+  }
+  .link:hover {
+    text-decoration-color: var(--spruce);
+  }
+
+  /* Segmented control: a pill track; the selected segment is a raised panel "thumb" (animated by
+     Framer Motion's layoutId so it slides between segments) with spruce text. */
+  .seg-track {
+    display: inline-flex;
+    max-width: 100%;
+    gap: 2px;
+    overflow-x: auto;
+    border-radius: var(--radius-pill);
+    background: var(--subtle);
+    padding: 4px;
+    scrollbar-width: none;
+  }
+  .seg-item {
+    position: relative;
+    flex-shrink: 0;
+    border-radius: var(--radius-pill);
+    padding: 6px 14px;
+    font-size: 13px;
+    line-height: 20px;
+    font-weight: 600;
+    color: var(--ink-3);
+    transition: color var(--dur-2) var(--ease-flow);
+  }
+  .seg-item:hover {
+    color: var(--ink);
+  }
+  .seg-item[aria-selected="true"],
+  .seg-item[aria-pressed="true"],
+  .seg-item[aria-checked="true"] {
+    color: var(--spruce);
+  }
+  .seg-item > * {
+    position: relative; /* above the thumb */
+  }
+  .seg-thumb {
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius-pill);
+    background: var(--panel);
+    box-shadow: var(--shadow-1);
+  }
+  .seg-sm .seg-item {
+    padding: 4px 10px;
+    font-size: 12px;
+  }
+
+  /* Status pill: uppercase label with a leading dot (forensic zones, flags). */
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: var(--radius-pill);
+    padding: 2px 8px;
+    font-size: 11px;
+    line-height: 16px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .pill::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: currentColor;
   }
 }
 
@@ -183,7 +351,7 @@ body {
 .ed-pulse {
   transform-box: fill-box;
   transform-origin: center;
-  animation: ed-pulse 1.8s ease-out infinite;
+  animation: ed-pulse 1.8s var(--ease-flow) infinite;
 }
 @media (prefers-reduced-motion: reduce) {
   .ed-pulse {
@@ -192,45 +360,34 @@ body {
 }
 
 /*
- * MacroPulse hover: stock rows, ticker badges and map countries scale up slightly, brighten, and glow in
- * macropulse-cyan. One curve everywhere: 0.3s cubic-bezier(0.4, 0, 0.2, 1).
- *  - .mp-interactive       HTML elements (CSS drives the scale)
- *  - .mp-interactive-glow  elements whose transform Framer Motion already drives (peer pills): glow and
- *                          brighten only, with the matching scale set in Framer — a CSS transform
- *                          transition would fight its per-frame inline transform
- * The background is brightened with an inset shadow layered over whatever background the element has,
- * so it transitions smoothly (gradients can't).
+ * MacroPulse hover (one curve everywhere, no glows):
+ *  - .mp-interactive       rows, tickers and buttons: a soft ink wash layered over whatever background the
+ *                          element has (an inset shadow, so it animates where gradients can't)
+ *  - .mp-interactive-glow  the same for elements whose transform Framer Motion drives (peer pills)
  */
 @layer components {
-  .mp-interactive {
-    transition: all 0.3s var(--mp-ease);
-    transform-origin: center;
-  }
-  .mp-interactive:hover,
-  .mp-interactive:focus-visible {
-    transform: scale(1.02);
-    box-shadow: var(--mp-glow);
-    z-index: 1; /* above neighbours it now overlaps (needs a positioned element) */
-  }
+  .mp-interactive,
   .mp-interactive-glow {
     transition:
-      box-shadow 0.3s var(--mp-ease),
-      background-color 0.3s var(--mp-ease),
-      border-color 0.3s var(--mp-ease),
-      color 0.3s var(--mp-ease);
+      box-shadow var(--dur-1) var(--ease-flow),
+      background-color var(--dur-1) var(--ease-flow),
+      border-color var(--dur-1) var(--ease-flow),
+      color var(--dur-1) var(--ease-flow);
   }
+  .mp-interactive:hover,
+  .mp-interactive:focus-visible,
   .mp-interactive-glow:hover:not([aria-disabled="true"]),
   .mp-interactive-glow:focus-visible {
-    box-shadow: var(--mp-glow);
+    box-shadow: inset 0 0 0 100vmax color-mix(in srgb, var(--ink) 5%, transparent);
   }
 }
 
 /* Map countries: SVG can't take box-shadow, so the hovered country is redrawn on top (so neighbours
-   don't cover its enlarged edge) and pops in with a cyan drop-shadow on the same curve. */
+   don't cover its enlarged edge) and eases in on the shared curve. */
 .mp-country-hover {
   transform-box: fill-box;
   transform-origin: center;
-  animation: mp-country-pop 0.3s var(--mp-ease) forwards;
+  animation: mp-country-pop var(--dur-2) var(--ease-flow) forwards;
 }
 @keyframes mp-country-pop {
   from {
@@ -244,64 +401,16 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .mp-interactive:hover,
-  .mp-interactive:focus-visible {
-    transform: none;
-  }
   .mp-country-hover {
     animation: none;
   }
 }
 
-/* Pulse-Bot (guided tour): levitation, neon-amber pulse ring, blinking eyes, glowing exit. */
-.pulsebot-levitate {
-  animation: pulsebot-float 2.8s ease-in-out infinite;
-}
-.pulsebot-ring {
-  box-shadow: 0 0 0 0 rgba(255, 183, 0, 0.55);
-  animation: pulsebot-pulse 1.8s ease-out infinite;
-}
-.pulsebot-antenna {
-  animation: pulsebot-glow 1.8s ease-in-out infinite;
-}
+/* Pulse-Bot (guided tour): blinking eyes only — no glows, no bouncing. */
 .pulsebot-eye {
   transform-box: fill-box;
   transform-origin: center;
-  animation: pulsebot-blink 4s ease-in-out infinite;
-}
-.pulsebot-exit {
-  box-shadow: 0 0 18px rgba(0, 255, 102, 0.55);
-  animation: pulsebot-exit-glow 1.4s ease-in-out infinite;
-}
-#help-tour-trigger {
-  box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.6), 0 8px 24px rgba(0, 0, 0, 0.45);
-  animation: pulsebot-help 2.4s ease-out infinite;
-}
-@keyframes pulsebot-float {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-5px);
-  }
-}
-@keyframes pulsebot-pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(255, 183, 0, 0.55);
-  }
-  100% {
-    box-shadow: 0 0 0 12px rgba(255, 183, 0, 0);
-  }
-}
-@keyframes pulsebot-glow {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.45;
-  }
+  animation: pulsebot-blink 4s var(--ease-flow) infinite;
 }
 @keyframes pulsebot-blink {
   0%,
@@ -313,32 +422,35 @@ body {
     transform: scaleY(0.1);
   }
 }
-@keyframes pulsebot-exit-glow {
+
+/* Live dot (news strip): a soft breathing pulse. */
+.mp-live-dot {
+  animation: mp-live 2.4s var(--ease-flow) infinite;
+}
+@keyframes mp-live {
   0%,
   100% {
-    box-shadow: 0 0 12px rgba(0, 255, 102, 0.45);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--brass) 45%, transparent);
   }
-  50% {
-    box-shadow: 0 0 26px rgba(0, 255, 102, 0.85);
+  60% {
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--brass) 0%, transparent);
   }
 }
-@keyframes pulsebot-help {
-  0% {
-    box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.6), 0 8px 24px rgba(0, 0, 0, 0.45);
-  }
-  70%,
-  100% {
-    box-shadow: 0 0 0 14px rgba(250, 204, 21, 0), 0 8px 24px rgba(0, 0, 0, 0.45);
+
+/* Charts: lines draw in from left to right once (pathLength-normalised dash). */
+.chart-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: chart-draw var(--dur-3) var(--ease-flow) forwards;
+}
+@keyframes chart-draw {
+  to {
+    stroke-dashoffset: 0;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .pulsebot-levitate,
-  .pulsebot-ring,
-  .pulsebot-antenna,
-  .pulsebot-eye,
-  .pulsebot-exit,
-  #help-tour-trigger {
-    animation: none;
+  .chart-draw {
+    stroke-dashoffset: 0;
   }
 }
 

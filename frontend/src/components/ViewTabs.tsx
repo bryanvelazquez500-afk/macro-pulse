@@ -3,6 +3,8 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { KeyboardEvent, ReactNode, useId, useRef } from "react";
 
+import { flow } from "@/lib/motion";
+
 export interface ViewTab<K extends string> {
   key: K;
   label: string;
@@ -12,8 +14,8 @@ export interface ViewTab<K extends string> {
 }
 
 /**
- * Sub-tab bar (WAI-ARIA tabs pattern): arrow keys / Home / End move between tabs, and a shared
- * underline slides to the active one.
+ * Section tabs (WAI-ARIA tabs pattern) as a segmented pill track: arrow keys / Home / End move between
+ * tabs, and the raised thumb slides to the active one.
  */
 export function ViewTabs<K extends string>({
   tabs,
@@ -40,7 +42,7 @@ export function ViewTabs<K extends string>({
   }
 
   return (
-    <div role="tablist" aria-label={label} className="inline-flex max-w-full gap-1 overflow-x-auto rounded-xl bg-canvas p-1 ring-1 ring-line ring-inset">
+    <div role="tablist" aria-label={label} className="seg-track">
       {tabs.map((tab, i) => {
         const selected = tab.key === active;
         return (
@@ -58,18 +60,16 @@ export function ViewTabs<K extends string>({
             onClick={() => onChange(tab.key)}
             onKeyDown={(e) => onKeyDown(e, i)}
             title={tab.hint}
-            className={`relative shrink-0 rounded-lg px-4 py-2 text-left transition-colors outline-none focus-visible:ring-2 focus-visible:ring-spruce ${
-              selected ? "text-on-spruce" : "text-ink-3 hover:text-ink"
-            }`}
+            className="seg-item !px-5 !py-2 !text-[14px]"
           >
             {selected && (
               <motion.span
                 layoutId={`${id}-indicator`}
-                className="absolute inset-0 rounded-lg bg-spruce"
-                transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 500, damping: 40 }}
+                className="seg-thumb"
+                transition={reduceMotion ? { duration: 0 } : flow(2)}
               />
             )}
-            <span className="relative text-[13px] font-semibold tracking-tight">
+            <span>
               <span className="hidden sm:inline">{tab.label}</span>
               <span className="sm:hidden">{tab.short}</span>
             </span>
@@ -95,11 +95,11 @@ export function ViewPanel({ view, active, children }: { view: string; active: bo
       role="tabpanel"
       aria-labelledby={viewTabId(view)}
       tabIndex={0}
-      className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ink/20 focus-visible:ring-offset-4 focus-visible:ring-offset-canvas"
+      className="rounded-md outline-none"
       hidden={!active}
       initial={false}
       animate={active ? { opacity: 1, y: 0 } : { opacity: 0, y: reduceMotion ? 0 : 6 }}
-      transition={{ duration: reduceMotion ? 0 : 0.22, ease: "easeOut" }}
+      transition={reduceMotion ? { duration: 0 } : flow(3)}
     >
       {children}
     </motion.div>
