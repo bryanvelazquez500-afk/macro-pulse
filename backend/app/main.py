@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -6,6 +7,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api.routes import router
+from app.core.cache_headers import CacheHeaders
 from app.core.config import get_settings
 from app.services.data_router import DataRouter
 from app.services.fmp_client import FmpClient, FmpError
@@ -19,6 +21,7 @@ from app.services.sec_client import SecApiError, SecEdgarClient
 from app.services.filed_relationships import FiledRelationships
 from app.services.relationship_notes import RelationshipNotes
 from app.services.supply_chain import SupplyChainError, SupplyChainStore
+from app.services.warmup import keep_warm
 
 
 @asynccontextmanager
@@ -41,7 +44,11 @@ async def lifespan(app: FastAPI):
     app.state.news_service = NewsService(settings)
     claude = build_claude_client(settings)
     app.state.narrative_service = NarrativeService(app.state.sec_client, claude, settings)
+    # Keep the first-load companies cached (off in tests, which use their own fakes).
+    warmer = asyncio.create_task(keep_warm(app)) if settings.warm_cache else None
     yield
+    if warmer:
+        warmer.cancel()
     await app.state.sec_client.aclose()
     await app.state.fmp_client.aclose()
     await app.state.quote_service.aclose()
@@ -54,6 +61,8 @@ app = FastAPI(title="MacroPulse API", lifespan=lifespan)
 
 # The full US list is ~1–2 MB of JSON: compress responses.
 app.add_middleware(GZipMiddleware, minimum_size=1024)
+# Browser caching (Cache-Control with stale-while-revalidate) on successful GETs.
+app.add_middleware(CacheHeaders)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=get_settings().allowed_origins,

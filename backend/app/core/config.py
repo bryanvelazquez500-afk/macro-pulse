@@ -24,6 +24,8 @@ class Settings(BaseSettings):
 
     # Responses are cached in memory so repeat lookups don't hit the SEC again.
     cache_ttl_seconds: int = 60 * 60
+    # Replay the first-load requests at startup and every 45 minutes (see services/warmup.py).
+    warm_cache: bool = True
 
     # Narrative summaries (Claude). When unset, the Anthropic SDK falls back to its own
     # credential discovery (ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN / `ant auth login` profile).

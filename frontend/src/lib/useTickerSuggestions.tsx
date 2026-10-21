@@ -17,11 +17,11 @@ export interface Suggestion {
   sector: string;
 }
 
-export function useTickerSuggestions(query: string, limit = 8): Suggestion[] {
+export function useTickerSuggestions(query: string, limit = 8, skip = false): Suggestion[] {
   const [results, setResults] = useState<Suggestion[]>([]);
   useEffect(() => {
     const q = query.trim();
-    if (!q) return;
+    if (!q || skip) return;
     const ctrl = new AbortController();
     const timer = setTimeout(() => {
       fetch(`${API_URL}/api/universe/search?q=${encodeURIComponent(q)}&limit=${limit}`, { signal: ctrl.signal })
@@ -33,12 +33,13 @@ export function useTickerSuggestions(query: string, limit = 8): Suggestion[] {
       clearTimeout(timer);
       ctrl.abort();
     };
-  }, [query, limit]);
-  return query.trim() ? results : [];
+  }, [query, limit, skip]);
+  return query.trim() && !skip ? results : [];
 }
 
-export function TickerSuggestions({ id, query }: { id: string; query: string }) {
-  const results = useTickerSuggestions(query);
+/** `skip` suppresses lookups, e.g. while an input still shows the ticker it was prefilled with. */
+export function TickerSuggestions({ id, query, skip = false }: { id: string; query: string; skip?: boolean }) {
+  const results = useTickerSuggestions(query, 8, skip);
   return (
     <datalist id={id}>
       {results.map((r) => (

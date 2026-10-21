@@ -301,7 +301,7 @@ export function DcfCalculator({ symbol }: { symbol: string | null }) {
             list="dcf-ticker-suggestions"
             className="field field-pill min-w-0 flex-1 !py-2 font-mono uppercase placeholder:font-sans placeholder:normal-case"
           />
-          <TickerSuggestions id="dcf-ticker-suggestions" query={query} />
+          <TickerSuggestions id="dcf-ticker-suggestions" query={query} skip={query.trim().toUpperCase() === (symbol ?? "").toUpperCase()} />
           <button
             type="submit"
             disabled={load.status === "loading"}

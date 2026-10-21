@@ -581,29 +581,3 @@ export function SupplyChainNetwork({ focusTicker, onInject }: { focusTicker: str
     </div>
   );
 }
-
-/** Green confirmation banner for an injected ticker. */
-export function InjectBanner({ message, onDone }: { message: string | null; onDone: () => void }) {
-  useEffect(() => {
-    if (!message) return;
-    const t = setTimeout(onDone, 2600);
-    return () => clearTimeout(t);
-  }, [message, onDone]);
-  return (
-    <AnimatePresence>
-      {message && (
-        <motion.div
-          key={message}
-          role="status"
-          initial={{ opacity: 0, y: -24, scale: 0.96 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -16 }}
-          transition={{ type: "spring", stiffness: 380, damping: 26 }}
-          className="fixed inset-x-0 top-28 z-[80] mx-auto w-fit rounded-full bg-gain px-5 py-2.5 text-[14px] font-bold text-on-surge-4 shadow-2"
-        >
-          ✓ {message}
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-}

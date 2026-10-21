@@ -10,7 +10,7 @@
 
 import { ReactNode, createContext, useContext, useEffect, useMemo, useReducer, useRef } from "react";
 
-import { CompanyProfile, FinancialsResponse, PeriodType, fetchFinancials, fetchProfile, needsApiKey } from "@/lib/api";
+import { CompanyProfile, FinancialsResponse, PeriodType, fetchFinancials, fetchProfile, needsApiKey, warmCompany } from "@/lib/api";
 import { normalizeTicker } from "@/lib/portfolioStore";
 
 export const MAX_COMPARE = 3;
@@ -163,6 +163,7 @@ export function ComparisonProvider({ initial, children }: { initial: string[]; c
       started.current.add(key);
       const { id } = entry;
       const period = state.period;
+      warmCompany(id); // news, peers and valuation inputs load alongside the statements, not after them
       // Annual history covers 12 fiscal years, so 10-year growth rates and horizontal analysis are computable.
       Promise.all([
         fetchProfile(id),

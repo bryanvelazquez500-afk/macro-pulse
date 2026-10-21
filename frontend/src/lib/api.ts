@@ -163,13 +163,69 @@ export function needsApiKey(error: unknown): boolean {
   return error instanceof ApiError && error.code === API_KEY_REQUIRED;
 }
 
-async function getJson<T>(path: string, signal?: AbortSignal, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, { signal, ...init });
+async function parse<T>(res: Response): Promise<T> {
   if (!res.ok) {
     const body = await res.json().catch(() => null);
     throw new ApiError(body?.detail ?? `Request failed (${res.status})`, res.status, body?.code ?? null);
   }
   return res.json();
+}
+
+// ── request cache ───────────────────────────────────────────────────────────
+// GETs are shared and remembered for a few minutes: two panels asking for the same data make one request,
+// and switching tabs, refocusing a column or re-adding a company is instant. Requests the page started
+// early (EARLY_FETCH_SCRIPT, in <head>, before React loads) are adopted rather than repeated.
+
+declare global {
+  interface Window {
+    __mpEarly?: Record<string, Promise<Response>>;
+  }
+}
+
+const memo = new Map<string, { at: number; promise: Promise<unknown> }>();
+const ttlMs = (path: string) => (path.includes("/quotes/") ? 30_000 : path.includes("/news") ? 120_000 : 5 * 60_000);
+
+function load(path: string): Promise<unknown> {
+  const early = typeof window === "undefined" ? undefined : window.__mpEarly?.[path];
+  if (early) delete window.__mpEarly![path];
+  return (early ?? fetch(`${API_URL}${path}`)).then(parse);
+}
+
+/** Resolve with `promise`, but reject this caller (only) when its signal aborts. */
+function abortable<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return promise;
+  if (signal.aborted) return Promise.reject(new DOMException("Aborted", "AbortError"));
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(new DOMException("Aborted", "AbortError"));
+    signal.addEventListener("abort", onAbort, { once: true });
+    promise.then(resolve, reject).finally(() => signal.removeEventListener("abort", onAbort));
+  });
+}
+
+async function getJson<T>(path: string, signal?: AbortSignal, init?: RequestInit): Promise<T> {
+  if (init && (init.method ?? "GET").toUpperCase() !== "GET") {
+    // Writes go straight through, and anything they may have changed is fetched fresh afterwards.
+    const result = await parse<T>(await fetch(`${API_URL}${path}`, { signal, ...init }));
+    memo.clear();
+    return result;
+  }
+  const hit = memo.get(path);
+  let promise = hit && Date.now() - hit.at < ttlMs(path) ? hit.promise : undefined;
+  if (!promise) {
+    const fresh = load(path);
+    promise = fresh;
+    memo.set(path, { at: Date.now(), promise: fresh });
+    fresh.catch(() => memo.get(path)?.promise === fresh && memo.delete(path)); // never remember failures
+  }
+  return abortable(promise as Promise<T>, signal);
+}
+
+/** Start the requests a newly added company will need, so its tabs open with data already here. */
+export function warmCompany(id: string) {
+  const c = `/api/companies/${encodeURIComponent(id)}`;
+  for (const path of [`${c}/peers?limit=6`, `${c}/news?limit=10`, `${c}/valuation-inputs`, `${c}/dcf-inputs`]) {
+    getJson(path).catch(() => {}); // errors surface later, in the panel that asks
+  }
 }
 
 export const fetchProfile = (id: string) => getJson<CompanyProfile>(`/api/companies/${encodeURIComponent(id)}`);

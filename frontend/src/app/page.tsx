@@ -1,6 +1,7 @@
 "use client";
 
 import { LayoutGroup, motion } from "framer-motion";
+import dynamic from "next/dynamic";
 import {
   FormEvent,
   ReactNode,
@@ -11,22 +12,19 @@ import {
 } from "react";
 
 import { DataDrawers } from "@/components/DataDrawers";
-import { DcfCalculator } from "@/components/DcfCalculator";
-import { EquityDiscovery } from "@/components/EquityDiscovery";
-import { IntrinsicValuationStation } from "@/components/IntrinsicValuationStation";
+
+
+
 import { FinancialsTable, VarianceLegend } from "@/components/FinancialsTable";
 import { HorizontalAnalysis } from "@/components/HorizontalAnalysis";
 import { NoticeToast } from "@/components/NoticeToast";
 import { NewsTicker } from "@/components/NewsTicker";
 import { PeerPills } from "@/components/PeerPills";
-import {
-  InjectBanner,
-  SupplyChainNetwork,
-} from "@/components/SupplyChainNetwork";
-import { PulseBotTour } from "@/components/PulseBotTour";
+import { InjectBanner } from "@/components/InjectBanner";
+
 import { TickerSuggestions } from "@/lib/useTickerSuggestions";
 import { ServerWakeNotice } from "@/components/ServerWakeNotice";
-import { ValuationPanel } from "@/components/ValuationPanel";
+
 import { Segmented } from "@/components/Segmented";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { WatchlistMenu } from "@/components/WatchlistMenu";
@@ -40,6 +38,35 @@ import {
 import { flow } from "@/lib/motion";
 import { normalizeTicker } from "@/lib/portfolioStore";
 import { ValuationAssumptionsProvider } from "@/lib/valuationAssumptions";
+
+// Tabs other than Compare (and the tour) load as separate bundles, so the first visit downloads only what
+// the opening screen needs. They're fetched in the background once the page is idle (preloadTabs), so
+// switching tabs is still instant.
+const loadValuationPanel = () => import("@/components/ValuationPanel");
+const loadDcfCalculator = () => import("@/components/DcfCalculator");
+const loadStation = () => import("@/components/IntrinsicValuationStation");
+const loadDiscovery = () => import("@/components/EquityDiscovery");
+const loadSupplyChain = () => import("@/components/SupplyChainNetwork");
+const loadTour = () => import("@/components/PulseBotTour");
+
+function TabLoading({ height = 320 }: { height?: number }) {
+  return <div className="panel animate-pulse" style={{ height }} aria-busy="true" />;
+}
+
+const ValuationPanel = dynamic(() => loadValuationPanel().then((m) => m.ValuationPanel), { ssr: false, loading: () => <TabLoading height={460} /> });
+const DcfCalculator = dynamic(() => loadDcfCalculator().then((m) => m.DcfCalculator), { ssr: false, loading: () => <TabLoading height={640} /> });
+const IntrinsicValuationStation = dynamic(() => loadStation().then((m) => m.IntrinsicValuationStation), { ssr: false, loading: () => <TabLoading height={640} /> });
+const EquityDiscovery = dynamic(() => loadDiscovery().then((m) => m.EquityDiscovery), { ssr: false, loading: () => <TabLoading height={720} /> });
+const SupplyChainNetwork = dynamic(() => loadSupplyChain().then((m) => m.SupplyChainNetwork), { ssr: false, loading: () => <TabLoading height={620} /> });
+const PulseBotTour = dynamic(() => loadTour().then((m) => m.PulseBotTour), { ssr: false });
+
+/** Fetch the other tabs' code while the browser is idle, after the opening screen is up. */
+function preloadTabs() {
+  const run = () =>
+    [loadValuationPanel, loadDcfCalculator, loadStation, loadDiscovery, loadSupplyChain, loadTour].forEach((load) => load().catch(() => {}));
+  if ("requestIdleCallback" in window) window.requestIdleCallback(run, { timeout: 4000 });
+  else setTimeout(run, 1500);
+}
 
 function Section({
   title,
@@ -139,6 +166,7 @@ function Station() {
     setView(next);
   }
   const searchRef = useRef<HTMLInputElement>(null);
+  useEffect(preloadTabs, []);
   const headerRef = useRef<HTMLElement>(null);
 
   // The header's height changes (peer pills appear once a company is focused, rows wrap on narrow
