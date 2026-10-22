@@ -35,6 +35,7 @@ import {
   symbolOf,
   useComparison,
 } from "@/lib/comparisonStore";
+import { FxProvider, useDisplayEntries } from "@/lib/fx";
 import { flow } from "@/lib/motion";
 import { normalizeTicker } from "@/lib/portfolioStore";
 import { ValuationAssumptionsProvider } from "@/lib/valuationAssumptions";
@@ -48,6 +49,7 @@ const loadStation = () => import("@/components/IntrinsicValuationStation");
 const loadDiscovery = () => import("@/components/EquityDiscovery");
 const loadSupplyChain = () => import("@/components/SupplyChainNetwork");
 const loadTour = () => import("@/components/PulseBotTour");
+const loadReactions = () => import("@/components/FilingReactions");
 
 function TabLoading({ height = 320 }: { height?: number }) {
   return <div className="panel animate-pulse" style={{ height }} aria-busy="true" />;
@@ -59,11 +61,12 @@ const IntrinsicValuationStation = dynamic(() => loadStation().then((m) => m.Intr
 const EquityDiscovery = dynamic(() => loadDiscovery().then((m) => m.EquityDiscovery), { ssr: false, loading: () => <TabLoading height={720} /> });
 const SupplyChainNetwork = dynamic(() => loadSupplyChain().then((m) => m.SupplyChainNetwork), { ssr: false, loading: () => <TabLoading height={620} /> });
 const PulseBotTour = dynamic(() => loadTour().then((m) => m.PulseBotTour), { ssr: false });
+const FilingReactions = dynamic(() => loadReactions().then((m) => m.FilingReactions), { ssr: false, loading: () => <TabLoading height={520} /> });
 
 /** Fetch the other tabs' code while the browser is idle, after the opening screen is up. */
 function preloadTabs() {
   const run = () =>
-    [loadValuationPanel, loadDcfCalculator, loadStation, loadDiscovery, loadSupplyChain, loadTour].forEach((load) => load().catch(() => {}));
+    [loadReactions, loadValuationPanel, loadDcfCalculator, loadStation, loadDiscovery, loadSupplyChain, loadTour].forEach((load) => load().catch(() => {}));
   if ("requestIdleCallback" in window) window.requestIdleCallback(run, { timeout: 4000 });
   else setTimeout(run, 1500);
 }
@@ -127,7 +130,9 @@ export default function Home() {
       <LayoutGroup>
         {/* Valuation sliders are shared by the Valuation panel and the Intrinsic Valuation Station. */}
         <ValuationAssumptionsProvider>
-          <Station />
+          <FxProvider>
+            <Station />
+          </FxProvider>
         </ValuationAssumptionsProvider>
       </LayoutGroup>
     </ComparisonProvider>
@@ -218,6 +223,8 @@ function Station() {
   }
 
   const ready = entries.filter((e) => e.status === "ready");
+  // Statements as displayed: foreign filers converted to USD at today's rate (switchable).
+  const display = useDisplayEntries(entries);
   const threshold = ready[0]?.financials?.variance_threshold_pct ?? 10;
   const focusedReady = focused?.status === "ready" ? focused : null;
 
@@ -421,13 +428,39 @@ function Station() {
             <div className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <VarianceLegend thresholdPct={threshold} />
+                {display.foreign.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Segmented
+                      label="Currency"
+                      role="group"
+                      size="sm"
+                      value={display.usd ? "usd" : "reported"}
+                      onChange={(v) => display.setUsd(v === "usd")}
+                      options={[
+                        { key: "usd", label: "USD" },
+                        { key: "reported", label: "Reported currency" },
+                      ]}
+                    />
+                    <span className="text-[13px] text-ink-3">
+                      {display.foreign
+                        .map(({ currency, rate }) =>
+                          rate
+                            ? `1 ${currency} = $${rate.usd_per_unit.toPrecision(4)}`
+                            : `${currency}: rate unavailable`,
+                        )
+                        .join(" · ")}
+                      {display.foreign.some((f) => f.rate) &&
+                        ` · live rate, ${new Date(display.foreign.find((f) => f.rate)!.rate!.as_of).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`}
+                    </span>
+                  </div>
+                )}
                 <span className="text-[13px] text-ink-3">
                   Click a column header to focus that company
                 </span>
               </div>
               <div id="tour-matrix">
                 <FinancialsTable
-                  entries={entries}
+                  entries={display.entries}
                   focusedId={focusedId}
                   periodType={period}
                   onFocus={focus}
@@ -443,10 +476,13 @@ function Station() {
               </p>
               <div className="pt-10">
                 <HorizontalAnalysis
-                  entries={entries}
+                  entries={display.entries}
                   periodType={period}
                   focusedId={focusedId}
                 />
+              </div>
+              <div className="pt-10">
+                <FilingReactions entries={entries} focusedId={focusedId} />
               </div>
             </div>
           </ViewPanel>

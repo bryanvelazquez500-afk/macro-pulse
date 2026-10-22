@@ -103,6 +103,8 @@ export interface Forensics {
 export type DataSource = "sec" | "fmp";
 
 export interface FinancialsResponse {
+  /** Set when figures were converted for display (lib/fx.tsx): the currency the filings report in. */
+  converted_from?: string;
   /** Null for companies served by Financial Modeling Prep (no SEC registration). */
   cik: string | null;
   symbol: string;
@@ -492,3 +494,67 @@ export const fetchRelationship = (supplier: string, client: string, signal?: Abo
     `/api/supply-chain/relationship?supplier=${encodeURIComponent(supplier)}&client=${encodeURIComponent(client)}`,
     signal,
   );
+
+// ── currency conversion ─────────────────────────────────────────────────────
+
+export interface FxRate {
+  currency: string;
+  usd_per_unit: number;
+  as_of: string;
+  source: string;
+}
+
+/** Live USD value of one unit of `currency` (cached 10 minutes server-side). */
+export const fetchFxRate = (currency: string, signal?: AbortSignal) => getJson<FxRate>(`/api/fx/${encodeURIComponent(currency)}`, signal);
+
+// ── filing reactions (historical event study) ───────────────────────────────
+
+export interface ReactionFundamentals {
+  period_label: string | null;
+  revenue: number | null;
+  revenue_yoy: number | null;
+  net_income_yoy: number | null;
+  eps: number | null;
+  eps_yoy: number | null;
+}
+
+export interface ReactionEvent {
+  report_form: string;
+  report_filed: string;
+  report_url: string;
+  period_end: string | null;
+  event_form: string;
+  event_accepted_et: string;
+  event_url: string;
+  session: "before open" | "during market" | "after close";
+  reaction_date: string | null;
+  prior_close: number | null;
+  close_1d: number | null;
+  ret_1d: number | null;
+  ret_3d: number | null;
+  ret_5d: number | null;
+  mkt_1d: number | null;
+  mkt_5d: number | null;
+  beta: number | null;
+  abn_1d: number | null;
+  abn_3d: number | null;
+  abn_5d: number | null;
+  pre_5d_abn: number | null;
+  sigma: number | null;
+  z_1d: number | null;
+  fundamentals: ReactionFundamentals;
+  nuances: { code: string; text: string }[];
+  summary: string;
+}
+
+export interface FilingReactions {
+  symbol: string;
+  company: string | null;
+  market: string;
+  prices: { d: string; c: number }[];
+  events: ReactionEvent[];
+  notes: string[];
+}
+
+export const fetchFilingReactions = (id: string, years: number, signal?: AbortSignal) =>
+  getJson<FilingReactions>(`/api/companies/${encodeURIComponent(id)}/filing-reactions?years=${years}`, signal);

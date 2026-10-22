@@ -16,6 +16,7 @@ import type { FinancialPeriod, HelperMetricKey, MetricKey, PeriodType } from "@/
 import { CompanyEntry, symbolOf } from "@/lib/comparisonStore";
 import { Segmented } from "@/components/Segmented";
 import { currencySymbol, formatAccounting, formatChange, formatShares, periodLabel } from "@/lib/format";
+import { heat } from "@/lib/heat";
 import { GRAND_TOTALS, SUBTOTALS } from "@/lib/ledger";
 import { flow } from "@/lib/motion";
 import { Pt, smoothArea, smoothLine } from "@/lib/smoothPath";
@@ -329,19 +330,6 @@ function TrendChart({
       )}
     </div>
   );
-}
-
-/**
- * Heat square for a % change: the same four steps as the comparison legend (10 / 20 / 30 / 40%), mirrored
- * for drops; changes under 10% get a faint tint so every cell still reads at a glance.
- */
-function heat(change: number | null): { bg: string; step: number } | null {
-  if (change == null) return null;
-  const a = Math.abs(change);
-  const dir = change >= 0 ? "surge" : "drop";
-  if (a < 10) return { bg: `color-mix(in srgb, var(--${dir}-1) 55%, transparent)`, step: 0 };
-  const step = a >= 40 ? 4 : a >= 30 ? 3 : a >= 20 ? 2 : 1;
-  return { bg: `var(--${dir}-${step})`, step };
 }
 
 /** "calc" marks a derived line item. */

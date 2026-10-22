@@ -25,6 +25,7 @@ FIRST_LOAD = (
     f"/api/companies/{FOCUS}/valuation-inputs",
     f"/api/companies/{FOCUS}/dcf-inputs",
     f"/api/companies/{FOCUS}/news?limit=10",
+    f"/api/companies/{FOCUS}/filing-reactions?years=5",
 )
 PEER_LOAD = tuple(p for t in PEERS for p in (f"/api/companies/{t}", f"/api/companies/{t}/financials?period=annual&limit=12"))
 REFRESH_SECONDS = 45 * 60  # inside the 60-minute cache TTL

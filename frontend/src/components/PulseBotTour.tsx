@@ -43,6 +43,12 @@ export const TOUR_STEPS: TourStep[] = [
     text: "Flip between trends over 5–10 years and vertical analysis — pick any line items and see them instantly as a % of the base you choose.",
   },
   {
+    target: "filing-reactions",
+    view: "matrix",
+    title: "Filing Reactions",
+    text: "See how the stock reacted to every earnings release — timed to the session it hit, measured against the market, with a written summary when the reaction had a twist. History only, never a forecast.",
+  },
+  {
     target: "tour-tabs",
     title: "Four sections",
     text: "Compare, Valuation, Discover and Supply chain — everything follows the companies you add. Discover scouts world markets on a map; its arrow sends a stock to Compare.",

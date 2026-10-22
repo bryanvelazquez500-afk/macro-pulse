@@ -34,6 +34,7 @@ from app.services.macro_rates import MacroFactors, MacroFactorsError, load_macro
 from app.services.valuation_inputs import get_valuation_inputs
 from app.services.data_router import DataRouter, DataSource
 from app.services.discovery import LEADERS, LIST_AS_OF, SECTORS, country_count, country_leaders
+from app.services.filing_reactions import build_reactions
 from app.services.financials_service import FinancialsService
 from app.services.fmp_client import FmpError
 from app.services.gaap_mapping import PeriodType
@@ -282,3 +283,39 @@ async def universe_search(q: str = Query(..., min_length=1, max_length=40), limi
     ]  # fmt: skip
     seen = {r["ticker"] for r in us}
     return {"results": us + [r for r in intl if r["ticker"] not in seen][: limit - len(us)]}
+
+
+@router.get("/fx/{currency}")
+async def fx_rate(currency: str, request: Request) -> dict:
+    """Live USD value of one unit of `currency` (Yahoo FX quote, cached 10 minutes)."""
+    rate = await request.app.state.fx_service.usd_rate(currency)
+    if rate is None:
+        raise HTTPException(404, f"No live USD rate for {currency.upper()}")
+    return asdict(rate)
+
+
+@router.get("/companies/{identifier}/filing-reactions")
+async def filing_reactions(
+    identifier: str,
+    request: Request,
+    years: int = Query(5, ge=1, le=10),
+    service: FinancialsService = Depends(get_service),
+) -> dict:
+    """Historical event study: each 10-Q/10-K's earnings release, the session it hit, and the stock's
+    reaction versus the market. Research only — past reactions don't predict future ones."""
+    route = await request.app.state.data_router.resolve(identifier)
+    if route.source is not DataSource.SEC or route.cik is None:
+        raise HTTPException(422, "Filing reactions need SEC filings (10-K/10-Q); this company reports elsewhere.")
+    sec = request.app.state.sec_client
+    submissions = await sec.get_submissions(route.cik)
+    tickers = submissions.get("tickers") or []
+    # Prefer the US listing for prices, so the market benchmark (SPY) trades the same hours.
+    symbol = tickers[0] if tickers else route.symbol
+    quarterly = (await service.get_financials(identifier, PeriodType.QUARTERLY, 44)).periods
+    annual = (await service.get_financials(identifier, PeriodType.ANNUAL, 12)).periods
+    result = await build_reactions(
+        submissions=submissions, cik=route.cik, symbol=symbol, quotes=request.app.state.quote_service,
+        quarterly=quarterly, annual=annual, years=years,
+    )  # fmt: skip
+    result["company"] = submissions.get("name")
+    return result

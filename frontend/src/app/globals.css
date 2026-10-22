@@ -478,7 +478,8 @@ body {
 
 /* Guided-tour targets scroll to just below the sticky header. */
 [id^="tour-"],
-#horizontal-analysis {
+#horizontal-analysis,
+#filing-reactions {
   scroll-margin-top: calc(var(--header-h, 6rem) + 1.25rem);
 }
 

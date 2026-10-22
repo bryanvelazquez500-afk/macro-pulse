@@ -101,6 +101,7 @@ class QuoteService:
         )
         self._cache = TTLCache(5 * 60)
         self._split_cache = TTLCache(24 * 60 * 60)
+        self._daily_cache = TTLCache(6 * 60 * 60)
 
     async def aclose(self) -> None:
         await self._client.aclose()
@@ -198,6 +199,36 @@ class QuoteService:
         )
         self._split_cache.set(key, splits)
         return splits
+
+    async def get_daily_history(self, symbol: str, range_: str = "10y") -> list[tuple[str, float]]:
+        """[(exchange-local ISO date, split- and dividend-adjusted close)] daily bars, oldest first (cached 6h)."""
+        symbol = symbol.strip().upper()
+        key = f"daily:{symbol}:{range_}"
+        cached = self._daily_cache.get(key)
+        if cached is not None:
+            return cached
+        for delay in (0.0, 1.0):
+            if delay:
+                await asyncio.sleep(delay)
+            try:
+                response = await self._client.get(
+                    YAHOO_CHART_URL.format(symbol=yahoo_symbol(symbol)),
+                    params={"range": range_, "interval": "1d", "includeAdjustedClose": "true"},
+                )
+                result = response.json()["chart"]["result"][0]
+            except (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError):
+                continue
+            offset = int(result.get("meta", {}).get("gmtoffset") or 0)
+            closes = (result.get("indicators", {}).get("adjclose") or [{}])[0].get("adjclose") or result["indicators"]["quote"][0]["close"]
+            bars = [
+                (time.strftime("%Y-%m-%d", time.gmtime(ts + offset)), float(c))
+                for ts, c in zip(result.get("timestamp") or [], closes)
+                if c is not None and c > 0
+            ]
+            if bars:
+                self._daily_cache.set(key, bars)
+                return bars
+        return []
 
     async def get_quote(self, symbol: str) -> Quote | None:
         symbol = symbol.strip().upper()

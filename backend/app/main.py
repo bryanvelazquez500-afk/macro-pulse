@@ -14,6 +14,7 @@ from app.services.fmp_client import FmpClient, FmpError
 from app.services.narrative import NarrativeError, NarrativeService, build_claude_client
 from app.services.financials_service import FinancialsService
 from app.services.dcf_inputs import DcfInputsService
+from app.services.fx import FxService
 from app.services.market_caps import MarketCaps
 from app.services.quotes import QuoteService
 from app.services.news import NewsError, NewsService
@@ -32,6 +33,7 @@ async def lifespan(app: FastAPI):
     app.state.fmp_client = FmpClient(settings)
     app.state.data_router = DataRouter(app.state.sec_client)
     app.state.quote_service = QuoteService(app.state.fmp_client, settings)
+    app.state.fx_service = FxService(app.state.quote_service)
     app.state.dcf_service = DcfInputsService(
         FinancialsService(app.state.sec_client, app.state.fmp_client, app.state.data_router, app.state.quote_service), app.state.quote_service
     )

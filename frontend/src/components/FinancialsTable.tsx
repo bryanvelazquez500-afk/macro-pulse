@@ -133,13 +133,13 @@ function variancesTitle(v: Variance | undefined, value: number, fmt: (n: number)
 /** Non-default reporting basis for a column: "EUR · IFRS", "JPY · FMP". US GAAP in USD shows nothing. */
 function SourceTag({ financials }: { financials: CompanyEntry["financials"] }) {
   if (!financials) return null;
-  const { source, currency, accounting_standard } = financials;
-  if (source === "sec" && currency === "USD" && accounting_standard === "US GAAP") return null;
-  const label = [currency, source === "fmp" ? "FMP" : accounting_standard].join(" · ");
+  const { source, currency, accounting_standard, converted_from } = financials;
+  if (source === "sec" && currency === "USD" && !converted_from && accounting_standard === "US GAAP") return null;
+  const label = [converted_from ? `${converted_from}→USD` : currency, source === "fmp" ? "FMP" : accounting_standard].join(" · ");
   const detail =
     source === "fmp"
       ? "Financial Modeling Prep standardized statements (company not registered with the SEC)"
-      : `SEC EDGAR ${accounting_standard} filings, reported in ${currency}`;
+      : `SEC EDGAR ${accounting_standard} filings, reported in ${converted_from ?? currency}`;
   return (
     <span className="text-[11px] font-semibold tracking-wide whitespace-nowrap text-ink-3" title={detail}>
       {label}
