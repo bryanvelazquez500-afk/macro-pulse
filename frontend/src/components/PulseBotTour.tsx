@@ -21,7 +21,7 @@ export interface TourStep {
   title: string;
   text: string; // one friendly sentence
   /** Analysis tab to open for this step (its content only exists once the tab is shown). */
-  view?: "matrix" | "valuation" | "discovery" | "supply";
+  view?: "matrix" | "valuation" | "discovery" | "supply" | "reactions";
 }
 
 export const TOUR_STEPS: TourStep[] = [
@@ -44,14 +44,14 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     target: "filing-reactions",
-    view: "matrix",
+    view: "reactions",
     title: "Filing Reactions",
     text: "See how the stock reacted to every earnings release — timed to the session it hit, measured against the market, with a written summary when the reaction had a twist. History only, never a forecast.",
   },
   {
     target: "tour-tabs",
-    title: "Four sections",
-    text: "Compare, Valuation, Discover and Supply chain — everything follows the companies you add. Discover scouts world markets on a map; its arrow sends a stock to Compare.",
+    title: "Five sections",
+    text: "Compare, Valuation, Discover, Supply chain and Filing reactions — everything follows the companies you add. Discover scouts world markets on a map; its arrow sends a stock to Compare.",
   },
   {
     target: "tour-dcf",
@@ -158,7 +158,7 @@ function Robot() {
 export function PulseBotTour({ onClose, onView }: { onClose: () => void; onView?: (view: NonNullable<TourStep["view"]>) => void }) {
   const reduceMotion = useReducedMotion();
   // Hidden tabs stay mounted, so Compare and Valuation targets exist once a company is loaded.
-  const [steps] = useState(() => TOUR_STEPS.filter((s) => s.view === "discovery" || s.view === "supply" || document.getElementById(s.target)));
+  const [steps] = useState(() => TOUR_STEPS.filter((s) => s.view === "discovery" || s.view === "supply" || s.view === "reactions" || document.getElementById(s.target)));
   const [index, setIndex] = useState(0);
   const [rect, setRect] = useState<Rect | null>(null);
   const card = useRef<HTMLDivElement>(null);

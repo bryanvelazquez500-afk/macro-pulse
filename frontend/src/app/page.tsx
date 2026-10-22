@@ -94,7 +94,7 @@ function Section({
   );
 }
 
-type AnalysisView = "matrix" | "valuation" | "discovery" | "supply";
+type AnalysisView = "matrix" | "valuation" | "discovery" | "supply" | "reactions";
 
 const ANALYSIS_VIEWS: ViewTab<AnalysisView>[] = [
   {
@@ -120,6 +120,12 @@ const ANALYSIS_VIEWS: ViewTab<AnalysisView>[] = [
     label: "Supply chain",
     short: "Supply",
     hint: "Suppliers and clients as an interactive web",
+  },
+  {
+    key: "reactions",
+    label: "Filing reactions",
+    short: "Reactions",
+    hint: "How the stock moved after each earnings release",
   },
 ];
 
@@ -162,12 +168,15 @@ function Station() {
   const [discoveryOpened, setDiscoveryOpened] = useState(false);
   // Same for the supply-chain graph (its canvas engine is a separate download).
   const [supplyOpened, setSupplyOpened] = useState(false);
+  // And for filing reactions (it fetches price history per company).
+  const [reactionsOpened, setReactionsOpened] = useState(false);
   const [injected, setInjected] = useState<string | null>(null);
   const clearInjected = useCallback(() => setInjected(null), []);
 
   function changeView(next: AnalysisView) {
     if (next === "discovery") setDiscoveryOpened(true);
     if (next === "supply") setSupplyOpened(true);
+    if (next === "reactions") setReactionsOpened(true);
     setView(next);
   }
   const searchRef = useRef<HTMLInputElement>(null);
@@ -481,9 +490,6 @@ function Station() {
                   focusedId={focusedId}
                 />
               </div>
-              <div className="pt-10">
-                <FilingReactions entries={entries} focusedId={focusedId} />
-              </div>
             </div>
           </ViewPanel>
 
@@ -548,6 +554,10 @@ function Station() {
                 />
               </div>
             )}
+          </ViewPanel>
+
+          <ViewPanel view="reactions" active={view === "reactions"}>
+            {reactionsOpened && <FilingReactions entries={entries} focusedId={focusedId} />}
           </ViewPanel>
         </div>
       </main>
