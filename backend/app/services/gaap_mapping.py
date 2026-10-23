@@ -633,6 +633,68 @@ def _derive_quarterly_cash_flows(
                         break
 
 
+FOURTH_QUARTER_SUFFIX = " (full year − first three quarters)"
+# Shares are a weighted average, not a sum, so a fourth-quarter count can't be backed out of the year.
+_NON_ADDITIVE = {Metric.DILUTED_SHARES, Metric.FREE_CASH_FLOW}
+_QUARTER_CHAIN_GAP_DAYS = 7  # 52/53-week filers' quarters don't abut exactly
+_FOURTH_QUARTER_DAYS = range(80, 126)  # a 12-12-12-16-week year (Costco) ends on a 16-week quarter
+
+
+def _derive_fourth_quarters(
+    quarters: dict[tuple[str, str], NormalizedPeriod], years: dict[tuple[str, str], NormalizedPeriod]
+) -> dict[tuple[str, str], tuple[int | None, str]]:
+    """Fiscal Q4 = full year − Q1 − Q2 − Q3, added to `quarters`; returns the new periods' fiscal labels.
+
+    No filing reports Q4 on its own (the 10-K covers the whole year), so without this the quarterly
+    view skips from Q3 straight to the next Q1. Q4 is added only when Q1–Q3 tile the start of the year.
+    """
+    def follows(after: str, start: str) -> bool:
+        return 0 < (date.fromisoformat(start) - date.fromisoformat(after)).days <= _QUARTER_CHAIN_GAP_DAYS
+
+    labels: dict[tuple[str, str], tuple[int | None, str]] = {}
+    by_start: dict[str, list[NormalizedPeriod]] = {}
+    for q in quarters.values():
+        by_start.setdefault(q.start, []).append(q)
+    for (fy_start, fy_end), year in years.items():
+        chain: list[NormalizedPeriod] = []
+        cursor_end: str | None = None
+        for _ in range(3):
+            candidates = (
+                by_start.get(fy_start, [])
+                if cursor_end is None
+                else [q for q in quarters.values() if follows(cursor_end, q.start)]
+            )
+            q = next((c for c in candidates if c.end < fy_end), None)
+            if q is None:
+                break
+            chain.append(q)
+            cursor_end = q.end
+        if len(chain) < 3:
+            continue
+        q4_start = (date.fromisoformat(chain[-1].end) + timedelta(days=1)).isoformat()
+        key = (q4_start, fy_end)
+        if key in quarters or _duration_days(q4_start, fy_end) not in _FOURTH_QUARTER_DAYS:
+            continue
+        values: dict[Metric, NormalizedValue] = {}
+        for metric, annual in year.values.items():
+            parts = [q.values.get(metric) for q in chain]
+            if metric in _NON_ADDITIVE or any(v is None for v in parts):
+                continue
+            values[metric] = NormalizedValue(
+                value=annual.value - sum(v.value for v in parts),
+                source_tag=annual.source_tag + FOURTH_QUARTER_SUFFIX,
+                accession_number=annual.accession_number,
+                form=annual.form,
+                filed=annual.filed,
+            )
+        if Metric.REVENUE in values or Metric.NET_INCOME in values:
+            quarters[key] = NormalizedPeriod(
+                period_type=PeriodType.QUARTERLY, start=q4_start, end=fy_end, fiscal_year=None, fiscal_period=None, values=values
+            )
+            labels[key] = (year.fiscal_year, "Q4")
+    return labels
+
+
 def derive_free_cash_flow(period: NormalizedPeriod) -> None:
     ocf = period.values.get(Metric.OPERATING_CASH_FLOW)
     if ocf is None:
@@ -909,8 +971,29 @@ def normalize_company_facts(
 ) -> list[NormalizedPeriod]:
     """Returns standardized periods (income statement + balance sheets) sorted newest first."""
     basis = basis or detect_reporting_basis(company_facts)
-    tag_map = ordered_tag_maps(basis)[0]
     filing_ends = _filing_period_ends(company_facts)
+    periods, period_facts = _duration_periods(company_facts, period_type, basis)
+    labels: dict[tuple[str, str], tuple[int | None, str | None]] = {}
+    if period_type is PeriodType.QUARTERLY:
+        years, year_facts = _duration_periods(company_facts, PeriodType.ANNUAL, basis)
+        for key, year in years.items():
+            year.fiscal_year, year.fiscal_period = _fiscal_label(year_facts[key], filing_ends)
+        labels.update(_derive_fourth_quarters(periods, years))
+    balances = normalize_balance_sheets(company_facts, basis)
+    for key, period in periods.items():
+        derive_free_cash_flow(period)
+        period.fiscal_year, period.fiscal_period = labels.get(key) or _fiscal_label(period_facts[key], filing_ends)
+        period.values.update(balance_sheet_near(balances, date.fromisoformat(period.end)))
+        period.opening_balances = balance_sheet_near(balances, date.fromisoformat(period.start) - timedelta(days=1))
+
+    return sorted(periods.values(), key=lambda p: p.end, reverse=True)
+
+
+def _duration_periods(
+    company_facts: dict[str, Any], period_type: PeriodType, basis: ReportingBasis
+) -> tuple[dict[tuple[str, str], NormalizedPeriod], dict[tuple[str, str], list[dict]]]:
+    """Income-statement and cash-flow values per (start, end) span, with the facts behind each span."""
+    tag_map = ordered_tag_maps(basis)[0]
     periods: dict[tuple[str, str], NormalizedPeriod] = {}
     period_facts: dict[tuple[str, str], list[dict]] = {}
 
@@ -934,11 +1017,4 @@ def normalize_company_facts(
     _derive_sga(company_facts, periods, basis)
     if period_type is PeriodType.QUARTERLY:
         _derive_quarterly_cash_flows(company_facts, periods, tag_map, basis.currency)
-    balances = normalize_balance_sheets(company_facts, basis)
-    for key, period in periods.items():
-        derive_free_cash_flow(period)
-        period.fiscal_year, period.fiscal_period = _fiscal_label(period_facts[key], filing_ends)
-        period.values.update(balance_sheet_near(balances, date.fromisoformat(period.end)))
-        period.opening_balances = balance_sheet_near(balances, date.fromisoformat(period.start) - timedelta(days=1))
-
-    return sorted(periods.values(), key=lambda p: p.end, reverse=True)
+    return periods, period_facts

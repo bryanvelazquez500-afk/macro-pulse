@@ -4,17 +4,23 @@ Endpoints used:
   - https://www.sec.gov/files/company_tickers.json        (ticker -> CIK lookup)
   - https://data.sec.gov/submissions/CIK##########.json    (Submissions)
   - https://data.sec.gov/api/xbrl/companyfacts/CIK##########.json  (CompanyFacts)
+  - https://www.sec.gov/Archives/edgar/data/{cik}/{accession}/  (XBRL instances CompanyFacts missed)
 """
 
 from __future__ import annotations
 
 import asyncio
+import logging
 import time
+import xml.etree.ElementTree as ET
 from typing import Any
 
 import httpx
 
 from app.core.config import Settings, get_settings
+from app.services.xbrl_instance import instance_file_name, missing_filings, parse_instance
+
+log = logging.getLogger(__name__)
 
 
 class SecApiError(Exception):
@@ -205,12 +211,46 @@ class SecEdgarClient:
 
         A registrant that replaced a predecessor in a holding-company reorganization (PREDECESSOR_CIKS)
         gets the predecessor's history merged in; for periods both report, the newer filing wins downstream.
+        Recent filings CompanyFacts never absorbed are read from their own XBRL instances and merged too.
         """
+        key = f"company-facts-complete:{int(cik)}"
+        if cache and (cached := self._cache.get(key)) is not None:
+            return cached
         facts = await self._company_facts(cik, cache)
         predecessor = PREDECESSOR_CIKS.get(int(cik))
-        if predecessor is None:
-            return facts
-        return merge_company_facts(await self._company_facts(predecessor, cache), facts)
+        if predecessor is not None:
+            facts = merge_company_facts(await self._company_facts(predecessor, cache), facts)
+        facts, complete = await self._with_unabsorbed_filings(cik, facts)
+        if cache and complete:  # after a failed read, the next request tries the missing filings again
+            self._cache.set(key, facts)
+        return facts
+
+    async def _with_unabsorbed_filings(self, cik: int | str, facts: dict[str, Any]) -> tuple[dict[str, Any], bool]:
+        """CompanyFacts plus the filings it missed, and whether every one of those filings was read."""
+        try:
+            gaps = missing_filings(await self.get_submissions(cik), facts)
+        except SecApiError:
+            return facts, False  # the statements CompanyFacts has are still worth serving
+        complete = True
+        for gap in gaps:
+            try:
+                instance = await self._filing_instance(int(cik), gap)
+            except (SecApiError, ET.ParseError) as exc:
+                log.warning("XBRL instance for %s %s unreadable: %s", gap["form"], gap["accn"], exc)
+                complete = False
+                continue
+            if instance is not None:
+                facts = merge_company_facts(instance, facts)
+        return facts, complete
+
+    async def _filing_instance(self, cik: int, gap: dict[str, str]) -> dict[str, Any] | None:
+        folder = f"{self.settings.sec_www_base_url}/Archives/edgar/data/{cik}/{gap['accn'].replace('-', '')}"
+        name = instance_file_name(await self._get_json(f"{folder}/index.json"), gap["primary"])
+        if name is None:
+            return None
+        xml = (await self._fetch(f"{folder}/{name}", accept="application/xml")).content
+        # Instances run to ~10 MB; parse off the event loop.
+        return await asyncio.to_thread(parse_instance, xml, gap["accn"], gap["form"], gap["filed"])
 
     async def _company_facts(self, cik: int | str, cache: bool) -> dict[str, Any]:
         try:

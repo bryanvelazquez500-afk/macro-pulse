@@ -199,3 +199,33 @@ def test_eps_numerator_is_net_income_available_to_common():
     (fy,) = normalize_company_facts(data, PeriodType.ANNUAL)
     eps = fy.values[Metric.NET_INCOME_COMMON].value / fy.values[Metric.DILUTED_SHARES].value
     assert eps == pytest.approx(50.67, abs=0.01)  # matches the reported GAAP EPS, not 16.0e9 / 300e6 = 53.33
+
+
+def test_fiscal_fourth_quarter_is_the_year_less_the_first_three_quarters():
+    q = lambda val, start, end, fp: _fact(val, start, end, form="10-Q", fy=2025, fp=fp, accn=f"Q-{fp}")  # noqa: E731
+    data = _facts(
+        Revenues=[
+            q(100, "2024-10-01", "2024-12-31", "Q1"),
+            q(110, "2025-01-01", "2025-03-31", "Q2"),
+            q(120, "2025-04-01", "2025-06-30", "Q3"),
+            _fact(470, "2024-10-01", "2025-09-30", fy=2025, accn="K-25", filed="2025-11-01"),
+        ],
+    )
+    data["facts"]["us-gaap"]["WeightedAverageNumberOfDilutedSharesOutstanding"] = {
+        "units": {"shares": [q(10, "2025-04-01", "2025-06-30", "Q3"), _fact(10, "2024-10-01", "2025-09-30")]}
+    }
+    q4, *_ = normalize_company_facts(data, PeriodType.QUARTERLY)
+
+    assert (q4.fiscal_year, q4.fiscal_period, q4.start, q4.end) == (2025, "Q4", "2025-07-01", "2025-09-30")
+    assert q4.values[Metric.REVENUE].value == 140
+    assert q4.values[Metric.REVENUE].source_tag == "Revenues (full year − first three quarters)"
+    assert Metric.DILUTED_SHARES not in q4.values  # a weighted average can't be subtracted
+
+
+def test_no_fourth_quarter_without_all_three_quarters():
+    data = _facts(Revenues=[
+        _fact(110, "2025-01-01", "2025-03-31", form="10-Q", fp="Q2", accn="Q-2"),
+        _fact(120, "2025-04-01", "2025-06-30", form="10-Q", fp="Q3", accn="Q-3"),
+        _fact(470, "2024-10-01", "2025-09-30"),
+    ])
+    assert [p.end for p in normalize_company_facts(data, PeriodType.QUARTERLY)] == ["2025-06-30", "2025-03-31"]
